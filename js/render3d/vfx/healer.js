@@ -1,7 +1,16 @@
 // 治療師：神聖、柔和。聖光彈光環 / 治療十字光柱 / 淨化放射。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { ring, sphereFlash, column, pillar, burst, addFlash } from './lib.js';
+import { ring, sphereFlash, column, pillar, burst, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 聖域：神聖光柱 + 漫天光點
+registerVfx('healer_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#aaffcc', radius: f.radius || 200, pillarH: 200, pillarR: 40, shake: 8, flash: 0.26 });
+    pillar(ctx, c, { color: '#ffffff', h: 220, r: 26, life: 0.7, alpha: 0.5 });
+    column(ctx, c, { color: ['#aaffcc', '#ffffff', '#f1c40f'], count: 40, radius: (f.radius || 200) * 0.5, speed: 200, life: 0.9 });
+  },
+});
 
 registerVfx('healer_holybolt', {
   projectile(ctx, pr) {

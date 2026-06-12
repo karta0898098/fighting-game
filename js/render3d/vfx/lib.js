@@ -147,6 +147,17 @@ export function makeSpinPlate(THREE3, color, r) {
 export function addShake(ctx, m) { ctx.sceneMgr.addShake(m); }
 export function addFlash(ctx, a, color) { ctx.sceneMgr.addFlash(a, color); }
 
+// 大招通用爆發底：雙擴張環 + 光柱 + 上升光點 + 大震動/閃光。各角色再疊自己的招牌特效。
+export function ultimateBurst(ctx, c, opt = {}) {
+  const color = opt.color || '#ffffff';
+  ring(ctx, c, { color, from: 16, to: opt.radius || 150, life: 0.6, y: 4, alpha: 0.95, ease: true });
+  ring(ctx, c, { color: '#ffffff', from: 8, to: (opt.radius || 150) * 0.6, life: 0.45, y: 7, alpha: 0.8 });
+  if (opt.pillar !== false) pillar(ctx, c, { color, h: opt.pillarH || 150, r: opt.pillarR || 26, taper: 0.4, life: 0.6, alpha: 0.55, grow: 0.5 });
+  column(ctx, c, { color: [color, '#ffffff'], count: opt.count || 30, radius: (opt.radius || 150) * 0.4, speed: 190, life: 0.8, size: 4 });
+  ctx.sceneMgr.addShake(opt.shake ?? 16);
+  ctx.sceneMgr.addFlash(opt.flash ?? 0.3, color);
+}
+
 function pick(c) {
   if (Array.isArray(c)) return c[(Math.random() * c.length) | 0];
   return c || '#ffffff';

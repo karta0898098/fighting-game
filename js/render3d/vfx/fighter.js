@@ -1,7 +1,18 @@
 // 格鬥家：拳腳連段、爆發。連環拳 / 上勾拳擊飛 / 格擋反擊。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { ring, pillar, burst, cone, sphereFlash, addShake, addFlash } from './lib.js';
+import { ring, pillar, burst, cone, sphereFlash, addShake, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 真·昇龍霸：金色衝天氣旋
+registerVfx('fighter_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#ffe27a', radius: 120, pillarH: 240, pillarR: 22, shake: 16, flash: 0.3 });
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 26;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 220, vz: Math.sin(a) * 50, gravity: 260, drag: 1, life: 0.6, size: 4, color: '#ffe27a', fade: true });
+    }
+  },
+});
 
 registerVfx('fighter_combo', {
   onCast(ctx, f, c) {

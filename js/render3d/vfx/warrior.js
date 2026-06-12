@@ -1,7 +1,16 @@
 // 戰士：厚重、物理、地面感。鋼鐵月牙斬 / 衝鋒塵爆 / 金色戰吼。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { slashBlade, cone, ring, column, burst, addShake, addFlash } from './lib.js';
+import { slashBlade, cone, ring, column, burst, addShake, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 天崩劍擊：巨型月牙連斬 + 衝擊波
+registerVfx('warrior_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#ffcaa0', radius: f.range || 150, pillarH: 150, pillarR: 30, shake: 20, flash: 0.34 });
+    for (let i = 0; i < 3; i++) slashBlade(ctx, c, f.facing + (i - 1) * 0.5, { color: i === 1 ? '#ffffff' : '#ffcaa0', len: (f.range || 150) * 1.2, w: 34, swing: 2.2, life: 0.32 });
+    cone(ctx, c, f.facing, { color: ['#ffd166', '#ff6b5b', '#ffffff'], count: 26, speed: 360, spread: 1.1, offset: (f.range || 150) * 0.4, up: 60, life: 0.5, size: 5 });
+  },
+});
 
 registerVfx('warrior_slash', {
   onCast(ctx, f, c) {

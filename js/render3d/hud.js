@@ -3,6 +3,7 @@
 
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getCharacter } from '../characters.js';
+import { ULT_MAX } from '../constants.js';
 import { sceneX, sceneZ } from './coords.js';
 
 const HEAD_Y = 62;
@@ -26,9 +27,12 @@ export function createHud({ stage, scene, camera }) {
   const mpWrap = el('div', 'hud-bar mp', self);
   const mpFill = el('i', '', mpWrap);
   const mpTxt = el('span', '', mpWrap);
+  const ultWrap = el('div', 'hud-bar ult', self);
+  const ultFill = el('i', '', ultWrap);
+  const ultTxt = el('span', '', ultWrap);
   const skills = el('div', 'hud-skills', self);
   const chip = {
-    basic: skillChip('J', skills), skill1: skillChip('K', skills), skill2: skillChip('L', skills),
+    basic: skillChip('J', skills), skill1: skillChip('K', skills), skill2: skillChip('L', skills), ultimate: skillChip(';', skills),
   };
 
   // 計分板 (右上)
@@ -84,9 +88,15 @@ export function createHud({ stage, scene, camera }) {
       hpTxt.textContent = `${Math.ceil(me.hp)}/${me.maxHp}`;
       mpFill.style.width = pct(me.mana / me.maxMana);
       mpTxt.textContent = `${Math.ceil(me.mana)}/${me.maxMana}`;
+      const ultR = Math.min(1, (me.ult || 0) / ULT_MAX);
+      const ultReady = ultR >= 1 && me.cd.ultimate <= 0;
+      ultFill.style.width = pct(ultR);
+      ultWrap.classList.toggle('ready', ultReady);
+      ultTxt.textContent = ultReady ? '終極 就緒！' : `終極 ${Math.floor(ultR * 100)}%`;
       setChip(chip.basic, c.basic, me.cd.basic);
       setChip(chip.skill1, c.skill1, me.cd.skill1);
       setChip(chip.skill2, c.skill2, me.cd.skill2);
+      setUltChip(chip.ultimate, c.ultimate, me.ult || 0, me.cd.ultimate);
     } else {
       self.style.display = 'none';
     }
@@ -109,6 +119,18 @@ export function createHud({ stage, scene, camera }) {
     const ready = cd <= 0;
     c.root.classList.toggle('ready', ready);
     c.cool.style.height = ready ? '0%' : '100%';
+  }
+
+  // 大招 chip：以能量充能度顯示填充；滿且無連發冷卻 = 就緒發光
+  function setUltChip(c, action, ult, cd) {
+    if (!action) { c.root.style.display = 'none'; return; }
+    c.root.style.display = '';
+    c.label.textContent = `${c.key} ${action.name}`;
+    const r = Math.min(1, (ult || 0) / ULT_MAX);
+    const ready = r >= 1 && cd <= 0;
+    c.root.classList.toggle('ready', ready);
+    c.root.classList.toggle('ult', true);
+    c.cool.style.height = `${(1 - r) * 100}%`;
   }
 
   function render() { css2d.render(scene, camera); }

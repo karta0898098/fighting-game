@@ -35,6 +35,7 @@ export function createUI() {
         <div class="char-desc">${c.desc}</div>
         <div class="char-skills">
           <span>J ${c.basic.name}</span><span>K ${c.skill1.name}</span><span>L ${c.skill2.name}</span>
+          ${c.ultimate ? `<span class="ult">; ${c.ultimate.name}（大絕）</span>` : ''}
         </div>`;
       card.addEventListener('click', () => {
         selectedChar = c.id;

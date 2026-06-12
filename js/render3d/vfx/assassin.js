@@ -1,7 +1,16 @@
 // 刺客：迅捷銳利、暗影。交叉快刀 / 瞬步殘影煙 / 背刺紫爆。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { slashBlade, ring, sphereFlash, burst, cone, column, addShake, addFlash } from './lib.js';
+import { slashBlade, ring, sphereFlash, burst, cone, column, addShake, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 影殺·千刀：環身亂刀 + 紫爆
+registerVfx('assassin_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#e056fd', radius: 150, pillar: false, shake: 14, flash: 0.28 });
+    for (let i = 0; i < 12; i++) slashBlade(ctx, c, (i / 12) * Math.PI * 2, { color: i % 2 ? '#ffffff' : '#e056fd', len: f.range || 130, w: 8, swing: 1.4, life: 0.3 });
+    burst(ctx, c, { color: ['#9b59b6', '#e056fd', '#ffffff'], count: 30, speed: 280, up: 30, life: 0.5 });
+  },
+});
 
 registerVfx('assassin_slash', {
   onCast(ctx, f, c) {

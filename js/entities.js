@@ -1,6 +1,6 @@
 // 實體工廠、數學工具、傷害/效果輔助
 
-import { ARENA, PLAYER_RADIUS } from './constants.js';
+import { ARENA, PLAYER_RADIUS, ULT_MAX, ULT_GAIN_DEAL, ULT_GAIN_TAKE } from './constants.js';
 import { getCharacter } from './characters.js';
 
 let _id = 1;
@@ -25,7 +25,8 @@ export function makePlayer(id, name, charId, x, y) {
     alive: true,
     shield: 0, shieldTime: 0,
     kills: 0,
-    cd: { basic: 0, skill1: 0, skill2: 0 },
+    ult: 0, // 終極能量 (0..ULT_MAX)
+    cd: { basic: 0, skill1: 0, skill2: 0, ultimate: 0 },
     effects: {}, // kind -> { remaining, factor?, speed?, dmg? }
   };
 }
@@ -77,7 +78,7 @@ export function makeZone(owner, x, y, opt) {
   return {
     id: uid(), owner, x, y,
     radius: opt.radius, dmg: opt.dmg,
-    lifetime: opt.lifetime, tick: opt.tick, tickTimer: opt.delay ? opt.delay : 0,
+    lifetime: opt.lifetime, tick: opt.tick, tickTimer: 0,
     delay: opt.delay || 0,
     effect: opt.effect || null, color: opt.color,
     vfx: opt.vfx || null,
@@ -94,6 +95,11 @@ export function addFx(state, fx) {
 
 export function dealDamage(state, target, amount, attackerId) {
   if (!target.alive || amount <= 0) return;
+  // 終極能量充能：攻擊者依造成傷害累積
+  const attacker = state.players[attackerId];
+  if (attacker && attacker.id !== target.id && attacker.alive) {
+    attacker.ult = Math.min(ULT_MAX, (attacker.ult || 0) + amount * ULT_GAIN_DEAL);
+  }
   let dmg = amount;
   if (target.shield > 0) {
     const absorbed = Math.min(target.shield, dmg);
@@ -101,6 +107,8 @@ export function dealDamage(state, target, amount, attackerId) {
     dmg -= absorbed;
   }
   if (dmg <= 0) return;
+  // 受害者依實際承受傷害累積 (逆境快充)
+  target.ult = Math.min(ULT_MAX, (target.ult || 0) + dmg * ULT_GAIN_TAKE);
   target.hp -= dmg;
   if (target.hp <= 0) {
     target.hp = 0;

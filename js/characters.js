@@ -24,6 +24,7 @@ export const CHARACTERS = [
     basic: { name: '揮砍', type: 'melee', dmg: 14, range: 72, arc: 1.3, knockback: 180, cd: 0.5, color: '#ff6b5b', vfx: 'warrior_slash' },
     skill1: { name: '衝鋒', type: 'dash', impulse: 920, dmg: 18, range: 78, arc: 1.0, knockback: 240, manaCost: 15, cd: 5, color: '#ff8a5b', vfx: 'warrior_charge' },
     skill2: { name: '戰吼', type: 'buff', shield: 45, effect: { kind: 'haste', duration: 5, factor: 1.25 }, duration: 5, manaCost: 20, cd: 11, color: '#ffd166', vfx: 'warrior_warcry' },
+    ultimate: { name: '天崩劍擊', type: 'melee', dmg: 75, range: 150, arc: 2.2, knockback: 340, cd: 1, color: '#ffcaa0', vfx: 'warrior_ultimate', self: { shield: 80, effect: { kind: 'haste', duration: 5, factor: 1.3 } } },
   },
   {
     id: 1, name: '法師', color: '#3498db', shape: 'circle', sprite: 'assets/characters/mage.svg',
@@ -32,6 +33,7 @@ export const CHARACTERS = [
     basic: { name: '火球', type: 'projectile', dmg: 11, speed: 430, radius: 9, lifetime: 1.3, knockback: 60, cd: 0.55, color: '#ff9f43', vfx: 'mage_fireball' },
     skill1: { name: '冰霜新星', type: 'zone', range: 0, radius: 135, dmg: 16, lifetime: 0.45, tick: 0.45, effect: { kind: 'slow', duration: 1.8, factor: 0.45 }, manaCost: 30, cd: 6, color: '#74e0ff', vfx: 'mage_frostnova' },
     skill2: { name: '閃電鏈', type: 'projectile', dmg: 34, speed: 760, radius: 8, lifetime: 0.85, pierce: true, knockback: 40, manaCost: 40, cd: 7, color: '#b388ff', vfx: 'mage_lightning' },
+    ultimate: { name: '極寒風暴', type: 'zone', range: 0, radius: 260, dmg: 80, lifetime: 0.6, tick: 0.6, knockback: 60, effect: { kind: 'slow', duration: 3, factor: 0.35 }, cd: 1, color: '#7fdfff', vfx: 'mage_ultimate' },
   },
   {
     id: 2, name: '刺客', color: '#9b59b6', shape: 'triangle', sprite: 'assets/characters/assassin.svg',
@@ -40,6 +42,7 @@ export const CHARACTERS = [
     basic: { name: '快刀', type: 'melee', dmg: 12, range: 56, arc: 0.95, knockback: 70, cd: 0.34, color: '#c39bd3', vfx: 'assassin_slash' },
     skill1: { name: '瞬步', type: 'blink', range: 240, manaCost: 20, cd: 4, color: '#c39bd3', vfx: 'assassin_blink' },
     skill2: { name: '背刺爆發', type: 'melee', dmg: 42, range: 62, arc: 1.5, knockback: 120, manaCost: 35, cd: 7, color: '#e056fd', vfx: 'assassin_backstab' },
+    ultimate: { name: '影殺·千刀', type: 'dash', impulse: 720, dmg: 80, range: 130, arc: 7, knockback: 200, cd: 1, color: '#e056fd', vfx: 'assassin_ultimate', self: { effect: { kind: 'invis', duration: 2.5, speed: 1.4 } } },
   },
   {
     id: 3, name: '坦克', color: '#7f8c8d', shape: 'square', sprite: 'assets/characters/tank.svg',
@@ -48,6 +51,7 @@ export const CHARACTERS = [
     basic: { name: '重拳', type: 'melee', dmg: 11, range: 76, arc: 1.0, knockback: 280, cd: 0.62, color: '#aab7b8', vfx: 'tank_punch' },
     skill1: { name: '護盾', type: 'buff', shield: 95, duration: 6, manaCost: 25, cd: 9, color: '#dfe6e9', vfx: 'tank_shield' },
     skill2: { name: '震地', type: 'zone', range: 0, radius: 155, dmg: 18, lifetime: 0.4, tick: 0.4, effect: { kind: 'stun', duration: 1.2 }, manaCost: 40, cd: 12, color: '#a0744a', vfx: 'tank_quake' },
+    ultimate: { name: '不動堡壘', type: 'zone', range: 0, radius: 185, dmg: 35, lifetime: 0.5, tick: 0.5, knockback: 200, effect: { kind: 'stun', duration: 2 }, cd: 1, color: '#cfd8dc', vfx: 'tank_ultimate', self: { shield: 300, duration: 8 } },
   },
   {
     id: 4, name: '弓箭手', color: '#27ae60', shape: 'circle', sprite: 'assets/characters/archer.svg',
@@ -56,6 +60,7 @@ export const CHARACTERS = [
     basic: { name: '射箭', type: 'projectile', dmg: 13, speed: 580, radius: 6, lifetime: 1.4, knockback: 60, cd: 0.5, color: '#2ecc71', vfx: 'archer_arrow' },
     skill1: { name: '多重箭', type: 'projectile', dmg: 11, speed: 540, radius: 6, lifetime: 1.2, count: 3, spread: 0.34, knockback: 50, manaCost: 25, cd: 5, color: '#7bed9f', vfx: 'archer_multishot' },
     skill2: { name: '後撤陷阱', type: 'zone', range: 0, radius: 95, dmg: 6, lifetime: 4, tick: 0.6, effect: { kind: 'slow', duration: 1.3, factor: 0.4 }, recoil: 560, manaCost: 30, cd: 8, color: '#1abc9c', vfx: 'archer_trap' },
+    ultimate: { name: '萬箭齊發', type: 'zone', range: 150, radius: 180, dmg: 12, lifetime: 2.5, tick: 0.3, effect: { kind: 'slow', duration: 0.6, factor: 0.6 }, cd: 1, color: '#7bed9f', vfx: 'archer_ultimate' },
   },
   {
     id: 5, name: '治療師', color: '#ecf0f1', shape: 'circle', sprite: 'assets/characters/healer.svg',
@@ -64,6 +69,7 @@ export const CHARACTERS = [
     basic: { name: '聖光彈', type: 'projectile', dmg: 8, speed: 390, radius: 8, lifetime: 1.2, knockback: 50, cd: 0.6, color: '#f1c40f', vfx: 'healer_holybolt' },
     skill1: { name: '自我治療', type: 'buff', heal: 55, manaCost: 30, cd: 6, color: '#2ecc71', vfx: 'healer_heal' },
     skill2: { name: '淨化加速', type: 'buff', heal: 20, cleanse: true, effect: { kind: 'haste', duration: 5, factor: 1.5 }, duration: 5, manaCost: 35, cd: 10, color: '#55efc4', vfx: 'healer_cleanse' },
+    ultimate: { name: '聖域', type: 'zone', range: 0, radius: 200, dmg: 30, lifetime: 0.5, tick: 0.5, knockback: 80, cd: 1, color: '#aaffcc', vfx: 'healer_ultimate', self: { heal: 9999, shield: 150, cleanse: true, duration: 6, effect: { kind: 'haste', duration: 6, factor: 1.4 } } },
   },
   {
     id: 6, name: '狂戰士', color: '#922b21', shape: 'square', sprite: 'assets/characters/berserker.svg',
@@ -72,6 +78,7 @@ export const CHARACTERS = [
     basic: { name: '雙斧', type: 'melee', dmg: 13, range: 66, arc: 1.15, knockback: 120, cd: 0.46, lowHpBonus: true, color: '#cd6155', vfx: 'berserker_axes' },
     skill1: { name: '血怒', type: 'buff', hpCost: 25, effect: { kind: 'rage', duration: 6, speed: 1.55, dmg: 1.35 }, duration: 6, cd: 8, color: '#e74c3c', vfx: 'berserker_rage' },
     skill2: { name: '旋風斬', type: 'melee', dmg: 22, range: 96, arc: 7, knockback: 160, manaCost: 30, cd: 7, color: '#ec7063', vfx: 'berserker_whirlwind' },
+    ultimate: { name: '血之狂亂', type: 'melee', dmg: 40, range: 120, arc: 7, knockback: 220, cd: 1, color: '#ff3b2f', vfx: 'berserker_ultimate', self: { heal: 60, effect: { kind: 'rage', duration: 8, speed: 1.8, dmg: 1.8 } } },
   },
   {
     id: 7, name: '忍者', color: '#2c3e50', shape: 'triangle', sprite: 'assets/characters/ninja.svg',
@@ -80,6 +87,7 @@ export const CHARACTERS = [
     basic: { name: '飛鏢', type: 'projectile', dmg: 10, speed: 620, radius: 5, lifetime: 1.0, knockback: 30, cd: 0.4, color: '#95a5a6', vfx: 'ninja_shuriken' },
     skill1: { name: '煙霧隱身', type: 'buff', effect: { kind: 'invis', duration: 3, speed: 1.3 }, duration: 3, manaCost: 25, cd: 7, color: '#636e72', vfx: 'ninja_smoke' },
     skill2: { name: '影分身瞬移', type: 'blink', range: 300, manaCost: 30, cd: 5, color: '#636e72', vfx: 'ninja_shadowblink' },
+    ultimate: { name: '影分身亂舞', type: 'projectile', dmg: 18, speed: 680, radius: 6, lifetime: 0.9, count: 16, spread: 0.3927, knockback: 60, cd: 1, color: '#b0bec5', vfx: 'ninja_ultimate', self: { effect: { kind: 'invis', duration: 2, speed: 1.4 } } },
   },
   {
     id: 8, name: '元素使', color: '#e67e22', shape: 'circle', sprite: 'assets/characters/elementalist.svg',
@@ -88,6 +96,7 @@ export const CHARACTERS = [
     basic: { name: '火花', type: 'melee', dmg: 9, range: 92, arc: 0.8, knockback: 40, cd: 0.4, color: '#f39c12', vfx: 'elem_spark' },
     skill1: { name: '火焰地帶', type: 'zone', range: 120, radius: 100, dmg: 10, lifetime: 4, tick: 0.5, manaCost: 30, cd: 6, color: '#e74c3c', vfx: 'elem_firezone' },
     skill2: { name: '隕石', type: 'zone', range: 170, radius: 135, dmg: 55, lifetime: 0.4, tick: 0.4, delay: 1.2, manaCost: 50, cd: 10, color: '#c0392b', vfx: 'elem_meteor' },
+    ultimate: { name: '天地崩裂', type: 'zone', range: 150, radius: 120, dmg: 70, lifetime: 0.4, tick: 0.4, delay: 1.0, count: 5, scatter: 180, stagger: 0.18, cd: 1, color: '#ff5a1f', vfx: 'elem_ultimate' },
   },
   {
     id: 9, name: '格鬥家', color: '#f1c40f', shape: 'circle', sprite: 'assets/characters/fighter.svg',
@@ -96,6 +105,7 @@ export const CHARACTERS = [
     basic: { name: '連環拳', type: 'melee', dmg: 10, range: 56, arc: 1.0, knockback: 90, cd: 0.3, color: '#f7dc6f', vfx: 'fighter_combo' },
     skill1: { name: '上勾拳', type: 'melee', dmg: 26, range: 60, arc: 0.8, knockback: 360, manaCost: 25, cd: 5, color: '#f9e79f', vfx: 'fighter_uppercut' },
     skill2: { name: '格擋反擊', type: 'buff', shield: 120, duration: 1.6, manaCost: 30, cd: 8, color: '#f4d03f', vfx: 'fighter_counter' },
+    ultimate: { name: '真·昇龍霸', type: 'melee', dmg: 90, range: 80, arc: 1.2, knockback: 520, cd: 1, color: '#ffe27a', vfx: 'fighter_ultimate', self: { shield: 60, effect: { kind: 'haste', duration: 4, factor: 1.3 } } },
   },
 ];
 

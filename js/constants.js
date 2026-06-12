@@ -13,6 +13,13 @@ export const PLAYER_RADIUS = 18;
 export const MANA_REGEN = 9;          // 每秒回魔
 export const KNOCKBACK_FRICTION = 7;  // 擊退衰減 (越大停得越快)
 
+// ---- 終極能量槽 (大絕招) ----
+export const ULT_MAX = 100;           // 滿槽即可施放
+export const ULT_REGEN = 2.2;         // 每秒被動充能 (約 45 秒滿)
+export const ULT_GAIN_DEAL = 0.35;    // 造成傷害的充能係數 (× 傷害)
+export const ULT_GAIN_TAKE = 0.6;     // 承受傷害的充能係數 (逆境快充)
+export const ULT_LOCKOUT = 1;         // 施放後的防連發冷卻 (秒)
+
 // 渲染：稍微傾斜的俯視
 export const TILT = 0.62;             // 深度方向(y)的壓縮比
 export const BODY_HEIGHT = 32;        // 直立身體繪製高度

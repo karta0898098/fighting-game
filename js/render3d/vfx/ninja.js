@@ -3,6 +3,18 @@ import * as THREE from 'three';
 import { registerVfx } from './registry.js';
 import { ring, burst, column } from './lib.js';
 
+// 大絕招 — 影分身亂舞：濃煙湧現 + 環身殘影
+registerVfx('ninja_ultimate', {
+  onCast(ctx, f, c) {
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 60;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: Math.random() * 40, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * (40 + Math.random() * 60), vy: 20 + Math.random() * 40, vz: Math.sin(a) * (40 + Math.random() * 60), gravity: -8, drag: 1.4, life: 0.7 + Math.random() * 0.6, size: 8 + Math.random() * 8, color: Math.random() < 0.5 ? '#4b5358' : '#2c3e50', fade: false });
+    }
+    ring(ctx, c, { color: '#b0bec5', from: 12, to: 110, life: 0.5, y: 4, alpha: 0.8 });
+    ctx.sceneMgr.addShake(10);
+  },
+});
+
 registerVfx('ninja_shuriken', {
   projectile(ctx, pr) {
     const g = new THREE.Group();

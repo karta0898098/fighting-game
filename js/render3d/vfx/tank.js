@@ -1,7 +1,23 @@
 // 坦克：巨大、鈍重、控場。重拳衝擊 / 六角護盾罩 / 震地裂石。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { ring, sphereFlash, burst, cone, addShake, addFlash } from './lib.js';
+import { ring, sphereFlash, burst, cone, addShake, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 不動堡壘：巨石噴發 + 護盾穹頂
+registerVfx('tank_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#cfd8dc', radius: f.radius || 185, pillar: false, shake: 22, flash: 0.3 });
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * (f.radius || 185);
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr, vx: (Math.random() - 0.5) * 80, vy: 180 + Math.random() * 240, vz: (Math.random() - 0.5) * 80, gravity: 480, drag: 1, life: 0.7 + Math.random() * 0.5, size: 5 + Math.random() * 5, color: Math.random() < 0.5 ? '#7f8c8d' : '#5a3a1f', fade: false });
+    }
+    const geo = new THREE.IcosahedronGeometry(1, 1);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true }));
+    m.position.set(c.x, 30, c.z);
+    ctx.addTransient(m, 0.9, (mesh, t) => { mesh.scale.setScalar(70 * Math.min(1, t * 4)); mesh.rotation.y += 0.03; mesh.material.opacity = 0.5 * (1 - t); });
+    m.userData.mat = m.material; m.userData.geo = geo;
+  },
+});
 
 registerVfx('tank_punch', {
   onCast(ctx, f, c) {

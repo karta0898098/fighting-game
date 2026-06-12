@@ -97,7 +97,7 @@ export function createFxBus({ scene, particles, sceneMgr }) {
     // 角色專屬 vfx 覆寫 (Phase 3)；缺省走通用
     const vfx = getVfx(f.vfx);
     const ctx = { THREE, scene, particles, sceneMgr, addTransient, sceneVec: _v };
-    const h = f.type === 'melee' ? 18 : f.type === 'buff' ? 4 : PROJECTILE_Y;
+    const h = f.type === 'melee' ? 18 : (f.type === 'buff' || f.type === 'ultimate') ? 4 : PROJECTILE_Y;
     setVecFromWorld(_v, f.x, f.y, h);
     const c = { x: _v.x, y: _v.y, z: _v.z };
 
@@ -158,6 +158,24 @@ export function createFxBus({ scene, particles, sceneMgr }) {
           });
         }
         break;
+      case 'ultimate': {
+        if (vfx && vfx.onCast) { vfx.onCast(ctx, f, c); break; }
+        // 通用大招華麗回饗 (無專屬 vfx 時)
+        const R = f.radius || 140;
+        expandRing(c, f.color, 14, R, 0.55, 4);
+        expandRing(c, '#ffffff', 8, R * 0.6, 0.4, 8);
+        burstFlash(c, f.color, 46, 0.3);
+        for (let i = 0; i < 40; i++) {
+          const a = Math.random() * Math.PI * 2, rr = Math.random() * R * 0.8;
+          particles.spawn({
+            x: c.x + Math.cos(a) * rr, y: 0, z: c.z + Math.sin(a) * rr,
+            vx: 0, vy: 140 + Math.random() * 200, vz: 0,
+            gravity: -10, drag: 0.6, life: 0.6 + Math.random() * 0.6, size: 4, color: f.color, fade: true,
+          });
+        }
+        sceneMgr.addShake(16); sceneMgr.addFlash(0.32, f.color);
+        break;
+      }
     }
   }
 

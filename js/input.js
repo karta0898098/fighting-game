@@ -8,10 +8,11 @@ const KEY_MAP = {
   KeyJ: 'basic',
   KeyK: 'skill1',
   KeyL: 'skill2',
+  Semicolon: 'ultimate',
 };
 
 export function createInput() {
-  const keys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false };
+  const keys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false };
   let enabled = false;
 
   function setKey(code, down) {
@@ -37,10 +38,10 @@ export function createInput() {
     get() {
       return {
         up: keys.up, down: keys.down, left: keys.left, right: keys.right,
-        basic: keys.basic, skill1: keys.skill1, skill2: keys.skill2,
+        basic: keys.basic, skill1: keys.skill1, skill2: keys.skill2, ultimate: keys.ultimate,
       };
     },
   };
 }
 
-export const EMPTY_INPUT = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false };
+export const EMPTY_INPUT = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false };

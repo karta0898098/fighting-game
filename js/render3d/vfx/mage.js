@@ -1,7 +1,19 @@
 // 法師：奧術元素。漩渦火球 / 冰霜碎晶新星 / 分支閃電。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { ring, sphereFlash, burst, cone, addShake } from './lib.js';
+import { ring, sphereFlash, burst, cone, addShake, ultimateBurst } from './lib.js';
+
+// 大絕招 — 極寒風暴：向外冰晶風暴 + 巨環
+registerVfx('mage_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#7fdfff', radius: f.radius || 260, pillarH: 200, pillarR: 40, shake: 14, flash: 0.28 });
+    for (let i = 0; i < 60; i++) {
+      const a = Math.random() * Math.PI * 2, spd = 200 + Math.random() * 260;
+      ctx.particles.spawn({ x: c.x, y: 8 + Math.random() * 40, z: c.z, vx: Math.cos(a) * spd, vy: 20 + Math.random() * 60, vz: Math.sin(a) * spd, gravity: 140, drag: 1.4, life: 0.6 + Math.random() * 0.5, size: 4, color: Math.random() < 0.5 ? '#bfefff' : '#ffffff', fade: true });
+    }
+    ring(ctx, c, { color: '#bfefff', from: 20, to: (f.radius || 260), life: 0.6, y: 5, ease: true });
+  },
+});
 
 // 火球：白核 + 橙色火殼，飛行時噴餘燼
 registerVfx('mage_fireball', {

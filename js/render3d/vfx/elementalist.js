@@ -3,6 +3,55 @@ import * as THREE from 'three';
 import { registerVfx } from './registry.js';
 import { ring, sphereFlash, burst, cone, addShake, addFlash } from './lib.js';
 
+// 大絕招 — 天地崩裂：多顆隕石天降 (zone count 5)。onCast 起手天裂閃光，zone hook 渲染每顆落石。
+registerVfx('elem_ultimate', {
+  onCast(ctx, f, c) {
+    ctx.sceneMgr.addFlash(0.22, '#ff5a1f');
+    ctx.sceneMgr.addShake(7);
+    ring(ctx, c, { color: '#ff5a1f', from: 20, to: 200, life: 0.5, y: 4 });
+  },
+  zone(ctx, z) {
+    const g = new THREE.Group();
+    const col = new THREE.Color('#ff5a1f');
+    const warn = new THREE.Mesh(
+      new THREE.RingGeometry(0.86, 1, 40),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+    );
+    warn.rotation.x = -Math.PI / 2; warn.position.y = 1.5; warn.scale.setScalar(z.radius); g.add(warn);
+    const meteor = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(z.radius * 0.4, 1),
+      new THREE.MeshStandardMaterial({ color: 0x4a1008, emissive: col, emissiveIntensity: 2.6, roughness: 0.6 })
+    );
+    g.add(meteor);
+    const totalDelay = Math.max(0.0001, z.delay || 1.0);
+    let exploded = false;
+    return {
+      object3D: g,
+      update(dt, zz) {
+        if (zz.delay > 0) {
+          meteor.visible = true;
+          meteor.position.y = 1000 * (zz.delay / totalDelay) + z.radius * 0.4;
+          meteor.rotation.x += dt * 6; meteor.rotation.y += dt * 5;
+          ctx.particles.spawn({ x: g.position.x + (Math.random() - 0.5) * 12, y: meteor.position.y, z: g.position.z + (Math.random() - 0.5) * 12, vx: (Math.random() - 0.5) * 20, vy: 40, vz: (Math.random() - 0.5) * 20, drag: 1.5, life: 0.5, size: 10, color: Math.random() < 0.5 ? '#ff7043' : '#ffd166', fade: true });
+          warn.material.opacity = 0.4 + 0.5 * Math.abs(Math.sin((1 - zz.delay / totalDelay) * Math.PI * 6));
+        } else {
+          meteor.visible = false;
+          if (!exploded) {
+            exploded = true;
+            const cc = { x: g.position.x, y: 16, z: g.position.z };
+            ctx.sceneMgr.addShake(20); ctx.sceneMgr.addFlash(0.3, '#ff5a1f');
+            for (let i = 0; i < 44; i++) {
+              const a = Math.random() * Math.PI * 2, spd = 220 + Math.random() * 340;
+              ctx.particles.spawn({ x: cc.x, y: 6, z: cc.z, vx: Math.cos(a) * spd, vy: 120 + Math.random() * 260, vz: Math.sin(a) * spd, gravity: 480, drag: 1, life: 0.6 + Math.random() * 0.6, size: 5 + Math.random() * 5, color: Math.random() < 0.5 ? '#ff7043' : '#4a1008', fade: false });
+            }
+          }
+          warn.material.opacity = Math.max(0, warn.material.opacity - dt * 2);
+        }
+      },
+    };
+  },
+});
+
 registerVfx('elem_spark', {
   onCast(ctx, f, c) {
     // 前向火焰舌

@@ -36,6 +36,7 @@ function mat(color, opt = {}) {
   return new THREE.MeshStandardMaterial({
     color, roughness: opt.rough ?? 0.6, metalness: opt.metal ?? 0.15,
     emissive: opt.emissive ?? 0x000000, emissiveIntensity: opt.ei ?? 1,
+    envMapIntensity: opt.env ?? 0.9,
     transparent: true, opacity: 1,
   });
 }
@@ -53,7 +54,7 @@ export function createCharacterModel(charId) {
   const hipY = 18, shoulderY = hipY + torsoH;
 
   // 軀幹
-  const bodyMat = reg(mat(base, { rough: 0.55, metal: 0.2 }));
+  const bodyMat = reg(mat(base, { rough: 0.5, metal: 0.35 }));
   let torsoGeo;
   if (cfg.robe) {
     torsoGeo = new THREE.CylinderGeometry(torsoW * 0.42, torsoW * 0.62, torsoH + 6, 12);
@@ -68,7 +69,7 @@ export function createCharacterModel(charId) {
   // 胸口亮片 (識別色強化)
   const chest = new THREE.Mesh(
     new THREE.BoxGeometry(torsoW * 0.5, torsoH * 0.4, 2),
-    reg(mat(shade(base, 0.35), { emissive: new THREE.Color(base), ei: 0.6 }))
+    reg(mat(shade(base, 0.35), { metal: 0.4, rough: 0.45, emissive: new THREE.Color(base), ei: 0.22 }))
   );
   chest.position.set(0, hipY + torsoH * 0.6, torsoD * 0.5 + 0.5);
   torso.add(chest);
@@ -85,13 +86,13 @@ export function createCharacterModel(charId) {
   head.castShadow = true;
   group.add(head);
   // 面向標記 (眼/面盔，+X 為前)
-  const faceMat = reg(mat(0x0b0f14, { rough: 0.3, emissive: new THREE.Color(shade(base, 0.5)), ei: 0.4 }));
+  const faceMat = reg(mat(0x0b0f14, { rough: 0.3, metal: 0.5, emissive: new THREE.Color(shade(base, 0.5)), ei: 0.18 }));
   const visor = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3, 9), faceMat);
   visor.position.set(6.5, shoulderY + 8, 0);
   group.add(visor);
 
   // 手臂 (樞紐在肩)
-  const armMat = reg(mat(shade(base, -0.15), { rough: 0.6 }));
+  const armMat = reg(mat(shade(base, -0.15), { rough: 0.55, metal: 0.35 }));
   const armLen = 16;
   const mkLimb = (px, pz, isArm) => {
     const pivot = new THREE.Group();
@@ -118,15 +119,15 @@ export function createCharacterModel(charId) {
   armR.add(handR);
   buildWeapon(handR, cfg.weapon, base, reg);
 
-  // 頭頂發光識別徽記
+  // 頭頂發光識別徽記 (收斂發光，仍保留辨識)
   const emMat = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(base), emissive: new THREE.Color(base), emissiveIntensity: 2.4,
-    roughness: 0.3, metalness: 0,
+    color: new THREE.Color(base), emissive: new THREE.Color(base), emissiveIntensity: 1.1,
+    roughness: 0.35, metalness: 0.1,
   });
   let emGeo;
-  if (ch.shape === 'square') emGeo = new THREE.BoxGeometry(7, 7, 7);
-  else if (ch.shape === 'triangle') emGeo = new THREE.TetrahedronGeometry(6);
-  else emGeo = new THREE.IcosahedronGeometry(5, 0);
+  if (ch.shape === 'square') emGeo = new THREE.BoxGeometry(5.5, 5.5, 5.5);
+  else if (ch.shape === 'triangle') emGeo = new THREE.TetrahedronGeometry(5);
+  else emGeo = new THREE.IcosahedronGeometry(4.2, 0);
   const emblem = new THREE.Mesh(emGeo, emMat);
   emblem.position.y = shoulderY + 24;
   group.add(emblem);

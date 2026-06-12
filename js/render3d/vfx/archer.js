@@ -3,6 +3,18 @@ import * as THREE from 'three';
 import { registerVfx } from './registry.js';
 import { ring, burst, cone } from './lib.js';
 
+// 大絕招 — 萬箭齊發：箭雨自天而降 + 地面環
+registerVfx('archer_ultimate', {
+  onCast(ctx, f, c) {
+    ring(ctx, c, { color: '#7bed9f', from: 20, to: f.radius || 180, life: 0.6, y: 4, ease: true });
+    ctx.sceneMgr.addShake(8);
+    for (let i = 0; i < 60; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * (f.radius || 180);
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 300 + Math.random() * 220, z: c.z + Math.sin(a) * rr, vx: 0, vy: -540, vz: 0, drag: 0, gravity: 0, life: 0.75, size: 5, color: '#7bed9f', fade: false });
+    }
+  },
+});
+
 function makeArrow(ctx, pr, tint) {
   const g = new THREE.Group();
   const col = new THREE.Color(tint || pr.color);

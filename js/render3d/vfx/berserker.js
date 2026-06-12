@@ -1,7 +1,23 @@
 // 狂戰士：狂暴、血腥。雙斧血斬 / 血怒爆發 / 旋風刃環。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { slashBlade, ring, pillar, column, burst, cone, addShake, addFlash } from './lib.js';
+import { slashBlade, ring, pillar, column, burst, cone, addShake, addFlash, ultimateBurst } from './lib.js';
+
+// 大絕招 — 血之狂亂：血焰柱 + 多重旋轉刃環
+registerVfx('berserker_ultimate', {
+  onCast(ctx, f, c) {
+    ultimateBurst(ctx, c, { color: '#ff3b2f', radius: f.range || 120, pillarH: 170, pillarR: 30, shake: 20, flash: 0.34 });
+    for (let k = 0; k < 4; k++) {
+      const geo = new THREE.RingGeometry(0.55, 1, 48);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3b2f'), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      m.rotation.x = -Math.PI / 2; m.position.set(c.x, 12 + k * 7, c.z);
+      const baseR = (f.range || 120) * (0.7 + k * 0.16);
+      ctx.addTransient(m, 0.45, (mesh, t) => { mesh.scale.setScalar(baseR * (0.6 + 0.5 * t)); mesh.rotation.z = t * Math.PI * 4 + k; mesh.material.opacity = (1 - t) * 0.8; });
+      m.userData.mat = m.material; m.userData.geo = geo;
+    }
+    burst(ctx, c, { color: ['#ff3b2f', '#922b21'], count: 30, speed: 280, up: 20, flat: true, life: 0.55 });
+  },
+});
 
 registerVfx('berserker_axes', {
   onCast(ctx, f, c) {
