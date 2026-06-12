@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>幾何鬥技場 — 多人連線格鬥</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- PeerJS：免費公開 broker，WebRTC P2P 連線 -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <!-- 主選單 -->
+  <section id="screen-menu" class="screen active">
+    <div class="panel">
+      <h1>幾何鬥技場</h1>
+      <p class="subtitle">2.5D 俯視 · 多人連線 · 最後存活者獲勝</p>
+
+      <label class="field">
+        <span>你的名稱</span>
+        <input id="name-input" maxlength="12" placeholder="輸入名稱" />
+      </label>
+
+      <div class="menu-actions">
+        <button id="btn-create" class="btn primary">建立房間</button>
+        <div class="join-row">
+          <input id="room-input" placeholder="輸入房號（例 fg-ABCDE）" />
+          <button id="btn-join" class="btn">加入房間</button>
+        </div>
+      </div>
+
+      <p id="menu-status" class="status"></p>
+
+      <div class="help">
+        <h3>操作方式</h3>
+        <p><b>WASD / 方向鍵</b> 移動　<b>J</b> 普攻　<b>K</b> 技能1　<b>L</b> 技能2</p>
+        <p class="dim">面向＝最後移動方向。攻擊朝面向發出。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 大廳 -->
+  <section id="screen-lobby" class="screen">
+    <div class="panel wide">
+      <div class="lobby-head">
+        <div>
+          <h2>房間大廳</h2>
+          <div class="room-line">房號：<code id="room-code">—</code>
+            <button id="btn-copy" class="btn tiny">複製</button>
+          </div>
+        </div>
+        <button id="btn-leave-lobby" class="btn ghost">離開</button>
+      </div>
+
+      <p class="hint">把房號分享給朋友，請他們在主選單輸入房號加入。選好角色後由房主開始。</p>
+
+      <h3>選擇角色</h3>
+      <div id="char-grid" class="char-grid"></div>
+
+      <div class="lobby-foot">
+        <div class="players">
+          <h3 id="lobby-count">玩家</h3>
+          <div id="player-list" class="player-list"></div>
+        </div>
+        <div class="start-box">
+          <button id="btn-start" class="btn primary big">開始遊戲</button>
+          <p id="lobby-wait" class="dim">等待房主開始…</p>
+          <p id="lobby-status" class="status"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 遊戲 -->
+  <section id="screen-game" class="screen">
+    <canvas id="game-canvas"></canvas>
+  </section>
+
+  <!-- 結算 -->
+  <section id="screen-gameover" class="screen">
+    <div class="panel">
+      <h1 id="winner-text">勝負已分</h1>
+      <h3>本局戰績</h3>
+      <div id="final-scores" class="player-list"></div>
+      <div class="over-actions">
+        <button id="btn-tolobby" class="btn primary">返回大廳</button>
+        <p id="gameover-wait" class="dim">等待房主返回大廳…</p>
+        <button id="btn-leave-over" class="btn ghost">離開</button>
+      </div>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

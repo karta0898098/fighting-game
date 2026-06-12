@@ -1,0 +1,25 @@
+// 全域常數與設定
+
+export const ARENA = { width: 1200, height: 800 };
+
+export const TICK_RATE = 30;          // 房主權威模擬頻率 (Hz)
+export const DT = 1 / TICK_RATE;      // 固定時間步
+export const SNAPSHOT_INTERVAL = 1 / 20; // 房主廣播狀態頻率 (Hz)
+export const INPUT_INTERVAL = 1 / 30; // 加入者送出輸入頻率 (Hz)
+
+export const MAX_PLAYERS = 8;
+
+export const PLAYER_RADIUS = 18;
+export const MANA_REGEN = 9;          // 每秒回魔
+export const KNOCKBACK_FRICTION = 7;  // 擊退衰減 (越大停得越快)
+
+// 渲染：稍微傾斜的俯視
+export const TILT = 0.62;             // 深度方向(y)的壓縮比
+export const BODY_HEIGHT = 32;        // 直立身體繪製高度
+export const PROJECTILE_HEIGHT = 22;  // 投射物飛行高度
+
+// 內部畫布解析度 (以 CSS 縮放至視窗)
+export const CANVAS_W = 1280;
+export const CANVAS_H = 760;
+export const FLOOR_TOP = 120;         // 競技場地板上緣在畫布上的 y
+export const FLOOR_LEFT = (CANVAS_W - ARENA.width) / 2;
