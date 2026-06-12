@@ -1,14 +1,17 @@
 // 治療師：神聖、柔和。聖光彈光環 / 治療十字光柱 / 淨化放射。
 import * as THREE from 'three';
 import { registerVfx } from './registry.js';
-import { ring, sphereFlash, column, pillar, burst, addFlash, ultimateBurst } from './lib.js';
+import { ring, sphereFlash, column, pillar, burst, slashBlade, addFlash, ultimateBurst } from './lib.js';
 
 // 大絕招 — 聖域：神聖光柱 + 漫天光點
 registerVfx('healer_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#aaffcc', radius: f.radius || 200, pillarH: 200, pillarR: 40, shake: 8, flash: 0.26 });
-    pillar(ctx, c, { color: '#ffffff', h: 220, r: 26, life: 0.7, alpha: 0.5 });
-    column(ctx, c, { color: ['#aaffcc', '#ffffff', '#f1c40f'], count: 40, radius: (f.radius || 200) * 0.5, speed: 200, life: 0.9 });
+    const R = f.radius || 260;
+    ultimateBurst(ctx, c, { color: '#aaffcc', radius: R, pillarH: 230, pillarR: 42, shake: 9, flash: 0.28 });
+    pillar(ctx, c, { color: '#ffffff', h: 250, r: 28, life: 0.75, alpha: 0.55 });
+    column(ctx, c, { color: ['#aaffcc', '#ffffff', '#f1c40f'], count: 60, radius: R * 0.5, speed: 210, life: 1.0, size: 4.5 });
+    for (let k = 0; k < 2; k++) slashBlade(ctx, c, k * Math.PI / 2, { color: '#fff6cf', len: R * 1.1, w: 14, swing: 0, life: 0.5, y: 40 }); // 神聖十字光芒
+    ring(ctx, c, { color: '#fff0b0', from: 20, to: R, life: 0.6, y: 5, alpha: 0.7, ease: true });
   },
 });
 

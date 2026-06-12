@@ -6,12 +6,15 @@ import { ring, burst, column } from './lib.js';
 // 大絕招 — 影分身亂舞：濃煙湧現 + 環身殘影
 registerVfx('ninja_ultimate', {
   onCast(ctx, f, c) {
-    for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 60;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: Math.random() * 40, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * (40 + Math.random() * 60), vy: 20 + Math.random() * 40, vz: Math.sin(a) * (40 + Math.random() * 60), gravity: -8, drag: 1.4, life: 0.7 + Math.random() * 0.6, size: 8 + Math.random() * 8, color: Math.random() < 0.5 ? '#4b5358' : '#2c3e50', fade: false });
+    for (let i = 0; i < 64; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 80;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: Math.random() * 48, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * (50 + Math.random() * 70), vy: 20 + Math.random() * 50, vz: Math.sin(a) * (50 + Math.random() * 70), gravity: -8, drag: 1.4, life: 0.8 + Math.random() * 0.6, size: 9 + Math.random() * 9, color: Math.random() < 0.5 ? '#4b5358' : '#2c3e50', fade: false });
     }
-    ring(ctx, c, { color: '#b0bec5', from: 12, to: 110, life: 0.5, y: 4, alpha: 0.8 });
-    ctx.sceneMgr.addShake(10);
+    ring(ctx, c, { color: '#b0bec5', from: 12, to: 120, life: 0.5, y: 4, alpha: 0.85 });
+    ring(ctx, c, { color: '#eceff1', from: 8, to: 80, life: 0.4, y: 7, alpha: 0.6 });
+    burst(ctx, c, { color: ['#cfd8dc', '#90a4ae'], count: 28, speed: 280, up: 20, flat: true, life: 0.5, size: 4 });
+    ctx.sceneMgr.addShake(12);
+    ctx.sceneMgr.addFlash(0.18, '#cfd8dc');
   },
 });
 

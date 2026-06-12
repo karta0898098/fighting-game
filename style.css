@@ -137,6 +137,8 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .char-name { font-weight: 700; font-size: 14px; }
 .char-stat { font-size: 11px; color: var(--dim); margin: 2px 0 5px; }
 .char-desc { font-size: 11px; color: var(--dim); line-height: 1.45; min-height: 46px; }
+.char-talent { font-size: 10.5px; color: #cfe3d2; background: #0c1a12; border: 1px solid #1c3a28; padding: 3px 6px; border-radius: 5px; margin: 5px 0 2px; line-height: 1.4; }
+.char-talent b { color: #6fe3a0; }
 .char-skills { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 .char-skills span { font-size: 10.5px; color: #b9c7d4; background: #0e1722; padding: 2px 5px; border-radius: 5px; }
 .char-skills span.ult { color: #1a1206; background: linear-gradient(#ffe27a, #f5a623); font-weight: 700; }
@@ -171,6 +173,7 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 }
 .hud-self { position: absolute; left: 18px; bottom: 16px; width: 300px; }
 .hud-self-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 2px #000; }
+.hud-self-talent { font-size: 11px; color: #6fe3a0; margin: -2px 0 6px; text-shadow: 0 1px 2px #000; }
 .hud-bar { position: relative; height: 16px; border-radius: 6px; background: #0c1c2a; margin-top: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.5); }
 .hud-bar.hp { background: #0c2a18; height: 18px; }
 .hud-bar > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; transition: width 0.12s linear; }

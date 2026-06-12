@@ -15,7 +15,7 @@ export const KNOCKBACK_FRICTION = 7;  // 擊退衰減 (越大停得越快)
 
 // ---- 終極能量槽 (大絕招) ----
 export const ULT_MAX = 100;           // 滿槽即可施放
-export const ULT_REGEN = 2.2;         // 每秒被動充能 (約 45 秒滿)
+export const ULT_REGEN = 100;         // 每秒被動充能 (約 45 秒滿)
 export const ULT_GAIN_DEAL = 0.35;    // 造成傷害的充能係數 (× 傷害)
 export const ULT_GAIN_TAKE = 0.6;     // 承受傷害的充能係數 (逆境快充)
 export const ULT_LOCKOUT = 1;         // 施放後的防連發冷卻 (秒)

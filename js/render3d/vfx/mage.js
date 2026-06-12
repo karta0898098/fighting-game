@@ -6,12 +6,15 @@ import { ring, sphereFlash, burst, cone, addShake, ultimateBurst } from './lib.j
 // 大絕招 — 極寒風暴：向外冰晶風暴 + 巨環
 registerVfx('mage_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#7fdfff', radius: f.radius || 260, pillarH: 200, pillarR: 40, shake: 14, flash: 0.28 });
-    for (let i = 0; i < 60; i++) {
-      const a = Math.random() * Math.PI * 2, spd = 200 + Math.random() * 260;
-      ctx.particles.spawn({ x: c.x, y: 8 + Math.random() * 40, z: c.z, vx: Math.cos(a) * spd, vy: 20 + Math.random() * 60, vz: Math.sin(a) * spd, gravity: 140, drag: 1.4, life: 0.6 + Math.random() * 0.5, size: 4, color: Math.random() < 0.5 ? '#bfefff' : '#ffffff', fade: true });
+    const R = f.radius || 320;
+    ultimateBurst(ctx, c, { color: '#7fdfff', radius: R, pillarH: 220, pillarR: 44, shake: 16, flash: 0.3 });
+    for (let i = 0; i < 96; i++) {
+      const a = Math.random() * Math.PI * 2, spd = 220 + Math.random() * 320;
+      ctx.particles.spawn({ x: c.x, y: 8 + Math.random() * 50, z: c.z, vx: Math.cos(a) * spd, vy: 20 + Math.random() * 70, vz: Math.sin(a) * spd, gravity: 150, drag: 1.3, life: 0.6 + Math.random() * 0.6, size: 4 + Math.random() * 2, color: Math.random() < 0.5 ? '#bfefff' : '#ffffff', fade: true });
     }
-    ring(ctx, c, { color: '#bfefff', from: 20, to: (f.radius || 260), life: 0.6, y: 5, ease: true });
+    ring(ctx, c, { color: '#bfefff', from: 20, to: R, life: 0.62, y: 5, ease: true });
+    ring(ctx, c, { color: '#ffffff', from: 30, to: R * 0.75, life: 0.5, y: 7, alpha: 0.7 });
+    sphereFlash(ctx, c, { color: '#dffaff', from: 10, to: R * 0.4, life: 0.3, alpha: 0.7 });
   },
 });
 
@@ -126,10 +129,21 @@ registerVfx('mage_lightning', {
   onHit(ctx, f, c) {
     sphereFlash(ctx, c, { color: '#dffaff', from: 4, to: (f.radius || 24), life: 0.16, alpha: 1 });
     ring(ctx, c, { color: '#b388ff', from: 4, to: (f.radius || 20) * 2, life: 0.26, y: 8 });
-    for (let i = 0; i < 14; i++) {
-      const a = Math.random() * Math.PI * 2, spd = 200 + Math.random() * 200;
-      ctx.particles.spawn({ x: c.x, y: c.y, z: c.z, vx: Math.cos(a) * spd, vy: (Math.random() - 0.3) * 120, vz: Math.sin(a) * spd, drag: 3, life: 0.25, size: 3, color: '#dffaff', fade: true });
+    // 分叉電弧：數道短電芒向外炸裂 (呼應閃電鏈分裂)
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + Math.random() * 0.5;
+      const len = 22 + Math.random() * 20;
+      const geo = new THREE.CylinderGeometry(1.2, 0.2, len, 5);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#dffaff'), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.position.set(c.x + Math.cos(a) * len * 0.5, c.y, c.z + Math.sin(a) * len * 0.5);
+      m.rotation.z = Math.PI / 2; m.rotation.y = -a;
+      ctx.addTransient(m, 0.18, (mesh, t) => { mesh.material.opacity = (1 - t) * 0.9; mesh.scale.x = 1 + Math.random() * 0.4; });
+      m.userData.mat = m.material; m.userData.geo = geo;
     }
-    addShake(ctx, 5);
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random() * Math.PI * 2, spd = 220 + Math.random() * 220;
+      ctx.particles.spawn({ x: c.x, y: c.y, z: c.z, vx: Math.cos(a) * spd, vy: (Math.random() - 0.3) * 130, vz: Math.sin(a) * spd, drag: 3, life: 0.25, size: 3, color: '#dffaff', fade: true });
+    }
+    addShake(ctx, 6);
   },
 });

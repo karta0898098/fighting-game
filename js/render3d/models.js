@@ -161,8 +161,18 @@ export function createCharacterModel(charId) {
   rageRing.visible = false;
   group.add(rageRing);
 
+  // 燃燒環 (p.effects.burn 時顯示，橘紅悶燒)
+  const burnRing = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 1.0, 1.4, 8, 32),
+    new THREE.MeshStandardMaterial({ color: 0xff7a3d, emissive: 0xff5a1f, emissiveIntensity: 2.4, transparent: true, opacity: 0.8 })
+  );
+  burnRing.rotation.x = -Math.PI / 2;
+  burnRing.position.y = 3;
+  burnRing.visible = false;
+  group.add(burnRing);
+
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, handR },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, handR },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -297,6 +307,14 @@ export function animateModel(group, dt, info) {
   if (rageOn) {
     const pulse = 0.85 + 0.15 * Math.sin(ud.breathe * 6);
     parts.rageRing.scale.setScalar(pulse);
+  }
+
+  const burnOn = p && p.effects && p.effects.burn;
+  parts.burnRing.visible = !!burnOn;
+  if (burnOn) {
+    const pulse = 0.8 + 0.2 * Math.sin(ud.breathe * 9);
+    parts.burnRing.scale.setScalar(pulse);
+    parts.burnRing.material.emissiveIntensity = 1.8 + 1.0 * pulse;
   }
 
   // 隱身：淡化所有皮膚材質 (敵人更透明、自己半透明)

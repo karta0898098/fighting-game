@@ -6,9 +6,12 @@ import { slashBlade, ring, sphereFlash, burst, cone, column, addShake, addFlash,
 // 大絕招 — 影殺·千刀：環身亂刀 + 紫爆
 registerVfx('assassin_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#e056fd', radius: 150, pillar: false, shake: 14, flash: 0.28 });
-    for (let i = 0; i < 12; i++) slashBlade(ctx, c, (i / 12) * Math.PI * 2, { color: i % 2 ? '#ffffff' : '#e056fd', len: f.range || 130, w: 8, swing: 1.4, life: 0.3 });
-    burst(ctx, c, { color: ['#9b59b6', '#e056fd', '#ffffff'], count: 30, speed: 280, up: 30, life: 0.5 });
+    const R = f.range || 160;
+    ultimateBurst(ctx, c, { color: '#e056fd', radius: R, pillar: false, shake: 16, flash: 0.3 });
+    for (let i = 0; i < 20; i++) slashBlade(ctx, c, (i / 20) * Math.PI * 2, { color: i % 2 ? '#ffffff' : '#e056fd', len: R * (i % 2 ? 1.0 : 1.18), w: 9, swing: 1.6, life: 0.32 });
+    ring(ctx, c, { color: '#e056fd', from: 16, to: R * 1.25, life: 0.5, y: 4, alpha: 0.7, ease: true });
+    sphereFlash(ctx, c, { color: '#ffffff', from: 8, to: R * 0.45, life: 0.24, alpha: 0.9 });
+    burst(ctx, c, { color: ['#9b59b6', '#e056fd', '#ffffff'], count: 44, speed: 320, up: 40, life: 0.55, size: 4 });
   },
 });
 
@@ -32,12 +35,12 @@ registerVfx('assassin_blink', {
 
 registerVfx('assassin_backstab', {
   onCast(ctx, f, c) {
-    // 致命一擊：洋紅球爆 + 前向碎刃 + 閃光
-    sphereFlash(ctx, c, { color: '#e056fd', from: 6, to: 46, life: 0.2, alpha: 0.95 });
-    slashBlade(ctx, c, f.facing, { color: '#ffffff', len: f.range * 1.3, w: 18, swing: (f.arc || 1.5), life: 0.22 });
-    cone(ctx, c, f.facing, { color: ['#e056fd', '#ffffff', '#9b59b6'], count: 20, speed: 320, spread: 0.6, offset: f.range * 0.3, up: 30, life: 0.4 });
-    ring(ctx, c, { color: '#e056fd', from: 6, to: 70, life: 0.3, y: 8 });
-    addShake(ctx, 7);
-    addFlash(ctx, 0.18, '#e056fd');
+    // 致命一擊 (重爆)：洋紅球爆 + 巨型碎刃 + 雙環 + 閃光
+    sphereFlash(ctx, c, { color: '#e056fd', from: 6, to: 58, life: 0.22, alpha: 0.98 });
+    slashBlade(ctx, c, f.facing, { color: '#ffffff', len: f.range * 1.4, w: 22, swing: (f.arc || 1.6), life: 0.24 });
+    cone(ctx, c, f.facing, { color: ['#e056fd', '#ffffff', '#9b59b6'], count: 28, speed: 380, spread: 0.7, offset: f.range * 0.3, up: 40, life: 0.45, size: 4 });
+    ring(ctx, c, { color: '#e056fd', from: 6, to: 90, life: 0.32, y: 8, ease: true });
+    addShake(ctx, 9);
+    addFlash(ctx, 0.22, '#e056fd');
   },
 });

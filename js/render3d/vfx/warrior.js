@@ -6,9 +6,12 @@ import { slashBlade, cone, ring, column, burst, addShake, addFlash, ultimateBurs
 // 大絕招 — 天崩劍擊：巨型月牙連斬 + 衝擊波
 registerVfx('warrior_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#ffcaa0', radius: f.range || 150, pillarH: 150, pillarR: 30, shake: 20, flash: 0.34 });
-    for (let i = 0; i < 3; i++) slashBlade(ctx, c, f.facing + (i - 1) * 0.5, { color: i === 1 ? '#ffffff' : '#ffcaa0', len: (f.range || 150) * 1.2, w: 34, swing: 2.2, life: 0.32 });
-    cone(ctx, c, f.facing, { color: ['#ffd166', '#ff6b5b', '#ffffff'], count: 26, speed: 360, spread: 1.1, offset: (f.range || 150) * 0.4, up: 60, life: 0.5, size: 5 });
+    const R = f.range || 195;
+    ultimateBurst(ctx, c, { color: '#ffcaa0', radius: R, pillarH: 175, pillarR: 34, shake: 22, flash: 0.36 });
+    for (let i = 0; i < 5; i++) slashBlade(ctx, c, f.facing + (i - 2) * 0.42, { color: i === 2 ? '#ffffff' : '#ffcaa0', len: R * 1.25, w: 30 + (i === 2 ? 12 : 0), swing: 2.4, life: 0.34 });
+    ring(ctx, c, { color: '#ff8a5b', from: 20, to: R * 1.2, life: 0.5, y: 2, alpha: 0.8, ease: true }); // 前向地裂衝擊波
+    cone(ctx, c, f.facing, { color: ['#ffd166', '#ff6b5b', '#ffffff'], count: 34, speed: 420, spread: 1.2, offset: R * 0.4, up: 70, life: 0.55, size: 5.5 });
+    addShake(ctx, 10);
   },
 });
 

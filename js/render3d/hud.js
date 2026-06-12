@@ -21,6 +21,7 @@ export function createHud({ stage, scene, camera }) {
   // 自身狀態 (左下)
   const self = el('div', 'hud-self', layer);
   const selfName = el('div', 'hud-self-name', self);
+  const selfTalent = el('div', 'hud-self-talent', self);
   const hpWrap = el('div', 'hud-bar hp', self);
   const hpFill = el('i', '', hpWrap);
   const hpTxt = el('span', '', hpWrap);
@@ -84,6 +85,7 @@ export function createHud({ stage, scene, camera }) {
       const c = getCharacter(me.charId);
       selfName.textContent = `${me.name}　(${c.name})${me.alive ? '' : '　— 淘汰'}`;
       selfName.style.color = me.alive ? '#fff' : '#ff7675';
+      selfTalent.textContent = c.talent ? `天賦 ${c.talent.name}` : '';
       hpFill.style.width = pct(me.hp / me.maxHp);
       hpTxt.textContent = `${Math.ceil(me.hp)}/${me.maxHp}`;
       mpFill.style.width = pct(me.mana / me.maxMana);

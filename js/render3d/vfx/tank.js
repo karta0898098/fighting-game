@@ -6,15 +6,17 @@ import { ring, sphereFlash, burst, cone, addShake, addFlash, ultimateBurst } fro
 // 大絕招 — 不動堡壘：巨石噴發 + 護盾穹頂
 registerVfx('tank_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#cfd8dc', radius: f.radius || 185, pillar: false, shake: 22, flash: 0.3 });
-    for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * (f.radius || 185);
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr, vx: (Math.random() - 0.5) * 80, vy: 180 + Math.random() * 240, vz: (Math.random() - 0.5) * 80, gravity: 480, drag: 1, life: 0.7 + Math.random() * 0.5, size: 5 + Math.random() * 5, color: Math.random() < 0.5 ? '#7f8c8d' : '#5a3a1f', fade: false });
+    const R = f.radius || 230;
+    ultimateBurst(ctx, c, { color: '#cfd8dc', radius: R, pillar: false, shake: 24, flash: 0.32 });
+    for (let i = 0; i < 60; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * R;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr, vx: (Math.random() - 0.5) * 90, vy: 200 + Math.random() * 280, vz: (Math.random() - 0.5) * 90, gravity: 500, drag: 1, life: 0.7 + Math.random() * 0.6, size: 5 + Math.random() * 6, color: Math.random() < 0.5 ? '#7f8c8d' : '#5a3a1f', fade: false });
     }
+    ring(ctx, c, { color: '#a0744a', from: 24, to: R * 1.2, life: 0.55, y: 2, alpha: 0.8, ease: true });
     const geo = new THREE.IcosahedronGeometry(1, 1);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true }));
-    m.position.set(c.x, 30, c.z);
-    ctx.addTransient(m, 0.9, (mesh, t) => { mesh.scale.setScalar(70 * Math.min(1, t * 4)); mesh.rotation.y += 0.03; mesh.material.opacity = 0.5 * (1 - t); });
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true }));
+    m.position.set(c.x, 34, c.z);
+    ctx.addTransient(m, 1.0, (mesh, t) => { mesh.scale.setScalar(88 * Math.min(1, t * 4)); mesh.rotation.y += 0.03; mesh.material.opacity = 0.55 * (1 - t); });
     m.userData.mat = m.material; m.userData.geo = geo;
   },
 });

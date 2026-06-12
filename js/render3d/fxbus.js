@@ -158,6 +158,21 @@ export function createFxBus({ scene, particles, sceneMgr }) {
           });
         }
         break;
+      case 'burn': {
+        // 燃燒 DoT 每跳：小火舌上竄 + 餘燼 + 地面微焰環 (輕量，因每 0.5s 觸發)
+        for (let i = 0; i < 7; i++) {
+          const a = Math.random() * Math.PI * 2, rr = Math.random() * (f.radius || 18) * 0.7;
+          particles.spawn({
+            x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr,
+            vx: (Math.random() - 0.5) * 30, vy: 70 + Math.random() * 120, vz: (Math.random() - 0.5) * 30,
+            gravity: -40, drag: 1.4, life: 0.3 + Math.random() * 0.35,
+            size: 2.5 + Math.random() * 3, color: Math.random() < 0.5 ? '#ff6b3d' : '#ffcf6b', fade: true,
+          });
+        }
+        burstFlash(c, '#ff7a3d', (f.radius || 18) * 0.5, 0.16);
+        break;
+      }
+
       case 'ultimate': {
         if (vfx && vfx.onCast) { vfx.onCast(ctx, f, c); break; }
         // 通用大招華麗回饗 (無專屬 vfx 時)

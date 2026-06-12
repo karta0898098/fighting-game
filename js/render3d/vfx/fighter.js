@@ -6,11 +6,20 @@ import { ring, pillar, burst, cone, sphereFlash, addShake, addFlash, ultimateBur
 // 大絕招 — 真·昇龍霸：金色衝天氣旋
 registerVfx('fighter_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#ffe27a', radius: 120, pillarH: 240, pillarR: 22, shake: 16, flash: 0.3 });
-    for (let i = 0; i < 30; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 26;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 220, vz: Math.sin(a) * 50, gravity: 260, drag: 1, life: 0.6, size: 4, color: '#ffe27a', fade: true });
+    ultimateBurst(ctx, c, { color: '#ffe27a', radius: 130, pillarH: 280, pillarR: 24, shake: 18, flash: 0.34 });
+    for (let k = 0; k < 5; k++) {
+      const geo = new THREE.TorusGeometry(1, 0.18, 8, 32);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffe27a'), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set(c.x, 8, c.z);
+      const baseY = 10 + k * 44;
+      ctx.addTransient(m, 0.6, (mesh, t) => { mesh.position.y = baseY + t * 60; mesh.scale.setScalar((34 - k * 4) * (0.5 + 0.6 * t)); mesh.material.opacity = (1 - t) * 0.8; });
+      m.userData.mat = m.material; m.userData.geo = geo;
     }
+    for (let i = 0; i < 44; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 28;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 60, vy: 300 + Math.random() * 260, vz: Math.sin(a) * 60, gravity: 240, drag: 1, life: 0.7, size: 4.5, color: '#ffe27a', fade: true });
+    }
+    pillar(ctx, c, { color: '#fff4c2', h: 300, r: 10, taper: 0.1, life: 0.5, alpha: 0.6, grow: 0.2 });
   },
 });
 
@@ -26,14 +35,15 @@ registerVfx('fighter_combo', {
 
 registerVfx('fighter_uppercut', {
   onCast(ctx, f, c) {
-    // 上勾拳：垂直光柱 + 上沖氣流 + 擊飛環
-    pillar(ctx, c, { color: '#f9e79f', h: 120, r: 16, taper: 0.4, life: 0.45, alpha: 0.7, grow: 0.3 });
-    ring(ctx, c, { color: '#f1c40f', from: 6, to: 64, life: 0.34, y: 3 });
-    for (let i = 0; i < 18; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 18;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 40, vy: 220 + Math.random() * 180, vz: Math.sin(a) * 40, gravity: 240, drag: 1.2, life: 0.5, size: 3.5, color: '#f9e79f', fade: true });
+    // 上勾拳 (升龍-tier 重擊)：高聳光柱 + 上沖氣流 + 擊飛環 + 爆閃
+    pillar(ctx, c, { color: '#f9e79f', h: 170, r: 20, taper: 0.35, life: 0.5, alpha: 0.75, grow: 0.4 });
+    sphereFlash(ctx, c, { color: '#fff4c2', from: 6, to: 50, life: 0.2, alpha: 0.9 });
+    ring(ctx, c, { color: '#f1c40f', from: 6, to: 90, life: 0.36, y: 3, ease: true });
+    for (let i = 0; i < 30; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 22;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 240, vz: Math.sin(a) * 50, gravity: 240, drag: 1.2, life: 0.6, size: 4, color: '#f9e79f', fade: true });
     }
-    addShake(ctx, 5);
+    addShake(ctx, 8);
   },
 });
 

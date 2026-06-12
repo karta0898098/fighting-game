@@ -147,15 +147,27 @@ export function makeSpinPlate(THREE3, color, r) {
 export function addShake(ctx, m) { ctx.sceneMgr.addShake(m); }
 export function addFlash(ctx, a, color) { ctx.sceneMgr.addFlash(a, color); }
 
-// 大招通用爆發底：雙擴張環 + 光柱 + 上升光點 + 大震動/閃光。各角色再疊自己的招牌特效。
+// 大招通用爆發底：三層擴張環 + 中心爆閃球 + 雙光柱 + 漫天上升光點 + 大震動/閃光。各角色再疊自己的招牌特效。
 export function ultimateBurst(ctx, c, opt = {}) {
   const color = opt.color || '#ffffff';
-  ring(ctx, c, { color, from: 16, to: opt.radius || 150, life: 0.6, y: 4, alpha: 0.95, ease: true });
-  ring(ctx, c, { color: '#ffffff', from: 8, to: (opt.radius || 150) * 0.6, life: 0.45, y: 7, alpha: 0.8 });
-  if (opt.pillar !== false) pillar(ctx, c, { color, h: opt.pillarH || 150, r: opt.pillarR || 26, taper: 0.4, life: 0.6, alpha: 0.55, grow: 0.5 });
-  column(ctx, c, { color: [color, '#ffffff'], count: opt.count || 30, radius: (opt.radius || 150) * 0.4, speed: 190, life: 0.8, size: 4 });
-  ctx.sceneMgr.addShake(opt.shake ?? 16);
-  ctx.sceneMgr.addFlash(opt.flash ?? 0.3, color);
+  const R = opt.radius || 150;
+  // 三層擴張地環：主色實環 + 白核 + 外擴衝擊波
+  ring(ctx, c, { color, from: 16, to: R, life: 0.62, y: 4, alpha: 0.95, ease: true });
+  ring(ctx, c, { color: '#ffffff', from: 8, to: R * 0.6, life: 0.46, y: 7, alpha: 0.85 });
+  ring(ctx, c, { color, from: R * 0.5, to: R * 1.35, life: 0.72, y: 3, alpha: 0.5, inner: 0.92, ease: true });
+  // 中心爆閃球 (亮核 + 彩殼)
+  sphereFlash(ctx, c, { color: '#ffffff', from: 6, to: R * 0.34, life: 0.26, alpha: 0.95, detail: 2 });
+  sphereFlash(ctx, c, { color, from: 4, to: R * 0.52, life: 0.36, alpha: 0.6 });
+  // 衝天光柱 (主柱 + 細白芯)
+  if (opt.pillar !== false) {
+    pillar(ctx, c, { color, h: opt.pillarH || 160, r: opt.pillarR || 28, taper: 0.35, life: 0.62, alpha: 0.6, grow: 0.6 });
+    pillar(ctx, c, { color: '#ffffff', h: (opt.pillarH || 160) * 1.05, r: (opt.pillarR || 28) * 0.42, taper: 0.2, life: 0.5, alpha: 0.5, grow: 0.3 });
+  }
+  // 漫天上升光點 + 地面放射火星
+  column(ctx, c, { color: [color, '#ffffff'], count: opt.count || 40, radius: R * 0.42, speed: 220, life: 0.9, size: 4.5 });
+  burst(ctx, c, { color: [color, '#ffffff'], count: 18, speed: 220, up: 40, flat: true, life: 0.5, size: 4 });
+  ctx.sceneMgr.addShake(opt.shake ?? 18);
+  ctx.sceneMgr.addFlash(opt.flash ?? 0.32, color);
 }
 
 function pick(c) {

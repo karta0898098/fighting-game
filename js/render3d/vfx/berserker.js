@@ -6,16 +6,19 @@ import { slashBlade, ring, pillar, column, burst, cone, addShake, addFlash, ulti
 // 大絕招 — 血之狂亂：血焰柱 + 多重旋轉刃環
 registerVfx('berserker_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#ff3b2f', radius: f.range || 120, pillarH: 170, pillarR: 30, shake: 20, flash: 0.34 });
-    for (let k = 0; k < 4; k++) {
+    const R = f.range || 145;
+    ultimateBurst(ctx, c, { color: '#ff3b2f', radius: R, pillarH: 185, pillarR: 32, shake: 22, flash: 0.4 });
+    for (let k = 0; k < 6; k++) {
       const geo = new THREE.RingGeometry(0.55, 1, 48);
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff3b2f'), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-      m.rotation.x = -Math.PI / 2; m.position.set(c.x, 12 + k * 7, c.z);
-      const baseR = (f.range || 120) * (0.7 + k * 0.16);
-      ctx.addTransient(m, 0.45, (mesh, t) => { mesh.scale.setScalar(baseR * (0.6 + 0.5 * t)); mesh.rotation.z = t * Math.PI * 4 + k; mesh.material.opacity = (1 - t) * 0.8; });
+      m.rotation.x = -Math.PI / 2; m.position.set(c.x, 10 + k * 6, c.z);
+      const baseR = R * (0.6 + k * 0.13);
+      ctx.addTransient(m, 0.5, (mesh, t) => { mesh.scale.setScalar(baseR * (0.6 + 0.5 * t)); mesh.rotation.z = t * Math.PI * 4 + k; mesh.material.opacity = (1 - t) * 0.8; });
       m.userData.mat = m.material; m.userData.geo = geo;
     }
-    burst(ctx, c, { color: ['#ff3b2f', '#922b21'], count: 30, speed: 280, up: 20, flat: true, life: 0.55 });
+    column(ctx, c, { color: ['#ff3b2f', '#922b21'], count: 30, radius: R * 0.4, speed: 220, life: 0.7, size: 5 });
+    burst(ctx, c, { color: ['#ff3b2f', '#922b21', '#ffffff'], count: 44, speed: 320, up: 30, flat: true, life: 0.6, size: 5 });
+    addFlash(ctx, 0.28, '#ff1a0f');
   },
 });
 

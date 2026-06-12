@@ -6,9 +6,10 @@ import { ring, sphereFlash, burst, cone, addShake, addFlash } from './lib.js';
 // 大絕招 — 天地崩裂：多顆隕石天降 (zone count 5)。onCast 起手天裂閃光，zone hook 渲染每顆落石。
 registerVfx('elem_ultimate', {
   onCast(ctx, f, c) {
-    ctx.sceneMgr.addFlash(0.22, '#ff5a1f');
-    ctx.sceneMgr.addShake(7);
-    ring(ctx, c, { color: '#ff5a1f', from: 20, to: 200, life: 0.5, y: 4 });
+    ctx.sceneMgr.addFlash(0.3, '#ff5a1f');
+    ctx.sceneMgr.addShake(10);
+    ring(ctx, c, { color: '#ff5a1f', from: 20, to: 240, life: 0.55, y: 4, ease: true });
+    ring(ctx, c, { color: '#ffd166', from: 12, to: 160, life: 0.45, y: 6, alpha: 0.7 });
   },
   zone(ctx, z) {
     const g = new THREE.Group();
@@ -39,10 +40,11 @@ registerVfx('elem_ultimate', {
           if (!exploded) {
             exploded = true;
             const cc = { x: g.position.x, y: 16, z: g.position.z };
-            ctx.sceneMgr.addShake(20); ctx.sceneMgr.addFlash(0.3, '#ff5a1f');
-            for (let i = 0; i < 44; i++) {
-              const a = Math.random() * Math.PI * 2, spd = 220 + Math.random() * 340;
-              ctx.particles.spawn({ x: cc.x, y: 6, z: cc.z, vx: Math.cos(a) * spd, vy: 120 + Math.random() * 260, vz: Math.sin(a) * spd, gravity: 480, drag: 1, life: 0.6 + Math.random() * 0.6, size: 5 + Math.random() * 5, color: Math.random() < 0.5 ? '#ff7043' : '#4a1008', fade: false });
+            ctx.sceneMgr.addShake(22); ctx.sceneMgr.addFlash(0.32, '#ff5a1f');
+            ring(ctx, cc, { color: '#ff7043', from: 20, to: z.radius * 1.6, life: 0.5, y: 3, alpha: 0.85, ease: true });
+            for (let i = 0; i < 64; i++) {
+              const a = Math.random() * Math.PI * 2, spd = 240 + Math.random() * 380;
+              ctx.particles.spawn({ x: cc.x, y: 6, z: cc.z, vx: Math.cos(a) * spd, vy: 140 + Math.random() * 300, vz: Math.sin(a) * spd, gravity: 500, drag: 1, life: 0.6 + Math.random() * 0.7, size: 5 + Math.random() * 6, color: Math.random() < 0.5 ? '#ff7043' : '#4a1008', fade: false });
             }
           }
           warn.material.opacity = Math.max(0, warn.material.opacity - dt * 2);
