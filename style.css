@@ -155,13 +155,44 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 
 /* 遊戲 */
 #screen-game { padding: 0; background: #0b1118; }
-#game-canvas {
+#game-stage {
+  position: relative;
   width: min(100vw, 177.78vh);
-  height: auto;
+  aspect-ratio: 16 / 9;
   max-height: 100vh;
-  display: block;
-  image-rendering: auto;
 }
+#game-canvas { display: block; width: 100%; height: 100%; }
+
+/* HUD 疊層 (DOM，覆蓋在 WebGL 之上) */
+.hud-layer {
+  position: absolute; inset: 0; z-index: 10; pointer-events: none;
+  overflow: hidden; font-family: system-ui, sans-serif;
+}
+.hud-self { position: absolute; left: 18px; bottom: 16px; width: 300px; }
+.hud-self-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; text-shadow: 0 1px 2px #000; }
+.hud-bar { position: relative; height: 16px; border-radius: 6px; background: #0c1c2a; margin-top: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,0.5); }
+.hud-bar.hp { background: #0c2a18; height: 18px; }
+.hud-bar > i { position: absolute; left: 0; top: 0; bottom: 0; display: block; transition: width 0.12s linear; }
+.hud-bar.hp > i { background: linear-gradient(#39e07b, #2ecc71); }
+.hud-bar.mp > i { background: linear-gradient(#5bb6ff, #3aa0ff); }
+.hud-bar > span { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 16px; color: #fff; text-shadow: 0 1px 1px #000; }
+.hud-bar.hp > span { line-height: 18px; }
+.hud-skills { display: flex; gap: 6px; margin-top: 8px; }
+.chip { position: relative; flex: 1; height: 22px; border-radius: 6px; background: rgba(80,80,90,0.55); overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+.chip.ready { background: rgba(60,160,255,0.85); }
+.chip > span { position: relative; z-index: 2; display: block; text-align: center; line-height: 22px; font-size: 11px; color: #fff; text-shadow: 0 1px 1px #000; }
+.chip > .cool { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: rgba(0,0,0,0.45); z-index: 1; }
+.hud-board { position: absolute; right: 16px; top: 14px; min-width: 170px; }
+.hud-board-title { color: #ffd166; font-weight: 700; font-size: 14px; margin-bottom: 6px; text-shadow: 0 1px 2px #000; }
+.hud-board-list .row { font-size: 13px; color: #fff; line-height: 1.5; text-shadow: 0 1px 2px #000; }
+.hud-board-list .row.me { color: #ffd166; }
+.hud-board-list .row.dead { color: #7b8a97; }
+.nplate { text-align: center; white-space: nowrap; pointer-events: none; }
+.nplate .nname { font-size: 12px; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; margin-bottom: 2px; }
+.nplate .nbar { width: 46px; height: 5px; background: #0c2a18; margin: 1px auto 0; border: 1px solid rgba(0,0,0,0.5); }
+.nplate .nbar > i { display: block; height: 100%; width: 100%; background: #2ecc71; }
+.nplate .nbar.mana { background: #0c1c2a; height: 4px; }
+.nplate .nbar.mana > i { background: #3aa0ff; }
 
 /* 結算 */
 .over-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }

@@ -64,7 +64,7 @@ function meleeHit(state, p, a) {
     if (a.knockback && d > 0) { o.kvx += (dx / d) * a.knockback; o.kvy += (dy / d) * a.knockback; }
     if (a.effect) applyEffect(o, a.effect.kind, a.effect);
   }
-  addFx(state, { type: 'melee', x: p.x, y: p.y, facing: p.facing, range: a.range, arc: full ? 7 : a.arc, color: a.color, life: 0.18 });
+  addFx(state, { type: 'melee', x: p.x, y: p.y, facing: p.facing, range: a.range, arc: full ? 7 : a.arc, color: a.color, life: 0.18, vfx: a.vfx });
 }
 
 function executeAction(state, p, a) {
@@ -79,7 +79,7 @@ function executeAction(state, p, a) {
         state.projectiles.push(makeProjectile(
           p.id, p.x + c * PLAYER_RADIUS, p.y + s * PLAYER_RADIUS,
           c * a.speed, s * a.speed,
-          { dmg: a.dmg * m, radius: a.radius, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect }
+          { dmg: a.dmg * m, radius: a.radius, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect, vfx: a.vfx }
         ));
       }
       break;
@@ -90,19 +90,19 @@ function executeAction(state, p, a) {
     case 'dash':
       p.kvx += cos * a.impulse; p.kvy += sin * a.impulse;
       if (a.dmg) meleeHit(state, p, a);
-      addFx(state, { type: 'dash', x: p.x, y: p.y, facing: p.facing, color: a.color, life: 0.25 });
+      addFx(state, { type: 'dash', x: p.x, y: p.y, facing: p.facing, color: a.color, life: 0.25, vfx: a.vfx });
       break;
     case 'blink':
       p.x = clamp(p.x + cos * a.range, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
       p.y = clamp(p.y + sin * a.range, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
-      addFx(state, { type: 'blink', x: p.x, y: p.y, color: a.color, life: 0.3, radius: PLAYER_RADIUS * 1.6 });
+      addFx(state, { type: 'blink', x: p.x, y: p.y, color: a.color, life: 0.3, radius: PLAYER_RADIUS * 1.6, vfx: a.vfx });
       break;
     case 'buff':
       if (a.cleanse) applyEffect(p, 'cleanse');
       if (a.heal) applyEffect(p, 'heal', { amount: a.heal });
       if (a.shield) applyEffect(p, 'shield', { amount: a.shield, duration: a.duration });
       if (a.effect) applyEffect(p, a.effect.kind, a.effect);
-      addFx(state, { type: 'buff', x: p.x, y: p.y, color: a.color, life: 0.4, radius: PLAYER_RADIUS * 2.2 });
+      addFx(state, { type: 'buff', x: p.x, y: p.y, color: a.color, life: 0.4, radius: PLAYER_RADIUS * 2.2, vfx: a.vfx });
       break;
     case 'zone': {
       const zx = clamp(p.x + cos * (a.range || 0), PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
@@ -160,7 +160,7 @@ function updateProjectiles(state, dt) {
           o.kvx += (pr.vx / l) * pr.knockback; o.kvy += (pr.vy / l) * pr.knockback;
         }
         if (pr.effect) applyEffect(o, pr.effect.kind, pr.effect);
-        addFx(state, { type: 'hit', x: pr.x, y: pr.y, color: pr.color, life: 0.2, radius: pr.radius * 2 });
+        addFx(state, { type: 'hit', x: pr.x, y: pr.y, color: pr.color, life: 0.2, radius: pr.radius * 2, vfx: pr.vfx });
         pr.hit[o.id] = true;
         if (!pr.pierce) { dead = true; break; }
       }
@@ -176,7 +176,7 @@ function updateZones(state, dt) {
     if (z.delay > 0) {
       z.delay -= dt;
       if (z.delay > 0) { keep.push(z); continue; }
-      addFx(state, { type: 'hit', x: z.x, y: z.y, color: z.color, life: 0.3, radius: z.radius });
+      addFx(state, { type: 'hit', x: z.x, y: z.y, color: z.color, life: 0.3, radius: z.radius, vfx: z.vfx });
     }
     z.lifetime -= dt;
     z.tickTimer -= dt;

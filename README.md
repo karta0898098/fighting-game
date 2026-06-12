@@ -1,11 +1,11 @@
 # 幾何鬥技場 — 多人連線格鬥
 
-純 HTML Canvas + vanilla JavaScript 製作的 2.5D（稍微傾斜俯視）多人連線格鬥遊戲。
+以 **three.js (WebGL)** + vanilla JavaScript 製作的 3D（俯視傾斜鏡頭）多人連線格鬥遊戲。
 全部玩家互為敵人，**場上剩最後一人即獲勝**。
 
 - 🎮 純鍵盤操作：`WASD/方向鍵` 移動、`J` 普攻、`K` 技能1、`L` 技能2
 - 👥 最多 8 人同場混戰
-- 🦸 10 種角色，各有強項與弱項
+- 🦸 10 種角色，各有強項與弱項、**各自獨特的 3D 技能特效**
 - ❤️ 每個角色有血條與魔力條
 - 🌐 **免費連線**：使用 WebRTC P2P（PeerJS 公開 broker），免架站、可跨網路
 
@@ -69,18 +69,29 @@ python3 -m http.server 8000
 ## 專案結構
 
 ```
-index.html        畫面骨架 + 載入 PeerJS CDN
+index.html        畫面骨架 + 載入 PeerJS CDN + three.js importmap
 style.css         選單／大廳／HUD 樣式
 js/
   constants.js    競技場尺寸、tick rate、物理常數
-  characters.js   10 角色資料與技能規格
+  characters.js   10 角色資料與技能規格（含每招 vfx 特效 id）
   input.js        鍵盤輸入
   entities.js     實體工廠、數學、傷害/效果輔助
   simulation.js   權威模擬 step() 與移動（房主執行）
-  renderer.js     2.5D 傾斜渲染 + HUD
   network.js      PeerJS P2P 包裝
   ui.js           選單/大廳/角色選擇/結算 DOM
   main.js         進入點、狀態機、遊戲迴圈
+  renderer.js     three.js 渲染入口（編排以下模組）
+  renderer.canvas2d.js  舊版 Canvas2D 渲染（保留備援參考）
+  render3d/       3D 渲染模組
+    scene.js      WebGLRenderer/相機/燈光/地板/泛光後處理/震動閃光
+    models.js     10 角色程序化 3D 模型 + 動畫
+    entities3d.js 投射物/地面範圍區 3D 物件
+    particles.js  GPU 粒子系統（單一 draw call）
+    fxbus.js      特效事件去重 + 一次性特效
+    hud.js        引擎內 HUD（頭頂名牌 + 角落面板）
+    coords.js     世界座標 ↔ 場景座標
+    vfx/          每個角色專屬的華麗技能特效
+  vendor/three/   本機 three.js（無 build step，importmap 載入）
 ```
 
 ## 已知限制（此版本）

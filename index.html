@@ -7,6 +7,15 @@
   <link rel="stylesheet" href="style.css" />
   <!-- PeerJS：免費公開 broker，WebRTC P2P 連線 -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- three.js (本機 vendor，無 build step)：importmap 必須在任何 module script 之前 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./js/vendor/three/three.module.js",
+      "three/addons/": "./js/vendor/three/addons/"
+    }
+  }
+  </script>
 </head>
 <body>
   <!-- 主選單 -->
@@ -72,7 +81,9 @@
 
   <!-- 遊戲 -->
   <section id="screen-game" class="screen">
-    <canvas id="game-canvas"></canvas>
+    <div id="game-stage">
+      <canvas id="game-canvas"></canvas>
+    </div>
   </section>
 
   <!-- 結算 -->

@@ -68,6 +68,7 @@ export function makeProjectile(owner, x, y, vx, vy, opt) {
     dmg: opt.dmg, radius: opt.radius, lifetime: opt.lifetime,
     color: opt.color, knockback: opt.knockback || 0,
     pierce: !!opt.pierce, effect: opt.effect || null,
+    vfx: opt.vfx || null,
     hit: {},
   };
 }
@@ -79,6 +80,7 @@ export function makeZone(owner, x, y, opt) {
     lifetime: opt.lifetime, tick: opt.tick, tickTimer: opt.delay ? opt.delay : 0,
     delay: opt.delay || 0,
     effect: opt.effect || null, color: opt.color,
+    vfx: opt.vfx || null,
   };
 }
 
