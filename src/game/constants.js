@@ -4,7 +4,7 @@ export const ARENA = { width: 1200, height: 800 };
 
 export const TICK_RATE = 30;          // 房主權威模擬頻率 (Hz)
 export const DT = 1 / TICK_RATE;      // 固定時間步
-export const SNAPSHOT_INTERVAL = 1 / 20; // 房主廣播狀態頻率 (Hz)
+export const SNAPSHOT_INTERVAL = 1 / 30; // 房主廣播狀態頻率 (Hz)
 export const INPUT_INTERVAL = 1 / 30; // 加入者送出輸入頻率 (Hz)
 
 export const MAX_PLAYERS = 8;
