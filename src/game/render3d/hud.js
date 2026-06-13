@@ -8,7 +8,14 @@ import { sceneX, sceneZ } from './coords.js';
 
 const HEAD_Y = 90;
 
-export function createHud({ stage, scene, camera }) {
+function getSkillKeys(controlScheme) {
+  if (controlScheme === 'arrows-asdf') {
+    return { basic: 'A', skill1: 'S', skill2: 'D', ultimate: 'F' };
+  }
+  return { basic: 'J', skill1: 'K', skill2: 'L', ultimate: ';' };
+}
+
+export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) {
   const css2d = new CSS2DRenderer();
   css2d.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:8;';
   stage.appendChild(css2d.domElement);
@@ -32,8 +39,9 @@ export function createHud({ stage, scene, camera }) {
   const ultFill = el('i', '', ultWrap);
   const ultTxt = el('span', '', ultWrap);
   const skills = el('div', 'hud-skills', self);
+  const keys = getSkillKeys(controlScheme);
   const chip = {
-    basic: skillChip('J', skills), skill1: skillChip('K', skills), skill2: skillChip('L', skills), ultimate: skillChip(';', skills),
+    basic: skillChip(keys.basic, skills), skill1: skillChip(keys.skill1, skills), skill2: skillChip(keys.skill2, skills), ultimate: skillChip(keys.ultimate, skills),
   };
 
   // 計分板 (右上)

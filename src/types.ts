@@ -2,11 +2,13 @@
 // 引擎模組（game/*.js）維持 JavaScript，這裡只描述跨界傳遞用到的形狀。
 
 export type AppPhase = 'menu' | 'lobby' | 'game' | 'gameover';
+export type ControlScheme = 'wasd-jkl' | 'arrows-asdf';
 
 export interface LobbyEntry {
   id: string;
   name: string;
   charId: number;
+  controlScheme: ControlScheme;
   isHost: boolean;
 }
 
@@ -70,6 +72,7 @@ export interface GameController {
   createRoom(name: string): void;
   joinRoom(name: string, code: string): void;
   selectChar(charId: number): void;
+  selectControlScheme(scheme: ControlScheme): void;
   startGame(): void;
   devStartGame(charId?: number): void;
   returnToLobby(): void;

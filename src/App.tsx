@@ -7,7 +7,7 @@ import { MenuScreen } from './components/MenuScreen';
 import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { GameOverScreen } from './components/GameOverScreen';
-import type { AppPhase, GameOverView, LobbyView } from './types';
+import type { AppPhase, ControlScheme, GameOverView, LobbyView } from './types';
 
 const EMPTY_LOBBY: LobbyView = { players: [], selfId: null, isHost: false, roomCode: '' };
 
@@ -19,6 +19,7 @@ export function App() {
   const [lobbyStatus, setLobbyStatus] = useState('');
   const [gameover, setGameover] = useState<GameOverView | null>(null);
   const [selectedChar, setSelectedChar] = useState(0);
+  const [selectedControlScheme, setSelectedControlScheme] = useState<ControlScheme>('wasd-jkl');
 
   useEffect(() => {
     const offs = [
@@ -50,6 +51,11 @@ export function App() {
     controller.selectChar(charId);
   }
 
+  function handleSelectControlScheme(scheme: ControlScheme) {
+    setSelectedControlScheme(scheme);
+    controller.selectControlScheme(scheme);
+  }
+
   switch (phase) {
     case 'menu':
       return (
@@ -65,7 +71,9 @@ export function App() {
           lobby={lobby}
           status={lobbyStatus}
           selectedChar={selectedChar}
+          selectedControlScheme={selectedControlScheme}
           onSelectChar={handleSelectChar}
+          onSelectControlScheme={handleSelectControlScheme}
           onStart={() => controller.startGame()}
           onLeave={() => controller.leave()}
         />

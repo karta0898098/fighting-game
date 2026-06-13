@@ -1,22 +1,38 @@
-// 鍵盤輸入：WASD/方向鍵移動，J 攻擊，K 技能1，L 技能2
+// 鍵盤輸入：支持兩種操作方式
+// 方式1: WASD/方向鍵移動，J 攻擊，K 技能1，L 技能2，; 大絕
+// 方式2: 方向鍵移動，A 攻擊，S 技能1，D 技能2，F 大絕
 
-const KEY_MAP = {
-  KeyW: 'up', ArrowUp: 'up',
-  KeyS: 'down', ArrowDown: 'down',
-  KeyA: 'left', ArrowLeft: 'left',
-  KeyD: 'right', ArrowRight: 'right',
-  KeyJ: 'basic',
-  KeyK: 'skill1',
-  KeyL: 'skill2',
-  Semicolon: 'ultimate',
+const KEY_MAPS = {
+  'wasd-jkl': {
+    KeyW: 'up', ArrowUp: 'up',
+    KeyS: 'down', ArrowDown: 'down',
+    KeyA: 'left', ArrowLeft: 'left',
+    KeyD: 'right', ArrowRight: 'right',
+    KeyJ: 'basic',
+    KeyK: 'skill1',
+    KeyL: 'skill2',
+    Semicolon: 'ultimate',
+  },
+  'arrows-asdf': {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    KeyA: 'basic',
+    KeyS: 'skill1',
+    KeyD: 'skill2',
+    KeyF: 'ultimate',
+  },
 };
 
-export function createInput() {
+export function createInput(controlScheme = 'wasd-jkl') {
   const keys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false };
   let enabled = false;
+  let currentScheme = controlScheme;
+  let keyMap = KEY_MAPS[currentScheme];
 
   function setKey(code, down) {
-    const action = KEY_MAP[code];
+    const action = keyMap[code];
     if (action) keys[action] = down;
     return !!action;
   }
@@ -35,6 +51,12 @@ export function createInput() {
   return {
     enable() { enabled = true; },
     disable() { enabled = false; for (const k in keys) keys[k] = false; },
+    setScheme(scheme) {
+      currentScheme = scheme;
+      keyMap = KEY_MAPS[scheme];
+      // 切換方式時清空所有按鍵狀態
+      for (const k in keys) keys[k] = false;
+    },
     get() {
       return {
         up: keys.up, down: keys.down, left: keys.left, right: keys.right,

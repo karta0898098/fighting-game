@@ -1,6 +1,6 @@
 // three.js (WebGL) 渲染入口 — 取代舊版 Canvas2D 渲染。
 //
-// 對外維持相同介面：createRenderer(canvas) -> { render(state, selfId) }
+// 對外維持相同介面：createRenderer(canvas, controlScheme) -> { render(state, selfId) }
 // 模擬/網路/輸入/UI 完全不變；本檔僅負責把遊戲狀態畫成 3D。
 //
 // 編排：場景(scene.js) + GPU 粒子(particles.js) + 投射物/區域(entities3d.js)
@@ -20,7 +20,7 @@ import { prepareSkin, instantiateSkin } from './render3d/skins.js';
 const CD_SLOTS = ['basic', 'skill1', 'skill2', 'ultimate'];
 const SWING_TYPES = new Set(['melee', 'dash', 'charge', 'leap', 'grapple', 'multiblink', 'blink']);
 
-export function createRenderer(canvas) {
+export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
   const sceneMgr = createSceneManager(canvas);
   const { scene, camera } = sceneMgr;
 
@@ -28,7 +28,7 @@ export function createRenderer(canvas) {
   particles.setDpr(sceneMgr.renderer.getPixelRatio());
   const fxbus = createFxBus({ scene, particles, sceneMgr });
   const entities = createEntityLayer(scene, particles, { addTransient: fxbus.addTransient, sceneMgr });
-  const hud = createHud({ stage: sceneMgr.stage, scene, camera });
+  const hud = createHud({ stage: sceneMgr.stage, scene, camera, controlScheme });
 
   // 本地視覺狀態 (不進 snapshot)
   let lastT = 0;

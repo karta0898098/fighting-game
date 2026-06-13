@@ -13,6 +13,7 @@ import { step, applyMovement } from './simulation.js';
 import { DT, SNAPSHOT_INTERVAL, INPUT_INTERVAL, MAX_PLAYERS } from './constants.js';
 import type {
   ControllerEvents,
+  ControlScheme,
   GameController,
   GameOverView,
   LobbyEntry,
@@ -47,6 +48,7 @@ function createController(): GameController {
   let myName = '';
   let roomCode = '';
   let selectedChar = 0;
+  let selectedControlScheme: ControlScheme = 'wasd-jkl';
   let lobby: LobbyEntry[] = [];
 
   let gameState: any = null;       // 房主權威狀態
@@ -84,18 +86,18 @@ function createController(): GameController {
   function setupHost() {
     net.on('onOpen', (id: string) => {
       selfId = id;
-      addToLobby({ id, name: myName, charId: selectedChar, isHost: true });
+      addToLobby({ id, name: myName, charId: selectedChar, controlScheme: selectedControlScheme, isHost: true });
       emit('phase', 'lobby');
       renderLobby();
     });
     net.on('onData', (from: string, data: any) => {
       if (data.t === 'hello') {
         if (lobby.length >= MAX_PLAYERS) { net.sendTo(from, { t: 'full' }); return; }
-        addToLobby({ id: from, name: data.name, charId: data.charId | 0, isHost: false });
+        addToLobby({ id: from, name: data.name, charId: data.charId | 0, controlScheme: data.controlScheme || 'wasd-jkl', isHost: false });
         broadcastLobby();
       } else if (data.t === 'select') {
         const p = lobby.find((x) => x.id === from);
-        if (p) { p.charId = data.charId | 0; broadcastLobby(); }
+        if (p) { p.charId = data.charId | 0; if (data.controlScheme) p.controlScheme = data.controlScheme; broadcastLobby(); }
       } else if (data.t === 'input') {
         inputs[from] = data.input;
       }
@@ -115,7 +117,7 @@ function createController(): GameController {
     net.on('onOpen', () => {
       selfId = net.id;
       emit('phase', 'lobby');
-      net.sendToHost({ t: 'hello', name: myName, charId: selectedChar });
+      net.sendToHost({ t: 'hello', name: myName, charId: selectedChar, controlScheme: selectedControlScheme });
       emit('lobbyStatus', '已連上房主，等待開始…');
     });
     net.on('onData', (_from: string, data: any) => {
@@ -164,6 +166,7 @@ function createController(): GameController {
 
   function maybeStartLoop() {
     if (!wantLoop || running || !renderer) return;
+    input.setScheme(selectedControlScheme);
     input.enable();
     running = true;
     gameoverSent = false;
@@ -336,7 +339,17 @@ function createController(): GameController {
       const me = lobby.find((p) => p.id === selfId);
       if (me) { me.charId = charId; broadcastLobby(); }
     } else if (role === 'joiner') {
-      net.sendToHost({ t: 'select', charId });
+      net.sendToHost({ t: 'select', charId, controlScheme: selectedControlScheme });
+    }
+  }
+
+  function selectControlScheme(scheme: ControlScheme) {
+    selectedControlScheme = scheme;
+    if (role === 'host') {
+      const me = lobby.find((p) => p.id === selfId);
+      if (me) { me.controlScheme = scheme; broadcastLobby(); }
+    } else if (role === 'joiner') {
+      net.sendToHost({ t: 'select', charId: selectedChar, controlScheme: scheme });
     }
   }
 
@@ -367,7 +380,7 @@ function createController(): GameController {
     } else {
       charForSelf = allCharIds[Math.floor(Math.random() * allCharIds.length)];
     }
-    lobby.push({ id: selfId, name: myName, charId: charForSelf, isHost: true });
+    lobby.push({ id: selfId, name: myName, charId: charForSelf, controlScheme: selectedControlScheme, isHost: true });
 
     // 其他玩家
     for (let i = 1; i < numPlayers; i++) {
@@ -376,6 +389,7 @@ function createController(): GameController {
         id: 'dev-' + i,
         name: `NPC ${i}`,
         charId: randomChar,
+        controlScheme: 'wasd-jkl',
         isHost: false,
       });
     }
@@ -404,7 +418,7 @@ function createController(): GameController {
   function attachCanvas(canvas: HTMLCanvasElement) {
     if (renderer && canvasEl === canvas) { maybeStartLoop(); return; }
     canvasEl = canvas;
-    renderer = createRenderer(canvas);
+    renderer = createRenderer(canvas, selectedControlScheme);
     maybeStartLoop();
   }
 
@@ -420,6 +434,7 @@ function createController(): GameController {
     createRoom,
     joinRoom,
     selectChar,
+    selectControlScheme,
     startGame,
     devStartGame,
     returnToLobby,
