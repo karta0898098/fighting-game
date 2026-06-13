@@ -263,7 +263,7 @@ function createController(): GameController {
       Object.assign(vp, {
         id: sp.id, name: sp.name, charId: sp.charId, facing: sp.facing,
         hp: sp.hp, maxHp: sp.maxHp, mana: sp.mana, maxMana: sp.maxMana,
-        alive: sp.alive, shield: sp.shield, kills: sp.kills, effects: sp.effects, cd: sp.cd,
+        alive: sp.alive, shield: sp.shield, kills: sp.kills, effects: sp.effects, cd: sp.cd, ult: sp.ult,
       });
       if (id === selfId && localSelf) {
         vp.x = localSelf.x; vp.y = localSelf.y; vp.facing = localSelf.facing;
