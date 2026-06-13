@@ -37,8 +37,110 @@ function mat(color, opt = {}) {
     color, roughness: opt.rough ?? 0.6, metalness: opt.metal ?? 0.15,
     emissive: opt.emissive ?? 0x000000, emissiveIntensity: opt.ei ?? 1,
     envMapIntensity: opt.env ?? 0.9,
+    map: opt.map ?? null,
     transparent: true, opacity: 1,
   });
+}
+
+// ---- 程序化後備皮膚：質感 (布/金屬/皮革/肌膚) 與頭部配件 ----
+const SKIN_KIND = {
+  0: 'metal', 1: 'cloth', 2: 'leather', 3: 'metal', 4: 'leather',
+  5: 'cloth', 6: 'metal', 7: 'leather', 8: 'cloth', 9: 'skin',
+};
+const HEADGEAR = {
+  0: 'helm', 1: 'hat', 2: 'hood', 3: 'helm', 4: 'hood',
+  5: 'hood', 6: 'horns', 7: 'mask', 8: 'hood', 9: 'band',
+};
+const PAULDRONS = new Set([0, 3, 6]); // 重甲系加肩甲
+
+// 以 canvas 程序生成表面貼圖 (依識別色 + 質感樣式)，快取避免重複建立。
+const _texCache = new Map();
+function panelTexture(baseHex, kind) {
+  const key = `${kind}:${baseHex}`;
+  if (_texCache.has(key)) return _texCache.get(key);
+  const S = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const x = cv.getContext('2d');
+  const col = new THREE.Color(baseHex);
+  const hex = (c) => `#${c.getHexString()}`;
+  x.fillStyle = hex(col); x.fillRect(0, 0, S, S);
+  const darker = col.clone().multiplyScalar(0.7);
+  if (kind === 'metal') {
+    for (let i = 0; i < 90; i++) {
+      x.strokeStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.05})`;
+      const px = Math.random() * S;
+      x.beginPath(); x.moveTo(px, 0); x.lineTo(px + (Math.random() - 0.5) * 6, S); x.stroke();
+    }
+    x.fillStyle = hex(darker);
+    for (const [rx, ry] of [[18, 18], [110, 18], [18, 110], [110, 110], [64, 64]]) { x.beginPath(); x.arc(rx, ry, 4, 0, 7); x.fill(); }
+  } else if (kind === 'cloth') {
+    x.strokeStyle = 'rgba(0,0,0,0.10)';
+    for (let i = 0; i < S; i += 6) { x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke(); x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke(); }
+    x.fillStyle = 'rgba(255,255,255,0.05)';
+    for (let i = 0; i < 60; i++) x.fillRect(Math.random() * S, Math.random() * S, 2, 2);
+  } else if (kind === 'leather') {
+    x.fillStyle = hex(darker);
+    for (let i = 0; i < 200; i++) { x.globalAlpha = 0.05 + Math.random() * 0.08; x.beginPath(); x.arc(Math.random() * S, Math.random() * S, 1 + Math.random() * 2, 0, 7); x.fill(); }
+    x.globalAlpha = 1;
+    x.strokeStyle = 'rgba(255,255,255,0.10)'; x.setLineDash([4, 4]);
+    x.strokeRect(10, 10, S - 20, S - 20); x.setLineDash([]);
+  } else { // skin
+    for (let i = 0; i < 120; i++) { x.fillStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.04})`; x.fillRect(Math.random() * S, Math.random() * S, 2, 2); }
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  _texCache.set(key, tex);
+  return tex;
+}
+
+// 依原型加上肩甲與頭部配件 (回傳配件陣列，供 GLB 皮膚覆蓋時隱藏)。
+function buildAccents(group, reg, o) {
+  const acc = [];
+  const add = (m) => { m.castShadow = true; group.add(m); acc.push(m); return m; };
+  const dark = () => reg(mat(shade(o.base, -0.35), { rough: 0.5, metal: 0.45 }));
+  const metalAccent = () => reg(mat(shade(o.base, 0.05), { rough: 0.42, metal: 0.6 }));
+
+  if (PAULDRONS.has(o.charId)) {
+    const pg = new THREE.SphereGeometry(o.torsoW * 0.28, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    for (const sz of [-1, 1]) {
+      const m = new THREE.Mesh(pg, metalAccent());
+      m.position.set(0, o.shoulderY + 1, sz * (o.shoulderX + 1));
+      m.scale.y = 0.8;
+      add(m);
+    }
+  }
+
+  const hg = HEADGEAR[o.charId];
+  const topY = o.headY + 7;
+  if (hg === 'hat') {
+    const hat = add(new THREE.Mesh(new THREE.ConeGeometry(8.5, 20, 16), reg(mat(shade(o.base, -0.2), { rough: 0.7, metal: 0.05 }))));
+    hat.position.set(0, topY + 6, 0);
+    const brim = add(new THREE.Mesh(new THREE.TorusGeometry(7, 1.4, 8, 20), dark()));
+    brim.rotation.x = Math.PI / 2; brim.position.set(0, o.headY + 4, 0);
+  } else if (hg === 'helm') {
+    const helm = add(new THREE.Mesh(new THREE.SphereGeometry(8.2, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), metalAccent()));
+    helm.position.set(0, o.headY + 1.5, 0);
+    const crest = add(new THREE.Mesh(new THREE.BoxGeometry(10, 2.2, 1.6), reg(mat(shade(o.base, 0.2), { metal: 0.5, emissive: new THREE.Color(o.base), ei: 0.4 }))));
+    crest.position.set(0, o.headY + 8, 0);
+  } else if (hg === 'hood' || hg === 'mask') {
+    const hood = add(new THREE.Mesh(new THREE.SphereGeometry(9, 14, 12, 0, Math.PI * 2, 0, Math.PI * 0.7), reg(mat(shade(o.base, -0.28), { rough: 0.85, metal: 0.03 }))));
+    hood.position.set(-1.5, o.headY + 1, 0); hood.scale.set(1.1, 1.1, 1.15);
+    if (hg === 'mask') {
+      const band = add(new THREE.Mesh(new THREE.BoxGeometry(4, 4, 16), dark()));
+      band.position.set(5.5, o.headY - 1, 0);
+    }
+  } else if (hg === 'horns') {
+    const hornMat = reg(mat(0xe8e2d0, { rough: 0.6, metal: 0.1 }));
+    for (const sz of [-1, 1]) {
+      const horn = add(new THREE.Mesh(new THREE.ConeGeometry(2.2, 11, 8), hornMat));
+      horn.position.set(-1, o.headY + 6, sz * 5.5); horn.rotation.x = sz * -0.5;
+    }
+  } else if (hg === 'band') {
+    const band = add(new THREE.Mesh(new THREE.TorusGeometry(7.6, 1.3, 8, 20), reg(mat(shade(o.base, 0.25), { emissive: new THREE.Color(o.base), ei: 0.5 }))));
+    band.rotation.x = Math.PI / 2; band.position.set(0, o.headY + 3, 0);
+  }
+  return acc;
 }
 
 export function createCharacterModel(charId) {
@@ -53,8 +155,14 @@ export function createCharacterModel(charId) {
   const torsoW = 22 * bulk, torsoD = 14 * bulk, torsoH = 20;
   const hipY = 18, shoulderY = hipY + torsoH;
 
+  // 質感 (程序化後備皮膚)：依原型決定貼圖樣式與粗糙/金屬度
+  const skinKind = SKIN_KIND[charId] || 'cloth';
+  const kRough = skinKind === 'metal' ? 0.42 : skinKind === 'leather' ? 0.62 : skinKind === 'cloth' ? 0.78 : 0.6;
+  const kMetal = skinKind === 'metal' ? 0.6 : skinKind === 'leather' ? 0.12 : skinKind === 'cloth' ? 0.04 : 0.1;
+  const bodyTex = panelTexture(base, skinKind);
+
   // 軀幹
-  const bodyMat = reg(mat(base, { rough: 0.5, metal: 0.35 }));
+  const bodyMat = reg(mat(0xffffff, { rough: kRough, metal: kMetal, map: bodyTex }));
   let torsoGeo;
   if (cfg.robe) {
     torsoGeo = new THREE.CylinderGeometry(torsoW * 0.42, torsoW * 0.62, torsoH + 6, 12);
@@ -85,14 +193,26 @@ export function createCharacterModel(charId) {
   if (ch.shape === 'triangle') head.rotation.y = Math.PI / 4;
   head.castShadow = true;
   group.add(head);
-  // 面向標記 (眼/面盔，+X 為前)
-  const faceMat = reg(mat(0x0b0f14, { rough: 0.3, metal: 0.5, emissive: new THREE.Color(shade(base, 0.5)), ei: 0.18 }));
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3, 9), faceMat);
-  visor.position.set(6.5, shoulderY + 8, 0);
-  group.add(visor);
+
+  // ---- 臉部 (可表情：中性/專注/痛苦)；+X 為前，掛在獨立群組以便表情動畫 ----
+  const headY = shoulderY + 8;
+  const faceGroup = new THREE.Group();
+  faceGroup.position.set(0, headY, 0);
+  group.add(faceGroup);
+  const frontX = 6.2;
+  const featMat = reg(mat(0x0b0f14, { rough: 0.35, metal: 0.45, emissive: new THREE.Color(shade(base, 0.5)), ei: 0.22 }));
+  const eyeGeo = new THREE.BoxGeometry(1.4, 2.6, 2.6);
+  const browGeo = new THREE.BoxGeometry(1.1, 0.9, 4.2);
+  const mouthGeo = new THREE.BoxGeometry(1.2, 1.6, 5.2);
+  const eyeL = new THREE.Mesh(eyeGeo, featMat); eyeL.position.set(frontX, 1.6, -3); faceGroup.add(eyeL);
+  const eyeR = new THREE.Mesh(eyeGeo, featMat); eyeR.position.set(frontX, 1.6, 3); faceGroup.add(eyeR);
+  const browL = new THREE.Mesh(browGeo, featMat); browL.position.set(frontX, 4.4, -3); faceGroup.add(browL);
+  const browR = new THREE.Mesh(browGeo, featMat); browR.position.set(frontX, 4.4, 3); faceGroup.add(browR);
+  const mouth = new THREE.Mesh(mouthGeo, featMat); mouth.position.set(frontX, -3.4, 0); faceGroup.add(mouth);
+  const face = { group: faceGroup, eyeL, eyeR, browL, browR, mouth, browY: 4.4, mouthY: -3.4, eyeY: 1.6, frontX };
 
   // 手臂 (樞紐在肩)
-  const armMat = reg(mat(shade(base, -0.15), { rough: 0.55, metal: 0.35 }));
+  const armMat = reg(mat(0xd2d2d2, { rough: kRough + 0.05, metal: kMetal, map: bodyTex }));
   const armLen = 16;
   const mkLimb = (px, pz, isArm) => {
     const pivot = new THREE.Group();
@@ -118,6 +238,9 @@ export function createCharacterModel(charId) {
   handR.position.y = -armLen;
   armR.add(handR);
   buildWeapon(handR, cfg.weapon, base, reg);
+
+  // 原型配件 (肩甲/頭盔/帽/兜帽/獸角/頭帶) — 強化辨識與「皮膚」感
+  const accents = buildAccents(group, reg, { charId, base, headY, shoulderY, shoulderX, torsoW });
 
   // 頭頂發光識別徽記 (收斂發光，仍保留辨識)
   const emMat = new THREE.MeshStandardMaterial({
@@ -172,13 +295,19 @@ export function createCharacterModel(charId) {
   group.add(burnRing);
 
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, handR },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, handR, face, accents },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
     move: 0,
     curFacing: 0,
     baseY: 0,
+    // 出手姿勢狀態機 (kind: 'swing' 普攻/近戰 | 'cast' 施法/遠程)
+    atkT: 0, atkDur: 0, atkKind: 'swing',
+    // 表情狀態機 (秒數倒數)
+    hurtT: 0, focusT: 0,
+    // 表情五官目前插值量 (平滑過渡)
+    eEye: 1, eBrowTilt: 0, eBrowY: 0, eMouth: 1, eFlinch: 0,
   };
   return group;
 }
@@ -243,10 +372,91 @@ function buildWeapon(hand, type, base, reg) {
 
 const _white = new THREE.Color(0xffffff);
 
+function smoothstep(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+// 揮砍/出拳：windup(後拉上舉) → strike(前劭) → recover；回傳武器手 rotation.z
+function swingArmZ(p) {
+  if (p < 0.22) return -0.95 * smoothstep(p / 0.22);
+  if (p < 0.5) return -0.95 + 2.45 * smoothstep((p - 0.22) / 0.28);
+  return 1.5 * (1 - smoothstep((p - 0.5) / 0.5));
+}
+// 施法/舉杖：抬手蓄力 → 推出 → 放下
+function castArmZ(p) {
+  const u = smoothstep(Math.min(1, p / 0.35));
+  const dn = p > 0.6 ? smoothstep((p - 0.6) / 0.4) : 0;
+  return 1.6 * u * (1 - dn);
+}
+
+// ---- GLB 皮膚動畫驅動 (idle/walk 交叉淡入 + attack/hit 一次性) ----
+function skinFadeTo(s, name, dur) {
+  const next = s.actions[name];
+  if (!next || s.cur === next) return;
+  next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(dur).play();
+  if (s.cur) s.cur.fadeOut(dur);
+  s.cur = next;
+}
+function skinPlayOnce(s, name) {
+  const act = s.actions[name];
+  if (!act) return;
+  act.reset().setEffectiveWeight(1).fadeIn(0.06).play();
+  if (s.cur && s.cur !== act) s.cur.fadeOut(0.1);
+  s.cur = act;
+  s.oneShot = name;
+  s.oneShotT = act.getClip().duration || 0.4;
+}
+function driveSkin(ud, dt, info) {
+  const s = ud.skin;
+  if (info.attack && s.actions.attack) skinPlayOnce(s, 'attack');
+  else if (info.hurt && s.actions.hit) skinPlayOnce(s, 'hit');
+  if (s.oneShot) {
+    s.oneShotT -= dt;
+    if (s.oneShotT <= 0) s.oneShot = null;
+  } else {
+    const want = ud.move > 0.5 ? 'walk' : 'idle';
+    if (s.actions[want]) skinFadeTo(s, want, 0.2);
+  }
+  if (!s.cur) {
+    const init = s.actions.idle ? 'idle' : (s.actions.walk ? 'walk' : null);
+    if (init) skinFadeTo(s, init, 0);
+  }
+  s.mixer.update(dt);
+}
+
+// 將載入的 GLB 皮膚掛上現有角色群組：隐藏程序化身體 (保留徽記/狀態環)。
+export function attachSkin(group, skin) {
+  const ud = group.userData;
+  if (!ud || !skin) return;
+  for (const k of ['torso', 'head', 'armL', 'armR', 'legL', 'legR']) {
+    if (ud.parts[k]) ud.parts[k].visible = false;
+  }
+  if (ud.parts.face) ud.parts.face.group.visible = false;
+  if (ud.parts.accents) for (const a of ud.parts.accents) a.visible = false;
+  const glbMats = [];
+  skin.root.traverse((o) => {
+    if (!o.material) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) { m.transparent = true; glbMats.push(m); }
+  });
+  ud.skin = { mixer: skin.mixer, actions: skin.actions, cfg: skin.cfg, root: skin.root, cur: null, oneShot: null, oneShotT: 0, glbMats };
+  group.add(skin.root);
+}
+
 export function animateModel(group, dt, info) {
   const ud = group.userData;
   if (!ud) return;
   const { parts } = ud;
+
+  // ---- 出手 / 受擊 觸發 (由 renderer 依 cd 上跳 / hp 下降 偵測) ----
+  if (info.attack) {
+    ud.atkKind = info.attack;
+    ud.atkDur = info.attack === 'cast' ? 0.55 : 0.42;
+    ud.atkT = ud.atkDur;
+    ud.focusT = Math.max(ud.focusT, ud.atkDur + 0.25);
+  }
+  if (info.hurt) ud.hurtT = 0.42;
+  if (ud.atkT > 0) ud.atkT = Math.max(0, ud.atkT - dt);
+  if (ud.focusT > 0) ud.focusT = Math.max(0, ud.focusT - dt);
+  if (ud.hurtT > 0) ud.hurtT = Math.max(0, ud.hurtT - dt);
+
   const moving = info.speed > WALK_THRESHOLD;
   // move 平滑
   ud.move += ((moving ? 1 : 0) - ud.move) * Math.min(1, dt * 12);
@@ -264,19 +474,48 @@ export function animateModel(group, dt, info) {
 
   const sw = Math.sin(ud.phase);
   const amp = 0.7 * ud.move;
-  // 腿擺動 (rotation.z 沿 +X 前後)
-  parts.legL.rotation.z = sw * amp;
-  parts.legR.rotation.z = -sw * amp;
-  // 手臂反向擺 + 微張
-  parts.armL.rotation.z = -sw * amp * 0.8;
-  parts.armR.rotation.z = sw * amp * 0.8;
-  parts.armL.rotation.x = -0.12;
-  parts.armR.rotation.x = 0.12;
 
-  // 軀幹上下彈跳 + 呼吸
-  const bob = ud.move > 0.02 ? Math.abs(Math.sin(ud.phase)) * 3.2 * ud.move : Math.sin(ud.breathe) * 0.8;
-  group.position.y = ud.baseY + bob;
-  parts.torso.rotation.z = sw * 0.05 * ud.move;
+  if (ud.skin) {
+    // ---- GLB 皮膚：驅動骨架動畫，身體交由 mixer；身體踩地 ----
+    driveSkin(ud, dt, info);
+    group.position.y = ud.baseY;
+  } else {
+    // ---- 程序化肢體 + 出手姿勢 ----
+    // 腿擺動 (rotation.z 沿 +X 前後)
+    parts.legL.rotation.z = sw * amp;
+    parts.legR.rotation.z = -sw * amp;
+    // 手臂反向擺 + 微張
+    parts.armL.rotation.z = -sw * amp * 0.8;
+    parts.armR.rotation.z = sw * amp * 0.8;
+    parts.armL.rotation.x = -0.12;
+    parts.armR.rotation.x = 0.12;
+
+    // 出手姿勢 (疊加在走路擺動上)；武器掛右手→主要動右臂
+    if (ud.atkT > 0 && ud.atkDur > 0) {
+      const ap = 1 - ud.atkT / ud.atkDur; // 0→1 進度
+      if (ud.atkKind === 'cast') {
+        const z = castArmZ(ap);
+        parts.armR.rotation.z = sw * amp * 0.3 + z;
+        parts.armR.rotation.x = 0.12 - z * 0.18;
+        parts.armL.rotation.z = -sw * amp * 0.3 + z * 0.55;
+        parts.torso.rotation.x = -0.12 * Math.sin(ap * Math.PI);
+      } else {
+        const z = swingArmZ(ap);
+        parts.armR.rotation.z = z;
+        parts.armR.rotation.x = 0.12 + Math.sin(ap * Math.PI) * 0.25;
+        parts.armL.rotation.z = -sw * amp * 0.4 - z * 0.25;
+        parts.torso.rotation.y = -Math.sin(ap * Math.PI) * 0.22;
+      }
+    } else {
+      parts.torso.rotation.x = 0;
+      parts.torso.rotation.y = 0;
+    }
+
+    // 軀幹上下彈跳 + 呼吸
+    const bob = ud.move > 0.02 ? Math.abs(Math.sin(ud.phase)) * 3.2 * ud.move : Math.sin(ud.breathe) * 0.8;
+    group.position.y = ud.baseY + bob;
+    parts.torso.rotation.z = sw * 0.05 * ud.move;
+  }
 
   // 徽記旋轉 + 漂浮
   parts.emblem.rotation.y += dt * 1.5;
@@ -284,7 +523,7 @@ export function animateModel(group, dt, info) {
   parts.emblem.position.y = (parts.head.position.y + 16) + Math.sin(ud.breathe * 1.3) * 1.6;
 
   // 元素使浮球公轉
-  if (parts.handR) {
+  if (parts.handR && !ud.skin) {
     for (const o of parts.handR.children) {
       if (o.userData && o.userData.orbit !== undefined) {
         const a = ud.breathe * 2 + o.userData.orbit * (Math.PI * 2 / 3);
@@ -317,11 +556,41 @@ export function animateModel(group, dt, info) {
     parts.burnRing.material.emissiveIntensity = 1.8 + 1.0 * pulse;
   }
 
+  // ---- 臉部表情：中性 / 專注(出手) / 痛苦(受擊)；hurt 優先 ----
+  if (parts.face && !ud.skin) {
+    const f = parts.face;
+    let tEye = 1, tBrowTilt = 0, tBrowY = 0, tMouth = 1, tFlinch = 0;
+    if (ud.hurtT > 0) {
+      const k = ud.hurtT / 0.42;
+      tEye = 0.25; tBrowTilt = -0.5; tBrowY = 0.9; tMouth = 2.4; tFlinch = 0.6 * k;
+    } else if (ud.focusT > 0) {
+      tEye = 0.6; tBrowTilt = 0.5; tBrowY = -0.6; tMouth = 0.55;
+    }
+    const ease = Math.min(1, dt * 16);
+    ud.eEye += (tEye - ud.eEye) * ease;
+    ud.eBrowTilt += (tBrowTilt - ud.eBrowTilt) * ease;
+    ud.eBrowY += (tBrowY - ud.eBrowY) * ease;
+    ud.eMouth += (tMouth - ud.eMouth) * ease;
+    ud.eFlinch += (tFlinch - ud.eFlinch) * ease;
+    f.eyeL.scale.y = f.eyeR.scale.y = ud.eEye;
+    f.browL.rotation.x = ud.eBrowTilt;
+    f.browR.rotation.x = -ud.eBrowTilt;
+    f.browL.position.y = f.browR.position.y = f.browY + ud.eBrowY;
+    f.mouth.scale.y = ud.eMouth;
+    f.group.position.x = -ud.eFlinch * 1.6;
+    f.group.rotation.z = ud.eFlinch * 0.18;
+  }
+
   // 隱身：淡化所有皮膚材質 (敵人更透明、自己半透明)
   const invis = p && p.effects && p.effects.invis;
   let targetOp = 1;
   if (invis) targetOp = info.isSelf ? 0.42 : 0.12;
   for (const m of ud.skinMats) {
     m.opacity += (targetOp - m.opacity) * Math.min(1, dt * 10);
+  }
+  if (ud.skin) {
+    for (const m of ud.skin.glbMats) {
+      m.opacity += (targetOp - m.opacity) * Math.min(1, dt * 10);
+    }
   }
 }

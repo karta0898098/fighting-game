@@ -11,8 +11,14 @@ import { createParticleSystem } from './render3d/particles.js';
 import { createEntityLayer } from './render3d/entities3d.js';
 import { createFxBus } from './render3d/fxbus.js';
 import { createHud } from './render3d/hud.js';
-import { createCharacterModel, animateModel } from './render3d/models.js';
+import { createCharacterModel, animateModel, attachSkin } from './render3d/models.js';
 import { sceneX, sceneZ } from './render3d/coords.js';
+import { getCharacter } from './characters.js';
+import { prepareSkin, instantiateSkin } from './render3d/skins.js';
+
+// cd 槽位 + 動作類型 → 出手姿勢 (swing 揮砍/出拳 | cast 施法/舉手)
+const CD_SLOTS = ['basic', 'skill1', 'skill2', 'ultimate'];
+const SWING_TYPES = new Set(['melee', 'dash', 'charge', 'leap', 'grapple', 'multiblink', 'blink']);
 
 export function createRenderer(canvas) {
   const sceneMgr = createSceneManager(canvas);
@@ -39,13 +45,36 @@ export function createRenderer(canvas) {
       const group = createCharacterModel(p.charId);
       group.position.set(sceneX(p.x), 0, sceneZ(p.y));
       scene.add(group);
-      e = { group, charId: p.charId };
+      e = { group, charId: p.charId, skinReq: false };
       models.set(p.id, e);
+    }
+    // 嘗試載入 GLB 皮膚 (只試一次)；成功則覆蓋程序化外觀，無檔/失敗維持程序化
+    if (!e.skinReq) {
+      e.skinReq = true;
+      prepareSkin(p.charId).then((tpl) => {
+        if (!tpl) return;
+        if (models.get(p.id) !== e) return; // 已被釋放或換角
+        const skin = instantiateSkin(tpl);
+        if (skin) attachSkin(e.group, skin);
+      }).catch(() => {});
     }
     return e;
   }
 
   function disposeModel(e) {
+    const ud = e.group.userData;
+    if (ud && ud.skin) {
+      ud.skin.mixer.stopAllAction();
+      e.group.remove(ud.skin.root);
+      // 只 dispose 逐實例 clone 的材質；geometry 由快取模板共用，不可 dispose
+      ud.skin.root.traverse((o) => {
+        if (o.material) {
+          if (Array.isArray(o.material)) o.material.forEach((m) => m.dispose());
+          else o.material.dispose();
+        }
+      });
+      ud.skin = null;
+    }
     scene.remove(e.group);
     e.group.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
@@ -68,12 +97,30 @@ export function createRenderer(canvas) {
 
       // 速度 (世界座標位移 / dt)
       let pr = prev.get(p.id);
-      if (!pr) { pr = { x: p.x, y: p.y }; prev.set(p.id, pr); }
+      if (!pr) { pr = { x: p.x, y: p.y, hp: p.hp, cd: { ...(p.cd || {}) } }; prev.set(p.id, pr); }
       let speed = 0;
       if (dt > 0) speed = Math.hypot(p.x - pr.x, p.y - pr.y) / dt;
-      pr.x = p.x; pr.y = p.y;
 
-      animateModel(e.group, dt, { speed, facing: p.facing, p, isSelf: p.id === selfId });
+      // 出手偵測：任一冷卻槽「上跳」= 剛開招；依動作類型分揮砍/施法
+      let attackKind = null;
+      if (p.cd) {
+        const ch = getCharacter(p.charId);
+        for (const slot of CD_SLOTS) {
+          const cur = p.cd[slot] || 0, was = (pr.cd && pr.cd[slot]) || 0;
+          if (cur > was + 0.12) {
+            const a = ch && ch[slot];
+            attackKind = a && SWING_TYPES.has(a.type) ? 'swing' : 'cast';
+            break;
+          }
+        }
+      }
+      // 受擊偵測：hp 下降
+      const hurt = p.hp < pr.hp - 0.5;
+
+      pr.x = p.x; pr.y = p.y; pr.hp = p.hp;
+      if (p.cd) { if (!pr.cd) pr.cd = {}; for (const slot of CD_SLOTS) pr.cd[slot] = p.cd[slot] || 0; }
+
+      animateModel(e.group, dt, { speed, facing: p.facing, p, isSelf: p.id === selfId, attack: attackKind, hurt });
     }
     // 離開房間的玩家才釋放模型
     for (const [pid, e] of models) {
