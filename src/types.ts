@@ -16,6 +16,7 @@ export interface LobbyEntry {
   charId: number;
   controlScheme: ControlScheme;
   isHost: boolean;
+  isNpc?: boolean;
 }
 
 export interface LobbyView {
@@ -81,6 +82,8 @@ export interface GameController {
   selectChar(charId: number): void;
   selectControlScheme(scheme: ControlScheme): void;
   selectGameFlags(flags: GameFlags): void;
+  addNpc(): void;
+  removeNpc(): void;
   startGame(): void;
   devStartGame(charId?: number): void;
   returnToLobby(): void;

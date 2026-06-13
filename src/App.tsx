@@ -79,6 +79,8 @@ export function App() {
           onSelectChar={handleSelectChar}
           onSelectControlScheme={handleSelectControlScheme}
           onSelectGameFlags={handleSelectGameFlags}
+          onAddNpc={() => controller.addNpc()}
+          onRemoveNpc={() => controller.removeNpc()}
           onStart={() => controller.startGame()}
           onLeave={() => controller.leave()}
         />

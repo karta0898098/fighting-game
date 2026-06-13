@@ -29,11 +29,13 @@ interface LobbyScreenProps {
   onSelectChar: (id: number) => void;
   onSelectControlScheme: (scheme: ControlScheme) => void;
   onSelectGameFlags: (flags: GameFlags) => void;
+  onAddNpc: () => void;
+  onRemoveNpc: () => void;
   onStart: () => void;
   onLeave: () => void;
 }
 
-export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme, onSelectChar, onSelectControlScheme, onSelectGameFlags, onStart, onLeave }: LobbyScreenProps) {
+export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme, onSelectChar, onSelectControlScheme, onSelectGameFlags, onAddNpc, onRemoveNpc, onStart, onLeave }: LobbyScreenProps) {
   const { players, selfId, isHost, roomCode, gameFlags } = lobby;
   const [copied, setCopied] = useState(false);
   const skillDisplay = getSkillDisplay(selectedControlScheme);
@@ -134,18 +136,25 @@ export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme
 
         <div className="lobby-foot">
           <div className="players">
-            <h3>{players.length} 人在房間</h3>
+            <h3>
+              {players.length} 人在房間
+              {isHost && (
+                <span className="npc-controls">
+                  <button className="btn tiny" onClick={onAddNpc} title="加入 NPC">+ NPC</button>
+                  <button className="btn tiny" onClick={onRemoveNpc} title="移除 NPC" disabled={!players.some((p) => p.isNpc)}>− NPC</button>
+                </span>
+              )}
+            </h3>
             <div className="player-list">
               {players.map((p) => {
                 const c = getCharacter(p.charId);
-                const pSkillDisplay = getSkillDisplay(p.controlScheme);
                 return (
                   <div className="player-row" key={p.id}>
                     <span className="dot" style={{ background: c.color }}></span>
                     <span className="pname">{p.name}{p.id === selfId ? '（你）' : ''}{p.isHost ? ' 👑' : ''}</span>
                     <span className="pchar">{c.name}</span>
-                    <span className="pcontrol" title={p.controlScheme === 'wasd-jkl' ? 'WASD + JKL;' : '↑↓←→ + ASDF'}>
-                      {p.controlScheme === 'wasd-jkl' ? '⌨️ WASD' : '🎮 ↑↓←→'}
+                    <span className="pcontrol">
+                      {p.isNpc ? '🤖 NPC' : (p.controlScheme === 'wasd-jkl' ? '⌨️ WASD' : '🎮 ↑↓←→')}
                     </span>
                   </div>
                 );

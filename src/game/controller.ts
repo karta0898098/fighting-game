@@ -360,6 +360,24 @@ function createController(): GameController {
     if (role === 'host') broadcastLobby();
   }
 
+  function addNpc() {
+    if (role !== 'host') return;
+    if (lobby.length >= MAX_PLAYERS) return;
+    const npcId = 'npc-' + Math.random().toString(36).slice(2, 8);
+    const charId = Math.floor(Math.random() * 10);
+    const npcNum = lobby.filter((p) => p.isNpc).length + 1;
+    lobby.push({ id: npcId, name: `NPC ${npcNum}`, charId, controlScheme: 'wasd-jkl', isHost: false, isNpc: true });
+    broadcastLobby();
+  }
+
+  function removeNpc() {
+    if (role !== 'host') return;
+    const lastNpc = [...lobby].reverse().find((p) => p.isNpc);
+    if (!lastNpc) return;
+    removeFromLobby(lastNpc.id);
+    broadcastLobby();
+  }
+
   function startGame() {
     if (role === 'host') hostStart();
   }
@@ -443,6 +461,8 @@ function createController(): GameController {
     selectChar,
     selectControlScheme,
     selectGameFlags,
+    addNpc,
+    removeNpc,
     startGame,
     devStartGame,
     returnToLobby,
