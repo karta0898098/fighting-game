@@ -1,6 +1,6 @@
 // 權威模擬：僅由房主執行。applyMovement 也供加入者本機預測使用。
 
-import { ARENA, PLAYER_RADIUS, MANA_REGEN, KNOCKBACK_FRICTION, ULT_MAX, ULT_REGEN, ULT_LOCKOUT } from './constants.js';
+import { ARENA, PLAYER_RADIUS, MANA_REGEN, KNOCKBACK_FRICTION, ULT_MAX, ULT_REGEN, ULT_LOCKOUT, COOLDOWN_MULTIPLIER } from './constants.js';
 import { getCharacter } from './characters.js';
 import { EMPTY_INPUT } from './input.js';
 import {
@@ -526,6 +526,8 @@ export function step(state, inputs, dt) {
     // 攻速天賦 (狂戰士嗜血狂暴：殘血加速冷卻回復)
     let cdRate = 1;
     if (talent && talent.id === 'bloodlust') cdRate = 1 + (talent.haste || 0.6) * missingHp(p);
+    // 應用全局冷卻乘數 (COOLDOWN_MULTIPLIER)
+    cdRate /= COOLDOWN_MULTIPLIER;
     for (const k of ['basic', 'skill1', 'skill2', 'ultimate']) p.cd[k] = Math.max(0, p.cd[k] - dt * cdRate);
 
     for (const kind of Object.keys(p.effects)) {

@@ -20,6 +20,10 @@ export const ULT_GAIN_DEAL = 0.35;    // 造成傷害的充能係數 (× 傷害)
 export const ULT_GAIN_TAKE = 0.6;     // 承受傷害的充能係數 (逆境快充)
 export const ULT_LOCKOUT = 1;         // 施放後的防連發冷卻 (秒)
 
+// ---- 全局技能冷卻乘數 ----
+export const COOLDOWN_MULTIPLIER = 1; // 技能冷卻時間乘數 (< 1 = 冷卻減少 / > 1 = 冷卻增加)
+                                        // 例：0.5 = 所有技能冷卻時間減半、1.5 = 冷卻時間延長 50%
+
 // 渲染：稍微傾斜的俯視
 export const TILT = 0.62;             // 深度方向(y)的壓縮比
 export const BODY_HEIGHT = 32;        // 直立身體繪製高度
