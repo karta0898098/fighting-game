@@ -18,13 +18,35 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
-const modelUrl = (file) => asset(`assets/characters/models/${file}`);
+const modelUrl = (file) => asset(`gltf_source/${file}`);
 
 // charId -> 檔名（與 public/assets/characters 既有命名一致）
 const CHAR_FILES = [
-  'warrior', 'mage', 'assassin', 'tank', 'archer',
-  'healer', 'berserker', 'ninja', 'elementalist', 'fighter',
+  'Bull',        // 0: warrior
+  'Fox',         // 1: mage
+  'Wolf',        // 2: assassin
+  'Horse',       // 3: tank
+  'Deer',        // 4: archer
+  'Alpaca',      // 5: healer
+  'Stag',        // 6: berserker
+  'Husky',       // 7: ninja
+  'Horse_White', // 8: elementalist
+  'ShibaInu',    // 9: fighter
 ];
+
+// charId -> 檔案格式 (.glb 或 .gltf)；未指定則預設 .glb
+const CHAR_FORMATS = {
+  0: 'gltf', // warrior → Bull
+  1: 'gltf', // mage → Fox
+  2: 'gltf', // assassin → Wolf
+  3: 'gltf', // tank → Horse
+  4: 'gltf', // archer → Deer
+  5: 'gltf', // healer → Alpaca
+  6: 'gltf', // berserker → Stag
+  7: 'gltf', // ninja → Husky
+  8: 'gltf', // elementalist → Horse_White
+  9: 'gltf', // fighter → ShibaInu
+};
 
 // 各動作的候選 clip 名稱（不同來源命名不一，依序比對，先精確再模糊包含）。
 const DEFAULT_CLIPS = {
@@ -37,15 +59,24 @@ const DEFAULT_CLIPS = {
 // 每角色覆寫（預設值適用大多數人形模型；依實際模型微調）。
 const DEFAULT_CFG = { scale: 30, yOffset: 0, rotationY: -Math.PI / 2 };
 const OVERRIDES = {
-  // 例：3: { scale: 36, yOffset: 1 },   // 坦克更高大
-  // 例：1: { rotationY: Math.PI / 2 },  // 朝向相反時翻轉
+  0: { scale: 22, rotationY: Math.PI / 2 },  // warrior (Bull)
+  1: { scale: 28, rotationY: Math.PI / 2 },  // mage (Fox)
+  2: { scale: 26, rotationY: Math.PI / 2 },  // assassin (Wolf)
+  3: { scale: 26, rotationY: Math.PI / 2 },  // tank (Horse)
+  4: { scale: 28, rotationY: Math.PI / 2 },  // archer (Deer)
+  5: { scale: 30, rotationY: Math.PI / 2 },  // healer (Alpaca)
+  6: { scale: 25, rotationY: Math.PI / 2 },  // berserker (Stag)
+  7: { scale: 28, rotationY: Math.PI / 2 },  // ninja (Husky)
+  8: { scale: 26, rotationY: Math.PI / 2 },  // elementalist (Horse_White)
+  9: { scale: 32, rotationY: Math.PI / 2 },  // fighter (ShibaInu)
 };
 
 export function getSkinConfig(charId) {
   const file = CHAR_FILES[charId];
   if (!file) return null;
+  const format = CHAR_FORMATS[charId] || 'glb';
   return {
-    url: modelUrl(`${file}.glb`),
+    url: modelUrl(`${file}.${format}`),
     clips: DEFAULT_CLIPS,
     ...DEFAULT_CFG,
     ...(OVERRIDES[charId] || {}),
