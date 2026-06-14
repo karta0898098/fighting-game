@@ -9,6 +9,7 @@ import { createRenderer } from './renderer.js';
 import { createNetwork, makeRoomCode } from './network.js';
 import { createInput, EMPTY_INPUT } from './input.js';
 import { createInitialState } from './entities.js';
+import { startBossRound } from './bossMode.js';
 import { step, applyMovement } from './simulation.js';
 import { DT, SNAPSHOT_INTERVAL, INPUT_INTERVAL, MAX_PLAYERS } from './constants.js';
 import type {
@@ -147,6 +148,17 @@ function createController(): GameController {
     beginLoop();
   }
 
+  // ---------- 開始闖關模式 (全員 team 1 協同打 BOSS；固定 R1 起) ----------
+  function startBossGame() {
+    if (role !== 'host') return;
+    const arr = lobby.map((p) => ({ id: p.id, name: p.name, charId: p.charId, team: 1 }));
+    gameState = createInitialState(arr, gameFlags, { mode: 'boss' });
+    for (const id of Object.keys(gameState.players)) inputs[id] = { ...EMPTY_INPUT };
+    startBossRound(gameState, 1);
+    net.broadcast({ t: 'start', state: gameState, lobby });
+    beginLoop();
+  }
+
   function startFromSnapshot(state: any) {
     lastSnapshot = state;
     view = emptyView();
@@ -254,6 +266,10 @@ function createController(): GameController {
     const snap = lastSnapshot;
     if (!snap || !view) return;
     view.phase = snap.phase; view.winner = snap.winner; view.time = snap.time;
+    // 闖關模式視圖欄位 (HUD 需要)
+    view.mode = snap.mode; view.round = snap.round; view.bossId = snap.bossId;
+    view.bossHp = snap.bossHp; view.bossMaxHp = snap.bossMaxHp;
+    view.roundPhase = snap.roundPhase; view.banner = snap.banner; view.tethers = snap.tethers;
 
     const k = 1 - Math.exp(-14 * dt); // 遠端玩家位置平滑
     const next: Record<string, any> = {};
@@ -265,6 +281,9 @@ function createController(): GameController {
         id: sp.id, name: sp.name, charId: sp.charId, facing: sp.facing,
         hp: sp.hp, maxHp: sp.maxHp, mana: sp.mana, maxMana: sp.maxMana,
         alive: sp.alive, shield: sp.shield, kills: sp.kills, effects: sp.effects, cd: sp.cd, ult: sp.ult, team: sp.team, chargeState: sp.chargeState,
+        // 魔王/召喚物/部位渲染旗標
+        isBoss: sp.isBoss, isPart: sp.isPart, isMinion: sp.isMinion, isFake: sp.isFake, isMirror: sp.isMirror,
+        ownerId: sp.ownerId, partId: sp.partId, partColor: sp.partColor, scale: sp.scale, reviveProg: sp.reviveProg,
       });
       if (id === selfId && localSelf) {
         vp.x = localSelf.x; vp.y = localSelf.y; vp.facing = localSelf.facing;
@@ -298,18 +317,23 @@ function createController(): GameController {
     gameoverSent = true;
     stopLoop();
     input.disable();
+    const isBoss = gameState.mode === 'boss';
+    const bossResult = isBoss ? (gameState.bossResult || (gameState.roundPhase === 'victory' ? 'victory' : 'defeat')) : undefined;
+    const bossRound = isBoss ? gameState.round : undefined;
     const winner = gameState.winner ? gameState.players[gameState.winner] : null;
     const winnerName = winner ? winner.name : null;
     const winnerTeam = gameState.winnerTeam || 0;
-    const players = Object.values(gameState.players).map((p: any) => ({ name: p.name, charId: p.charId, kills: p.kills, team: p.team || 0 }));
-    net.broadcast({ t: 'gameover', winner: winnerName, winnerTeam, players });
-    showGameover({ winnerName, winnerTeam, players, isHost: true });
+    const players = Object.values(gameState.players)
+      .filter((p: any) => !isBoss || p.team === 1)
+      .map((p: any) => ({ name: p.name, charId: p.charId, kills: p.kills, team: p.team || 0 }));
+    net.broadcast({ t: 'gameover', winner: winnerName, winnerTeam, players, bossResult, bossRound });
+    showGameover({ winnerName, winnerTeam, players, isHost: true, bossResult, bossRound } as GameOverView);
   }
 
   function joinerGameover(data: any) {
     stopLoop();
     input.disable();
-    showGameover({ winnerName: data.winner, winnerTeam: data.winnerTeam || 0, players: data.players, isHost: false });
+    showGameover({ winnerName: data.winner, winnerTeam: data.winnerTeam || 0, players: data.players, isHost: false, bossResult: data.bossResult, bossRound: data.bossRound } as GameOverView);
   }
 
   function showGameover(viewData: GameOverView) {
@@ -438,6 +462,20 @@ function createController(): GameController {
     hostStart();
   }
 
+  // ---------- 開發者：直接進入闖關模式 (?dev=true&boss=true) ----------
+  function devStartBoss(charId?: number) {
+    myName = 'Dev Player';
+    role = 'host';
+    selfId = 'dev-' + Math.random().toString(36).slice(2, 9);
+    roomCode = 'DEV';
+    const all = Array.from({ length: 10 }, (_, i) => i);
+    const me = (charId !== undefined && charId >= 0 && charId < 10) ? charId : all[Math.floor(Math.random() * 10)];
+    lobby = [{ id: selfId, name: myName, charId: me, controlScheme: selectedControlScheme, isHost: true, team: 1 }];
+    for (let i = 1; i <= 2; i++) lobby.push({ id: 'dev-' + i, name: '隊友 ' + i, charId: all[Math.floor(Math.random() * 10)], controlScheme: 'wasd-jkl', isHost: false, team: 1 });
+    selectedChar = me; selectedTeam = 1;
+    startBossGame();
+  }
+
   function returnToLobby() {
     if (role !== 'host') return;
     stopLoop();
@@ -478,7 +516,9 @@ function createController(): GameController {
     addNpc,
     removeNpc,
     startGame,
+    startBossGame,
     devStartGame,
+    devStartBoss,
     returnToLobby,
     leave,
     attachCanvas,

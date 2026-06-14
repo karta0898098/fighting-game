@@ -11,7 +11,7 @@ import { createParticleSystem } from './render3d/particles.js';
 import { createEntityLayer } from './render3d/entities3d.js';
 import { createFxBus } from './render3d/fxbus.js';
 import { createHud } from './render3d/hud.js';
-import { createCharacterModel, animateModel, attachSkin } from './render3d/models.js';
+import { createCharacterModel, createPartModel, animateModel, attachSkin } from './render3d/models.js';
 import { sceneX, sceneZ } from './render3d/coords.js';
 import { getCharacter } from './characters.js';
 import { prepareSkin, instantiateSkin } from './render3d/skins.js';
@@ -45,16 +45,16 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
     let e = models.get(p.id);
     if (e && e.charId !== p.charId) { disposeModel(e); models.delete(p.id); e = null; }
     if (!e) {
-      const group = createCharacterModel(p.charId);
+      const group = p.isPart ? createPartModel(p.partColor || '#ffffff', p.scale || 1) : createCharacterModel(p.charId);
       group.position.set(sceneX(p.x), 0, sceneZ(p.y));
       scene.add(group);
       // rx/ry：渲染端平滑後的世界座標 (邏輯 30Hz、畫面 60Hz 之間插值)；spd：平滑速度
       // lastFootIdx/wasMoving：腳步聲節奏偵測 (走路相位跨越 + 起步保底)
-      e = { group, charId: p.charId, skinReq: false, rx: p.x, ry: p.y, spd: 0, wasHidden: false, lastFootIdx: 0, wasMoving: false };
+      e = { group, charId: p.charId, isPart: !!p.isPart, skinReq: false, rx: p.x, ry: p.y, spd: 0, wasHidden: false, lastFootIdx: 0, wasMoving: false };
       models.set(p.id, e);
     }
     // 嘗試載入 GLB 皮膚 (只試一次)；成功則覆蓋程序化外觀，無檔/失敗維持程序化
-    if (!e.skinReq) {
+    if (!e.skinReq && !p.isPart) {
       e.skinReq = true;
       prepareSkin(p.charId).then((tpl) => {
         if (!tpl) return;

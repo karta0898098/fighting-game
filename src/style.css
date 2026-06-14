@@ -223,6 +223,26 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .hud-board-list .row { font-size: 13px; color: #fff; line-height: 1.5; text-shadow: 0 1px 2px #000; }
 .hud-board-list .row.me { color: #ffd166; }
 .hud-board-list .row.dead { color: #7b8a97; }
+
+/* 闖關模式 HUD：魔王血條 / 部位 / 過場橫幅 */
+.hud-boss { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(640px, 70%); text-align: center; pointer-events: none; }
+.hud-boss-name { color: #ffd166; font-weight: 800; font-size: 16px; letter-spacing: 0.5px; text-shadow: 0 2px 6px #000, 0 0 10px rgba(255,80,80,0.5); margin-bottom: 4px; }
+.hud-boss-bar { position: relative; height: 20px; background: linear-gradient(#2a0c12, #160608); border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+.hud-boss-bar > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ff5a3c, #ff2a14); transition: width 0.12s linear; }
+.hud-boss-bar > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
+.hud-boss-parts { display: flex; gap: 10px; justify-content: center; margin-top: 6px; }
+.hud-boss-parts .bpart { font-size: 11px; color: #cfe8ff; text-shadow: 0 1px 2px #000; min-width: 120px; }
+.hud-boss-parts .bpart b { display: block; height: 7px; background: #0a1622; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; margin-top: 2px; }
+.hud-boss-parts .bpart b > i { display: block; height: 100%; background: #49d0ff; }
+.hud-boss-parts .bpart.dead { color: #7b8a97; opacity: 0.7; }
+.hud-banner { position: absolute; top: 38%; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; }
+.hud-banner-text { font-size: 44px; font-weight: 900; color: #fff; letter-spacing: 2px; text-shadow: 0 3px 12px #000, 0 0 24px rgba(255,209,102,0.6); }
+.hud-banner-sub { font-size: 18px; color: #ffd166; margin-top: 6px; text-shadow: 0 2px 6px #000; }
+
+/* 大廳：闖關模式按鈕 */
+.btn.boss-start { margin-top: 10px; background: linear-gradient(135deg, #7d2b2b, #b23b3b); color: #fff; border: 1px solid rgba(255,180,120,0.4); }
+.btn.boss-start:hover { background: linear-gradient(135deg, #8f3232, #cf4646); }
+
 .nplate { text-align: center; white-space: nowrap; pointer-events: none; }
 .nplate .nname { font-size: 12px; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; margin-bottom: 2px; }
 .nplate .nbar { width: 46px; height: 5px; background: #0c2a18; margin: 1px auto 0; border: 1px solid rgba(0,0,0,0.5); }

@@ -145,7 +145,10 @@ function buildAccents(group, reg, o) {
 
 export function createCharacterModel(charId) {
   const ch = getCharacter(charId);
-  const cfg = ARCHE[charId] || { bulk: 1, weapon: 'sword' };
+  const bossModel = ch.model || null; // 魔王程序化建模參數 (id>=100)
+  const cfg = bossModel
+    ? { bulk: bossModel.bulk || 2, weapon: bossModel.weapon || 'sword', robe: !!bossModel.robe }
+    : (ARCHE[charId] || { bulk: 1, weapon: 'sword' });
   const base = ch.color;
   const skinMats = []; // 供隱身淡出
   const reg = (m) => { skinMats.push(m); return m; };
@@ -156,7 +159,7 @@ export function createCharacterModel(charId) {
   const hipY = 18, shoulderY = hipY + torsoH;
 
   // 質感 (程序化後備皮膚)：依原型決定貼圖樣式與粗糙/金屬度
-  const skinKind = SKIN_KIND[charId] || 'cloth';
+  const skinKind = SKIN_KIND[charId] || (bossModel ? (bossModel.robe ? 'cloth' : 'metal') : 'cloth');
   const kRough = skinKind === 'metal' ? 0.42 : skinKind === 'leather' ? 0.62 : skinKind === 'cloth' ? 0.78 : 0.6;
   const kMetal = skinKind === 'metal' ? 0.6 : skinKind === 'leather' ? 0.12 : skinKind === 'cloth' ? 0.04 : 0.1;
   const bodyTex = panelTexture(base, skinKind);
@@ -327,10 +330,47 @@ export function createCharacterModel(charId) {
     // 表情五官目前插值量 (平滑過渡)
     eEye: 1, eBrowTilt: 0, eBrowY: 0, eMouth: 1, eFlinch: 0,
   };
+
+  // 魔王：放大模型 + 胸口能量核心發光 (辨識度)
+  if (bossModel) {
+    if (bossModel.scale) group.scale.setScalar(bossModel.scale);
+    const coreCol = new THREE.Color(bossModel.emissiveCore || base);
+    const core = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(torsoW * 0.22, 1),
+      new THREE.MeshStandardMaterial({ color: coreCol, emissive: coreCol, emissiveIntensity: 2.2, roughness: 0.3, metalness: 0.2, transparent: true, opacity: 0.95 })
+    );
+    core.position.set(torsoD * 0.5, hipY + torsoH * 0.6, 0);
+    group.add(core);
+    group.userData.bossCore = core;
+  }
+  return group;
+}
+
+// 魔王可破壞部位 (R5 雷射臂/巨鋸臂) 的簡易發光水晶模型。
+export function createPartModel(colorHex, scale = 1) {
+  const group = new THREE.Group();
+  const col = new THREE.Color(colorHex || '#ffffff');
+  const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(16, 1),
+    new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 2.0, roughness: 0.35, metalness: 0.3, transparent: true, opacity: 0.95 })
+  );
+  core.position.y = 42; core.castShadow = true;
+  group.add(core);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(24, 2.4, 8, 28),
+    new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.6, transparent: true, opacity: 0.8 })
+  );
+  ring.rotation.x = Math.PI / 2; ring.position.y = 42;
+  group.add(ring);
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(20, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3 }));
+  blob.rotation.x = -Math.PI / 2; blob.position.y = 0.6; group.add(blob);
+  group.scale.setScalar(scale);
+  group.userData = { simple: true, core, breathe: Math.random() * 6.28, baseY: 42 };
   return group;
 }
 
 function buildWeapon(hand, type, base, reg) {
+  if (type === 'none' || !type) return; // 無持械魔王 (巨兵/分身)
   const steel = reg(mat(0xb9c4cf, { rough: 0.35, metal: 0.7 }));
   const dark = reg(mat(0x2b3038, { rough: 0.5, metal: 0.5 }));
   const accent = reg(mat(shade(base, 0.2), { emissive: new THREE.Color(base), ei: 0.5 }));
@@ -464,6 +504,12 @@ export function attachSkin(group, skin) {
 export function animateModel(group, dt, info) {
   const ud = group.userData;
   if (!ud) return;
+  if (ud.simple) { // 簡易模型 (魔王部位/水晶)：僅自轉漂浮
+    ud.breathe = (ud.breathe || 0) + dt * 1.6;
+    if (ud.core) { ud.core.rotation.y += dt * 1.2; ud.core.rotation.x += dt * 0.7; }
+    group.position.y = (ud.baseY || 0) + Math.sin(ud.breathe) * 1.5;
+    return;
+  }
   const { parts } = ud;
 
   // ---- 出手 / 受擊 觸發 (由 renderer 依 cd 上跳 / hp 下降 偵測) ----

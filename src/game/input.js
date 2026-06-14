@@ -61,9 +61,10 @@ export function createInput(controlScheme = 'wasd-jkl') {
       return {
         up: keys.up, down: keys.down, left: keys.left, right: keys.right,
         basic: keys.basic, skill1: keys.skill1, skill2: keys.skill2, ultimate: keys.ultimate,
+        aim: null, // 人類玩家以移動方向轉向；魔王 AI 則合成 aim 角度 (邊走邊瞑)
       };
     },
   };
 }
 
-export const EMPTY_INPUT = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false };
+export const EMPTY_INPUT = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false, aim: null };

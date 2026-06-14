@@ -40,6 +40,27 @@ export function makePlayer(id, name, charId, x, y, team = 0) {
   };
 }
 
+// 魔王/召喚物/分身/部位 共用工廠：以 makePlayer 為基底再加上闖關專屬旗標。
+// charId >= 100 → getCharacter 取魔王資料；召喚物用一般角色 id 並以 opts.maxHp 覆蓋血量。
+export function makeBoss(id, charId, x, y, team, opts = {}) {
+  const e = makePlayer(id, opts.name || 'Boss', charId, x, y, team);
+  if (opts.hpScale) { e.maxHp = Math.max(1, Math.round(e.maxHp * opts.hpScale)); e.hp = e.maxHp; }
+  if (opts.maxHp) { e.maxHp = opts.maxHp; e.hp = e.maxHp; }
+  e.isBoss = !!opts.isBoss;
+  e.isMinion = !!opts.isMinion;
+  e.isFake = !!opts.isFake;   // 假身 (一擊即碎，不造成真傷)
+  e.isPart = !!opts.isPart;   // 可破壞部位 (附著於本體的傷害判定)
+  e.isMirror = !!opts.isMirror;
+  e.ownerId = opts.ownerId || null; // 部位/召喚物所屬本體
+  e.aiId = opts.aiId || null;       // AI 腳本 id (null = 不行動，如部位/假身靜立)
+  e.partId = opts.partId || null;
+  e.bossRound = opts.round || 0;
+  e.scale = opts.scale || 1;        // 模型放大倍率 (渲染用)
+  e.aiState = {};                   // 每王腳本暫存 (不需序列化關鍵邏輯，但會隨 snapshot 帶過去)
+  e.facing = opts.facing != null ? opts.facing : e.facing;
+  return e;
+}
+
 export function spawnPoints(n) {
   const cx = ARENA.width / 2, cy = ARENA.height / 2;
   const r = Math.min(ARENA.width, ARENA.height) * 0.38;
@@ -51,7 +72,7 @@ export function spawnPoints(n) {
   return pts;
 }
 
-export function createInitialState(playersArr, flags = {}) {
+export function createInitialState(playersArr, flags = {}, opts = {}) {
   const pts = spawnPoints(playersArr.length);
   const players = {};
   const cx = ARENA.width / 2, cy = ARENA.height / 2;
@@ -62,6 +83,7 @@ export function createInitialState(playersArr, flags = {}) {
   });
   return {
     phase: 'playing',
+    mode: opts.mode || 'ffa',   // 'ffa' = 原本最後存活；'boss' = 闖關模式
     players,
     projectiles: [],
     zones: [],
@@ -71,6 +93,14 @@ export function createInitialState(playersArr, flags = {}) {
     winnerTeam: 0,   // 0 = 單人勝 / null = 平手；>0 = 獲勝隊伍號
     startCount: playersArr.length,
     flags: { freeMana: false, noCooldown: false, noDamage: false, ...flags },
+    // ---- 闖關模式欄位 (mode==='boss' 時有效) ----
+    round: opts.round || 1,
+    bossId: null,
+    bossHp: 0, bossMaxHp: 0,
+    roundPhase: 'intro',   // 'intro' | 'fighting' | 'cleared' | 'failed' | 'victory'
+    roundTimer: 0,
+    playerCount: playersArr.length,
+    banner: null,          // { text, sub, life } 過場橫幅 (渲染器顯示)
   };
 }
 
@@ -83,6 +113,7 @@ export function makeProjectile(owner, x, y, vx, vy, opt) {
     split: opt.split || null, // 到期/命中時分裂成多顆子彈 { count, dmg, speed, radius, lifetime, spread?, color?, knockback?, effect?, vfx? }
     homing: opt.homing || 0,  // 追蹤轉向速率 (rad/s)，0 = 直線
     pull: opt.pull || null,   // 命中時把目標拉向擁有者 (鉤爪) { gap }
+    leaveZone: opt.leaveZone || null, // 命中/到期於落點生成地面區 (魔王毒池)
     freezeBonus: opt.freezeBonus || 0, // 命中凍結(暫強)Target 時傷害倍率 (0 = 無加成)
     vfx: opt.vfx || null,
     hit: {},
@@ -151,10 +182,28 @@ function talentDamageMods(attacker, target, amount) {
       }
     }
   }
-  const tt = getCharacter(target.charId).talent;
-  if (tt) {
-    if (tt.id === 'unbreakable') dmg *= 1 - (tt.maxDr || 0.35) * missingHp(target); // 戰士：越殘血減傷越高
-    else if (tt.id === 'bulwark') dmg *= 1 - (tt.dr || 0.12);                         // 坦克：固定減傷
+  return dmg;
+}
+
+// 魔王受傷修正 (闖關模式)：正面重甲 / 背後弱點 / 小怪護盾 / 核心護甲。
+function bossDamageMods(state, boss, attacker, dmg) {
+  const mech = getCharacter(boss.charId).mechanic;
+  if (!mech) return dmg;
+  if (attacker && (mech.frontArmor || mech.backWeak)) {
+    const ang = Math.atan2(attacker.y - boss.y, attacker.x - boss.x);
+    const rel = Math.abs(angleDiff(ang, boss.facing)); // 0=正前, PI=正後
+    if (mech.frontArmor && rel < 0.9) dmg *= 1 - mech.frontArmor;        // 前弧減傷
+    if (mech.backWeak && rel > Math.PI - 0.9) dmg *= 1 + mech.backWeak;  // 背後增傷
+  }
+  if (mech.minionShield) { // R6：每隻存活小怪給本體減傷
+    let alive = 0;
+    for (const o of Object.values(state.players)) if (o.isMinion && o.ownerId === boss.id && o.alive) alive++;
+    if (alive > 0) dmg *= 1 - Math.min(mech.minionShield.max || 0.7, (mech.minionShield.perMinion || 0.15) * alive);
+  }
+  if (mech.coreArmorUntilPartsDown) { // R5：雙臂未破前核心減傷
+    let anyPartAlive = false;
+    for (const o of Object.values(state.players)) if (o.isPart && o.ownerId === boss.id && o.alive) { anyPartAlive = true; break; }
+    if (anyPartAlive) dmg *= 1 - mech.coreArmorUntilPartsDown;
   }
   return dmg;
 }
@@ -171,6 +220,7 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
 
   let dmg = amount;
   if (!opts.noTalent && hostile) dmg = talentDamageMods(attacker, target, dmg);
+  if (target.isBoss) dmg = bossDamageMods(state, target, attacker, dmg); // 魔王正面重甲/背後弱點/護盾
   // 死亡印記：受傷放大 (刺客標記引爆體系)
   if (target.effects && target.effects.mark) dmg *= 1 + target.effects.mark.bonus;
   // 友方減傷光環 (坦克大招 protect 效果)

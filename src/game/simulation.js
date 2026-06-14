@@ -4,9 +4,11 @@ import { ARENA, PLAYER_RADIUS, MANA_REGEN, KNOCKBACK_FRICTION, ULT_MAX, ULT_REGE
 import { getCharacter } from './characters.js';
 import { EMPTY_INPUT } from './input.js';
 import {
-  clamp, dist, angleDiff, makeProjectile, makeZone,
+  clamp, dist, angleDiff, makeProjectile, makeZone, makeBoss,
   dealDamage, applyEffect, addFx, missingHp, isEnemy, isAlly,
 } from './entities.js';
+import { computeBossInput } from './bossAI.js';
+import { bossTick, checkBossRound, BOSS_TEAM } from './bossMode.js';
 
 export function speedOf(p) {
   const c = getCharacter(p.charId);
@@ -21,13 +23,15 @@ export function speedOf(p) {
 // 移動 + 擊退位移 + 邊界限制 (房主與加入者預測共用)
 export function applyMovement(p, input, dt) {
   const rooted = !!p.effects.root; // 定身：可轉向/施法，但不可位移 (異於 stun 完全凍結)
+  const scrambled = !!p.effects.scramble; // 混亂 (R8)：移動輸入反轉
   if (!p.effects.stun) {
     let dx = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     let dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
+    if (scrambled) { dx = -dx; dy = -dy; }
     if (dx || dy) {
       const l = Math.hypot(dx, dy);
       dx /= l; dy /= l;
-      p.facing = Math.atan2(dy, dx);
+      if (input.aim == null) p.facing = Math.atan2(dy, dx); // 未指定瞑準時，以移動方向轉向
       if (rooted) { p.vx = 0; p.vy = 0; }
       else {
         const s = speedOf(p);
@@ -37,6 +41,7 @@ export function applyMovement(p, input, dt) {
       }
     } else { p.vx = 0; p.vy = 0; }
   } else { p.vx = 0; p.vy = 0; }
+  if (input.aim != null && !p.effects.stun) p.facing = input.aim; // 指定瞑準 (魔王邊走邊瞑)
 
   p.x += (p.vx + p.kvx) * dt;
   p.y += (p.vy + p.kvy) * dt;
@@ -148,7 +153,7 @@ function executeAction(state, p, a, opts = {}) {
         state.projectiles.push(makeProjectile(
           p.id, p.x + c * PLAYER_RADIUS, p.y + s * PLAYER_RADIUS,
           c * a.speed * speedMul, s * a.speed * speedMul,
-          { dmg: a.dmg * m * dmgMul, radius: a.radius * radiusMul, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect, split: a.split, homing: a.homing, freezeBonus: a.freezeBonus || 0, vfx: projVfx }
+          { dmg: a.dmg * m * dmgMul, radius: a.radius * radiusMul, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect, split: a.split, homing: a.homing, leaveZone: a.leaveZone, freezeBonus: a.freezeBonus || 0, vfx: projVfx }
         ));
       }
       break;
@@ -167,7 +172,7 @@ function executeAction(state, p, a, opts = {}) {
         dx: cos, dy: sin, speed: a.speed || 950, dist: a.range || 300,
         dmg: a.dmg || 0, hitRadius: a.hitRadius || PLAYER_RADIUS * 1.5,
         knockback: a.knockback || 0, effect: a.effect || null,
-        stopOnHit: a.stopOnHit !== false, color: a.color, vfx: a.vfx, hit: {},
+        stopOnHit: a.stopOnHit !== false, wallStun: a.wallStun || 0, color: a.color, vfx: a.vfx, hit: {},
       };
       if (!silent) addFx(state, { type: 'dash', x: p.x, y: p.y, facing: p.facing, color: a.color, life: 0.25, vfx: a.vfx });
       break;
@@ -179,7 +184,7 @@ function executeAction(state, p, a, opts = {}) {
       p.leap = {
         t: 0, dur: a.dur || 0.45, fromx: p.x, fromy: p.y, tx, ty,
         dmg: a.dmg || 0, radius: a.radius || 120, knockback: a.knockback || 0,
-        effect: a.effect || null, color: a.color, vfx: a.vfx,
+        effect: a.effect || null, leaveZone: a.leaveZone || null, color: a.color, vfx: a.vfx,
       };
       if (!silent) addFx(state, { type: 'dash', x: p.x, y: p.y, facing: p.facing, color: a.color, life: 0.25, vfx: a.vfx });
       break;
@@ -237,7 +242,12 @@ function executeAction(state, p, a, opts = {}) {
     case 'buff':
       if (a.cleanse) applyEffect(p, 'cleanse');
       if (a.heal) applyEffect(p, 'heal', { amount: a.heal });
-      if (a.shield) applyEffect(p, 'shield', { amount: a.shield, duration: a.duration });
+      {
+        let shieldAmt = a.shield || 0;
+        if (a.shieldPerMinion) { let mc = 0; for (const o of Object.values(state.players)) if (o.isMinion && o.ownerId === p.id && o.alive) mc++; shieldAmt += a.shieldPerMinion * mc; }
+        if (shieldAmt) applyEffect(p, 'shield', { amount: shieldAmt, duration: a.duration });
+      }
+      if (a.knockbackAura) { for (const o of Object.values(state.players)) { if (!isEnemy(state, p.id, o)) continue; const dx = o.x - p.x, dy = o.y - p.y, d = Math.hypot(dx, dy); if (d > 0 && d < 260) { o.kvx += dx / d * a.knockbackAura; o.kvy += dy / d * a.knockbackAura; } } }
       if (a.effect) applyEffect(p, a.effect.kind, a.effect);
       if (a.trail) p.trail = { remaining: a.trail.duration || 3, spacing: a.trail.spacing || 42, lastx: p.x, lasty: p.y, zone: a.trail.zone };
       if (!silent) addFx(state, { type: 'buff', x: p.x, y: p.y, color: a.color, life: 0.4, radius: PLAYER_RADIUS * 2.2, vfx: a.vfx });
@@ -269,9 +279,136 @@ function executeAction(state, p, a, opts = {}) {
       if (a.recoil) { p.kvx -= cos * a.recoil; p.kvy -= sin * a.recoil; }
       break;
     }
+    // ======== 闖關模式魔王自訂動作 ========
+    case 'summon_clones': bossSummonClones(state, p, a); break;
+    case 'summon_minions': bossSummonMinions(state, p, a); break;
+    case 'apply_scramble': {
+      for (const o of Object.values(state.players)) {
+        if (!isEnemy(state, p.id, o)) continue;
+        if (dist(p.x, p.y, o.x, o.y) <= (a.radius || 320)) applyEffect(o, 'scramble', { duration: a.duration || 2 });
+      }
+      addFx(state, { type: 'buff', x: p.x, y: p.y, color: a.color, life: 0.5, radius: a.radius || 320 });
+      break;
+    }
+    case 'time_rewind': bossTimeRewind(state, p, a); break;
+    case 'soul_bind': bossSoulBind(state, p, a); break;
+    case 'light_dark': bossLightDark(state, p, a); break;
+    case 'mirror_players': bossMirrorPlayers(state, p, a); break;
+    case 'steal_ultimate': bossStealUltimate(state, p, a); break;
   }
   if (a.self) applySelfBuff(p, a.self);
   if (a.ally) applyAllyBuff(state, p, a.ally); // 施放瞬間對友軍的 AoE 增益 (治療/護盾/減傷)
+}
+
+// ======== 魔王自訂動作實作 ========
+function bossSummonClones(state, boss, a) {
+  const n = a.count || 3;
+  const clones = [];
+  for (let i = 0; i < n; i++) {
+    const ang = (i / n) * Math.PI * 2;
+    const x = clamp(boss.x + Math.cos(ang) * 90, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
+    const y = clamp(boss.y + Math.sin(ang) * 90, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+    const id = boss.id + '-clone-' + Math.random().toString(36).slice(2, 7);
+    const c = makeBoss(id, boss.charId, x, y, BOSS_TEAM, { isFake: true, ownerId: boss.id, aiId: 'fake', maxHp: 1, scale: boss.scale, facing: boss.facing });
+    state.players[id] = c;
+    clones.push(c);
+  }
+  // 真身與隨機分身換位 (swapTell)
+  if (clones.length && Math.random() < 0.6) {
+    const c = clones[Math.floor(Math.random() * clones.length)];
+    const tx = c.x, ty = c.y; c.x = boss.x; c.y = boss.y; boss.x = tx; boss.y = ty;
+  }
+  addFx(state, { type: 'blink', x: boss.x, y: boss.y, color: a.color, life: 0.4, radius: 90 });
+}
+
+function bossSummonMinions(state, boss, a) {
+  const n = a.count || 3;
+  const hp = Math.round((a.minionHp || 240) * (state._hpScale || 1));
+  for (let i = 0; i < n; i++) {
+    const ang = (i / n) * Math.PI * 2 + Math.random();
+    const x = clamp(boss.x + Math.cos(ang) * 110, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
+    const y = clamp(boss.y + Math.sin(ang) * 110, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+    const id = boss.id + '-min-' + Math.random().toString(36).slice(2, 7);
+    const m = makeBoss(id, a.minionCharId != null ? a.minionCharId : 7, x, y, BOSS_TEAM, { isMinion: true, ownerId: boss.id, aiId: 'minion', maxHp: hp, scale: 1 });
+    state.players[id] = m;
+  }
+  addFx(state, { type: 'buff', x: boss.x, y: boss.y, color: a.color, life: 0.5, radius: 100 });
+}
+
+function bossTimeRewind(state, boss, a) {
+  const back = Math.round((a.rewindSeconds || 3) * 30);
+  for (const o of Object.values(state.players)) {
+    if (!isEnemy(state, boss.id, o)) continue;
+    if (a.dmg) dealDamage(state, o, a.dmg, boss.id);
+    const h = o._hist;
+    if (h && h.length) {
+      const idx = Math.max(0, h.length - back);
+      const pos = h[idx];
+      o.x = clamp(pos.x, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
+      o.y = clamp(pos.y, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+      addFx(state, { type: 'blink', x: o.x, y: o.y, color: a.color, life: 0.3, radius: 50 });
+    }
+  }
+  const en = Object.values(state.players).filter((o) => isEnemy(state, boss.id, o));
+  if (en.length >= 2) {
+    let i = Math.floor(Math.random() * en.length), j = Math.floor(Math.random() * en.length);
+    if (j === i) j = (j + 1) % en.length;
+    const A = en[i], B = en[j], tx = A.x, ty = A.y; A.x = B.x; A.y = B.y; B.x = tx; B.y = ty;
+  }
+  addFx(state, { type: 'ultimate', x: boss.x, y: boss.y, color: a.color, life: 0.6, radius: a.radius || 150 });
+}
+
+function bossSoulBind(state, boss, a) {
+  const en = Object.values(state.players).filter((o) => isEnemy(state, boss.id, o) && o.alive);
+  if (en.length < 2) return;
+  for (let i = en.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = en[i]; en[i] = en[j]; en[j] = t; }
+  if (!state.tethers) state.tethers = [];
+  const pairs = Math.floor(Math.min(a.count || 2, en.length) / 2);
+  for (let k = 0; k < pairs; k++) {
+    const x = en[k * 2], y = en[k * 2 + 1];
+    state.tethers.push({ a: x.id, b: y.id, minGap: a.minGap || 200, dmg: a.dmg || 18, tick: a.tick || 0.5, tickTimer: 0.5, remaining: a.duration || 6 });
+    addFx(state, { type: 'buff', x: x.x, y: x.y, color: a.color, life: 0.6, radius: 70 });
+    addFx(state, { type: 'buff', x: y.x, y: y.y, color: a.color, life: 0.6, radius: 70 });
+  }
+}
+
+function bossLightDark(state, boss, a) {
+  const safeLeft = Math.random() < 0.5;
+  const midX = ARENA.width / 2;
+  for (const o of Object.values(state.players)) {
+    if (!isEnemy(state, boss.id, o)) continue;
+    const onLeft = o.x < midX;
+    if (onLeft !== safeLeft) { // 站錯側
+      dealDamage(state, o, a.dmg || 80, boss.id);
+      o.kvx += (onLeft ? -1 : 1) * 220;
+    }
+  }
+  addFx(state, { type: 'ultimate', x: midX, y: ARENA.height / 2, color: a.color, life: 0.7, radius: 220 });
+}
+
+function bossMirrorPlayers(state, boss, a) {
+  const en = Object.values(state.players).filter((o) => o.team === 1 && o.alive);
+  for (const o of en) {
+    const x = clamp(boss.x + (o.x - boss.x) * 0.4, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
+    const y = clamp(boss.y + 70, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+    const id = boss.id + '-mirror-' + o.id;
+    if (state.players[id]) continue;
+    const m = makeBoss(id, o.charId, x, y, BOSS_TEAM, { isMirror: true, ownerId: boss.id, aiId: 'mirror', maxHp: o.maxHp, scale: 1, name: '镜像' });
+    state.players[id] = m;
+    addFx(state, { type: 'blink', x, y, color: a.color, life: 0.4, radius: 70 });
+  }
+}
+
+function bossStealUltimate(state, boss, a) {
+  const en = Object.values(state.players).filter((o) => o.team === 1 && o.alive);
+  if (!en.length) return;
+  const victim = en[Math.floor(Math.random() * en.length)];
+  const ult = getCharacter(victim.charId).ultimate;
+  if (!ult) return;
+  const tgt = en.reduce((b, o) => (dist(boss.x, boss.y, o.x, o.y) < dist(boss.x, boss.y, b.x, b.y) ? o : b), en[0]);
+  boss.facing = Math.atan2(tgt.y - boss.y, tgt.x - boss.x);
+  executeAction(state, boss, ult, { silent: true });
+  addFx(state, { type: 'ultimate', x: boss.x, y: boss.y, color: a.color, life: 0.6, radius: ult.radius || 140 });
 }
 
 // 開始蔀力 (chargeMax 技能: 均不打出，只記錄撇)
@@ -320,8 +457,11 @@ function tryUltimate(state, p) {
   if (!a) return;
   if (p.cd.ultimate > 0) return;
   const freeMana = state.flags && state.flags.freeMana;
-  if (!freeMana && (p.ult || 0) < ULT_MAX) return;
-  if (!freeMana) p.ult = 0;
+  const isAI = p.isBoss || p.aiId; // 魔王/召喚物/镜像：大招改為純 cd 閘，不用能量槽
+  if (!isAI) {
+    if (!freeMana && (p.ult || 0) < ULT_MAX) return;
+    if (!freeMana) p.ult = 0;
+  }
   p.cd.ultimate = a.cd || ULT_LOCKOUT;
   executeAction(state, p, a, { silent: true });
   // 單一大招施放特效 (螢幕級華麗表現由 vfx onCast 處理)
@@ -394,6 +534,7 @@ function updateProjectiles(state, dt) {
     const oob = pr.x < 0 || pr.y < 0 || pr.x > ARENA.width || pr.y > ARENA.height;
     if (pr.lifetime <= 0 || oob) {
       if (pr.split && !oob) splitProjectile(state, pr, spawned); // 飛行到期於界內爆散
+      if (pr.leaveZone && !oob) state.zones.push(makeZone(pr.owner, pr.x, pr.y, pr.leaveZone)); // 毒池
       continue;
     }
     let dead = false;
@@ -425,6 +566,7 @@ function updateProjectiles(state, dt) {
     }
     if (dead) {
       if (pr.split) splitProjectile(state, pr, spawned); // 命中爆散
+      if (pr.leaveZone) state.zones.push(makeZone(pr.owner, pr.x, pr.y, pr.leaveZone)); // 毒池
       continue;
     }
     keep.push(pr);
@@ -514,8 +656,11 @@ function processScripted(state, p, dt) {
   if (p.charge) {
     const c = p.charge;
     const advance = c.speed * dt;
-    p.x = clamp(p.x + c.dx * advance, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
-    p.y = clamp(p.y + c.dy * advance, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+    const nx = p.x + c.dx * advance, ny = p.y + c.dy * advance;
+    const cx = clamp(nx, PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
+    const cy = clamp(ny, PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
+    const hitWall = (cx !== nx) || (cy !== ny);
+    p.x = cx; p.y = cy;
     c.dist -= advance;
     let hitSomeone = false;
     for (const o of Object.values(state.players)) {
@@ -530,6 +675,11 @@ function processScripted(state, p, dt) {
     }
     p.vx = 0; p.vy = 0;
     if (hitSomeone && c.stopOnHit) { addFx(state, { type: 'hit', x: p.x, y: p.y, color: c.color, life: 0.26, radius: c.hitRadius * 1.4, vfx: c.vfx }); p.charge = null; }
+    else if (hitWall && c.wallStun) { // R3 燔岩鐵衛：衝鑄撞牆未命中→自暈 (開窗)
+      applyEffect(p, 'stun', { duration: c.wallStun });
+      addFx(state, { type: 'hit', x: p.x, y: p.y, color: c.color, life: 0.5, radius: c.hitRadius * 1.8, vfx: c.vfx });
+      p.charge = null;
+    }
     else if (c.dist <= 0) p.charge = null;
     return true;
   }
@@ -543,6 +693,7 @@ function processScripted(state, p, dt) {
     if (k >= 1) {
       meleeHit(state, p, { dmg: l.dmg, range: l.radius, arc: 7, knockback: l.knockback, effect: l.effect, vfx: l.vfx }, false);
       addFx(state, { type: 'hit', x: p.x, y: p.y, color: l.color, life: 0.3, radius: l.radius, vfx: l.vfx });
+      if (l.leaveZone) state.zones.push(makeZone(p.id, p.x, p.y, l.leaveZone));
       p.leap = null;
     }
     return true;
@@ -592,7 +743,11 @@ export function step(state, inputs, dt) {
 
   for (const p of Object.values(state.players)) {
     if (!p.alive) continue;
-    const input = inputs[p.id] || EMPTY_INPUT;
+    let input = inputs[p.id] || EMPTY_INPUT;
+    // 魔王/召喚物/镜像：以 AI 計算輸入取代鍵盤 (僅 fighting 階段行動；host-only 運算)
+    if (p.aiId && state.mode === 'boss') {
+      input = state.roundPhase === 'fighting' ? computeBossInput(state, p, dt) : EMPTY_INPUT;
+    }
     const talent = getCharacter(p.charId).talent;
 
     // 攻速天賦 (狂戰士嗜血狂暴：殘血加速冷卻回復)
@@ -687,5 +842,6 @@ export function step(state, inputs, dt) {
   updateProjectiles(state, dt);
   updateZones(state, dt);
   updateFx(state, dt);
-  checkWin(state);
+  if (state.mode === 'boss') { bossTick(state, dt); checkBossRound(state, dt); }
+  else checkWin(state);
 }

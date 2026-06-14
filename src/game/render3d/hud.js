@@ -55,6 +55,21 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
   const boardTitle = el('div', 'hud-board-title', board);
   const boardList = el('div', 'hud-board-list', board);
 
+  // 魔王面板 (上方中央) — 闖關模式
+  const bossPanel = el('div', 'hud-boss', layer);
+  const bossName = el('div', 'hud-boss-name', bossPanel);
+  const bossBarWrap = el('div', 'hud-boss-bar', bossPanel);
+  const bossFill = el('i', '', bossBarWrap);
+  const bossTxt = el('span', '', bossBarWrap);
+  const bossParts = el('div', 'hud-boss-parts', bossPanel);
+  bossPanel.style.display = 'none';
+
+  // 過場橫幅 (中央)
+  const banner = el('div', 'hud-banner', layer);
+  const bannerText = el('div', 'hud-banner-text', banner);
+  const bannerSub = el('div', 'hud-banner-sub', banner);
+  banner.style.display = 'none';
+
   // 頭頂名牌
   const plates = new Map(); // pid -> { obj, name, hp, mp, root }
 
@@ -142,16 +157,60 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
     }
 
     // 計分板
-    const sorted = players.slice().sort((a, b) => b.kills - a.kills);
-    const aliveN = players.filter((p) => p.alive).length;
-    boardTitle.textContent = `存活 ${aliveN} 人`;
+    const isBoss = state.mode === 'boss';
+    const listPlayers = isBoss ? players.filter((p) => p.team === 1) : players;
+    const sorted = listPlayers.slice().sort((a, b) => b.kills - a.kills);
+    const aliveN = listPlayers.filter((p) => p.alive).length;
+    boardTitle.textContent = isBoss ? `闖關隊伍 ${aliveN}/${listPlayers.length} 存活` : `存活 ${aliveN} 人`;
     let html = '';
     for (const p of sorted) {
       const cls = p.id === selfId ? 'me' : p.alive ? '' : 'dead';
-      const tag = p.alive ? '' : ' ✕';
-      html += `<div class="row ${cls}">${esc(getCharacter(p.charId).name)} ${esc(p.name)}　K:${p.kills}${tag}</div>`;
+      let tag = p.alive ? '' : ' ✕';
+      if (isBoss && !p.alive) { const rp = Math.floor(Math.min(1, (p.reviveProg || 0) / 3) * 100); tag = ` 倒地 ${rp}%`; }
+      html += `<div class="row ${cls}">${esc(getCharacter(p.charId).name)} ${esc(p.name)}${isBoss ? '' : '　K:' + p.kills}${tag}</div>`;
     }
     boardList.innerHTML = html;
+
+    // ---- 闖關模式：魔王血條 / 部位 / 過場橫幅 ----
+    if (isBoss) {
+      let boss = null;
+      for (const p of players) if (p.isBoss) { boss = p; break; }
+      if (boss && boss.alive && state.roundPhase !== 'cleared') {
+        bossPanel.style.display = '';
+        const bc = getCharacter(boss.charId);
+        bossName.textContent = `ROUND ${state.round}　${bc.subtitle ? bc.subtitle + '「' + bc.name + '」' : bc.name}`;
+        const hp = state.bossHp != null ? state.bossHp : boss.hp;
+        const mhp = state.bossMaxHp || boss.maxHp;
+        bossFill.style.width = pct(hp / mhp);
+        bossTxt.textContent = `${Math.ceil(hp)} / ${mhp}`;
+        const parts = players.filter((p) => p.isPart && p.ownerId === boss.id);
+        if (parts.length) {
+          let ph = '';
+          for (const pp of parts) {
+            const dead = !pp.alive;
+            const w = dead ? 0 : Math.max(0, Math.min(100, (pp.hp / pp.maxHp) * 100));
+            ph += `<div class="bpart ${dead ? 'dead' : ''}"><span>${esc(partLabel(bc, pp.partId))}${dead ? ' 已破壞' : ''}</span><b><i style="width:${w}%"></i></b></div>`;
+          }
+          bossParts.innerHTML = ph;
+        } else bossParts.innerHTML = '';
+      } else {
+        bossPanel.style.display = 'none';
+      }
+      if (state.banner && (state.banner.life == null || state.banner.life > 0)) {
+        banner.style.display = '';
+        bannerText.textContent = state.banner.text || '';
+        bannerSub.textContent = state.banner.sub || '';
+      } else banner.style.display = 'none';
+    } else {
+      bossPanel.style.display = 'none';
+      banner.style.display = 'none';
+    }
+  }
+
+  function partLabel(bc, partId) {
+    const parts = bc.model && bc.model.parts;
+    if (parts) { const f = parts.find((x) => x.id === partId); if (f) return f.label; }
+    return partId;
   }
 
   function setChip(c, action, cd) {

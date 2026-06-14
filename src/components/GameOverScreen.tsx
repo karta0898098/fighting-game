@@ -12,17 +12,22 @@ interface GameOverScreenProps {
 }
 
 export function GameOverScreen({ view, onToLobby, onLeave }: GameOverScreenProps) {
-  const { winnerName, winnerTeam, players, isHost } = view;
+  const { winnerName, winnerTeam, players, isHost, bossResult, bossRound } = view;
   const sorted = [...players].sort((a, b) => b.kills - a.kills);
-  const title = winnerName
-    ? (winnerTeam && winnerTeam > 0 ? `🏆 隊伍 ${winnerTeam} 獲勝！` : `🏆 ${winnerName} 獲勝！`)
-    : '平手 — 無人存活';
+  const title = bossResult
+    ? (bossResult === 'victory'
+        ? '🏆 全部魔王討伐完成！'
+        : `💀 闖關失敗 — 止步於 ROUND ${bossRound ?? '?'}`)
+    : winnerName
+      ? (winnerTeam && winnerTeam > 0 ? `🏆 隊伍 ${winnerTeam} 獲勝！` : `🏆 ${winnerName} 獲勝！`)
+      : '平手 — 無人存活';
 
   return (
     <section id="screen-gameover" className="screen active">
       <div className="panel">
         <h1>{title}</h1>
-        <h3>本局戰績</h3>
+        {bossResult && <p className="hint">{bossResult === 'victory' ? '你們擊敗了全部 10 位魔王，傳奇就此誕生。' : '靠近倒地的隊友即可拉起，下次再協力挑戰！'}</p>}
+        <h3>{bossResult ? '闖關隊伍' : '本局戰績'}</h3>
         <div className="player-list">
           {sorted.map((p, i) => {
             const c = getCharacter(p.charId);

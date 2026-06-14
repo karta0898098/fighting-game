@@ -40,6 +40,8 @@ export interface GameOverView {
   winnerTeam?: number; // 0 = 單人勝 / >0 = 獲勝隊伍
   players: GameOverPlayer[];
   isHost: boolean;
+  bossResult?: 'victory' | 'defeat'; // 闖關模式結果
+  bossRound?: number;                // 抵達/通關的關卡
 }
 
 // 角色資料：characters.js 為 .js，這裡描述 UI 會用到的欄位。
@@ -91,7 +93,9 @@ export interface GameController {
   addNpc(): void;
   removeNpc(): void;
   startGame(): void;
+  startBossGame(): void;
   devStartGame(charId?: number): void;
+  devStartBoss(charId?: number): void;
   returnToLobby(): void;
   leave(): void;
   attachCanvas(canvas: HTMLCanvasElement): void;

@@ -45,8 +45,10 @@ export function App() {
     const envDev = import.meta.env?.VITE_DEV_MODE;
     const isDev = devModeParam === 'true' || envDev === 'true';
     if (isDev) {
+      const bossParam = params.get('boss');
       const charId = roleParam ? parseInt(roleParam, 10) : undefined;
-      setTimeout(() => controller.devStartGame(charId), 100);
+      if (bossParam === 'true') setTimeout(() => controller.devStartBoss(charId), 100);
+      else setTimeout(() => controller.devStartGame(charId), 100);
     }
   }, [controller]);
 
@@ -111,6 +113,7 @@ export function App() {
             onAddNpc={() => controller.addNpc()}
             onRemoveNpc={() => controller.removeNpc()}
             onStart={() => controller.startGame()}
+            onStartBoss={() => controller.startBossGame()}
             onLeave={() => controller.leave()}
           />
         );

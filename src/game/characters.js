@@ -26,6 +26,8 @@
 // 友方增益 ally: { radius, heal?, shield?, cleanse?, duration?, effect?, effects? } 對範圍內友方(含自己)施加(支援型技能)
 // 天賦 talent: { id, name, desc, ...參數 }  由 simulation/entities 依 id 套用被動效果
 
+import { getBoss } from './bosses.js';
+
 const publicAsset = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
 export const CHARACTERS = [
@@ -152,5 +154,7 @@ export const CHARACTERS = [
 ];
 
 export function getCharacter(id) {
+  // id >= 100 → 闖關模式魔王資料 (沿用相同 schema，重用整條模型/HUD/VFX/傷害管線)
+  if (id >= 100) { const b = getBoss(id); if (b) return b; }
   return CHARACTERS[id] || CHARACTERS[0];
 }
