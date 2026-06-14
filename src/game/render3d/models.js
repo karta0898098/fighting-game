@@ -293,9 +293,27 @@ export function createCharacterModel(charId) {
   burnRing.position.y = 3;
   burnRing.visible = false;
   group.add(burnRing);
+  // 凍結外殼 (p.effects.frozen 時顯示，冰藍冷光)
+  // 上下兩圈戏劇化冰封效果
+  const frozenRingLow = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 1.3, 2.6, 8, 40),
+    new THREE.MeshStandardMaterial({ color: 0xb8efff, emissive: 0x49d0ff, emissiveIntensity: 3.2, transparent: true, opacity: 0.92 })
+  );
+  frozenRingLow.rotation.x = -Math.PI / 2;
+  frozenRingLow.position.y = 6;
+  frozenRingLow.visible = false;
+  group.add(frozenRingLow);
 
+  const frozenRingHigh = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 0.95, 2.0, 8, 40),
+    new THREE.MeshStandardMaterial({ color: 0xe0f8ff, emissive: 0x9fe8ff, emissiveIntensity: 2.8, transparent: true, opacity: 0.85 })
+  );
+  frozenRingHigh.rotation.x = -Math.PI / 2;
+  frozenRingHigh.position.y = 52;
+  frozenRingHigh.visible = false;
+  group.add(frozenRingHigh);
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, handR, face, accents },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, handR, face, accents },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -557,6 +575,22 @@ export function animateModel(group, dt, info) {
     const pulse = 0.8 + 0.2 * Math.sin(ud.breathe * 9);
     parts.burnRing.scale.setScalar(pulse);
     parts.burnRing.material.emissiveIntensity = 1.8 + 1.0 * pulse;
+  }
+
+  // 凍結外殼：快速閃燈 + 旋轉
+  const frozenOn = p && p.effects && p.effects.frozen;
+  parts.frozenRingLow.visible = !!frozenOn;
+  parts.frozenRingHigh.visible = !!frozenOn;
+  if (frozenOn) {
+    const pulse = 0.88 + 0.12 * Math.sin(ud.breathe * 12);
+    const spin = ud.breathe * 0.8; // 慢速旋轉
+    parts.frozenRingLow.scale.setScalar(pulse);
+    parts.frozenRingHigh.scale.setScalar(pulse);
+    parts.frozenRingLow.rotation.z = spin;
+    parts.frozenRingHigh.rotation.z = -spin * 1.4;
+    const glow = 2.6 + 1.4 * Math.sin(ud.breathe * 14);
+    parts.frozenRingLow.material.emissiveIntensity = glow;
+    parts.frozenRingHigh.material.emissiveIntensity = glow * 0.85;
   }
 
   // ---- 臉部表情：中性 / 專注(出手) / 痛苦(受擊)；hurt 優先 ----

@@ -58,6 +58,66 @@ registerVfx('archer_arrow', {
   },
 });
 
+// 蓄力貫穿箭：尺寸依 pr.radius 自動反映蓄力程度 + 冰藍能量外殼
+registerVfx('archer_arrow_charged', {
+  projectile(ctx, pr) {
+    const g = new THREE.Group();
+    const baseCol = new THREE.Color('#9fe8ff');
+    const whiteCol = new THREE.Color('#ffffff');
+    // 主箭桿（發白光）
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(pr.radius * 0.38, pr.radius * 0.22, pr.radius * 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: baseCol, emissiveIntensity: 2.8 })
+    );
+    shaft.rotation.z = Math.PI / 2; g.add(shaft);
+    // 能量外殼（線框球，旋轉）
+    const shell = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(pr.radius * 1.5, 1),
+      new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: baseCol, emissiveIntensity: 3.8, transparent: true, opacity: 0.38, wireframe: true })
+    );
+    g.add(shell);
+    // 箭頭（放大版）
+    const tip = new THREE.Mesh(
+      new THREE.ConeGeometry(pr.radius * 1.3, pr.radius * 3.5, 7),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: whiteCol, emissiveIntensity: 3.5, metalness: 0.8, roughness: 0.1 })
+    );
+    tip.rotation.z = -Math.PI / 2; tip.position.x = pr.radius * 5.5; g.add(tip);
+    // 尾羽（4 片，冰藍）
+    for (let i = 0; i < 4; i++) {
+      const f = new THREE.Mesh(
+        new THREE.BoxGeometry(pr.radius * 2.2, 0.7, pr.radius * 1.6),
+        new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.75 })
+      );
+      f.position.x = -pr.radius * 3.2; f.rotation.x = (i / 4) * Math.PI; g.add(f);
+    }
+    return {
+      object3D: g,
+      update(dt) {
+        shell.rotation.x += dt * 5;
+        shell.rotation.y += dt * 7;
+        // 冰藍能量粒子尾跡
+        for (let i = 0; i < 2; i++) {
+          ctx.particles.spawn({
+            x: g.position.x + (Math.random() - 0.5) * pr.radius * 3,
+            y: g.position.y + Math.random() * 20,
+            z: g.position.z + (Math.random() - 0.5) * pr.radius * 3,
+            vx: 0, vy: 15, vz: 0, drag: 5, gravity: 0,
+            life: 0.28, size: pr.radius * 1.6, color: Math.random() < 0.55 ? '#9fe8ff' : '#ffffff', fade: true,
+          });
+        }
+      },
+    };
+  },
+  onHit(ctx, f, c) {
+    const R = (f.radius || 20) * 3.2;
+    ring(ctx, c, { color: '#9fe8ff', from: 6, to: R, life: 0.44, y: 8, ease: true });
+    ring(ctx, c, { color: '#ffffff', from: 4, to: R * 0.55, life: 0.28, y: 14, alpha: 0.9 });
+    burst(ctx, c, { color: ['#9fe8ff', '#ffffff', '#7fefff'], count: 28, speed: 320, up: 100, life: 0.58, size: 3.8 });
+    ctx.sceneMgr.addFlash(0.18, '#9fe8ff');
+    ctx.sceneMgr.addShake(10);
+  },
+});
+
 registerVfx('archer_multishot', {
   projectile(ctx, pr) { return makeArrow(ctx, pr, '#7bed9f'); },
   onHit(ctx, f, c) {

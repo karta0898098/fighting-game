@@ -28,6 +28,7 @@ export function makePlayer(id, name, charId, x, y, team = 0) {
     kills: 0,
     ult: 0, // 終極能量 (0..ULT_MAX)
     cd: { basic: 0, skill1: 0, skill2: 0, ultimate: 0 },
+    chargeState: null, // { slot: 'skill1', time: 0.5 } 記錄譯力技能的蔀力狀態
     effects: {}, // kind -> { remaining, factor?, speed?, dmg? }
     // 主機端腳本化狀態 (隨 snapshot 序列化，加入者僅讀位置不需用到)
     charge: null,   // 衝鋒即停 { dx,dy,speed,dist,dmg,hitRadius,knockback,effect,stopOnHit,color,vfx,hit }
@@ -82,6 +83,7 @@ export function makeProjectile(owner, x, y, vx, vy, opt) {
     split: opt.split || null, // 到期/命中時分裂成多顆子彈 { count, dmg, speed, radius, lifetime, spread?, color?, knockback?, effect?, vfx? }
     homing: opt.homing || 0,  // 追蹤轉向速率 (rad/s)，0 = 直線
     pull: opt.pull || null,   // 命中時把目標拉向擁有者 (鉤爪) { gap }
+    freezeBonus: opt.freezeBonus || 0, // 命中凍結(暫強)Target 時傷害倍率 (0 = 無加成)
     vfx: opt.vfx || null,
     hit: {},
   };
@@ -226,7 +228,7 @@ export function applyEffect(p, kind, data, srcId) {
   }
   if (kind === 'cleanse') {
     delete p.effects.slow; delete p.effects.stun; delete p.effects.burn;
-    delete p.effects.bleed; delete p.effects.chill; delete p.effects.root; delete p.effects.mark;
+    delete p.effects.bleed; delete p.effects.chill; delete p.effects.root; delete p.effects.mark; delete p.effects.frozen;
     return;
   }
   if (kind === 'burn') {

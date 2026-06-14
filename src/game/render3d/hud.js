@@ -44,6 +44,12 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
     basic: skillChip(keys.basic, skills), skill1: skillChip(keys.skill1, skills), skill2: skillChip(keys.skill2, skills), ultimate: skillChip(keys.ultimate, skills),
   };
 
+  // 蓄力條 (蓄力技能用，平時隱藏)
+  const chargeWrap = el('div', 'hud-bar charge', self);
+  const chargeFill = el('i', '', chargeWrap);
+  const chargeTxt  = el('span', '', chargeWrap);
+  chargeWrap.style.display = 'none';
+
   // 計分板 (右上)
   const board = el('div', 'hud-board', layer);
   const boardTitle = el('div', 'hud-board-title', board);
@@ -116,6 +122,21 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
       setChip(chip.skill1, c.skill1, me.cd.skill1);
       setChip(chip.skill2, c.skill2, me.cd.skill2);
       setUltChip(chip.ultimate, c.ultimate, me.ult || 0, me.cd.ultimate);
+
+      // 蓄力條
+      const cs = me.chargeState;
+      const chargeAction = cs && c[cs.slot];
+      if (cs && chargeAction && chargeAction.chargeMax) {
+        chargeWrap.style.display = '';
+        const r = Math.min(1, cs.time / chargeAction.chargeMax);
+        chargeFill.style.width = pct(r);
+        const isFull = r >= 0.99;
+        chargeWrap.classList.toggle('full', isFull);
+        chargeTxt.textContent = isFull ? '🔥 蓄力全滿！' : `蓄力中 ${Math.floor(r * 100)}%`;
+      } else {
+        chargeWrap.style.display = 'none';
+        chargeWrap.classList.remove('full');
+      }
     } else {
       self.style.display = 'none';
     }

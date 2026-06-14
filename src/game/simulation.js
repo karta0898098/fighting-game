@@ -29,7 +29,12 @@ export function applyMovement(p, input, dt) {
       dx /= l; dy /= l;
       p.facing = Math.atan2(dy, dx);
       if (rooted) { p.vx = 0; p.vy = 0; }
-      else { const s = speedOf(p); p.vx = dx * s; p.vy = dy * s; }
+      else {
+        const s = speedOf(p);
+        // 蓄力中速度降為 35%
+        const moveSpeed = p.chargeState ? s * 0.35 : s;
+        p.vx = dx * moveSpeed; p.vy = dy * moveSpeed;
+      }
     } else { p.vx = 0; p.vy = 0; }
   } else { p.vx = 0; p.vy = 0; }
 
@@ -88,6 +93,13 @@ function applyEffectFrom(state, target, effect, srcId) {
       e = { ...effect, dmg: Math.round((effect.dmg || 0) * (t.burnDmg || 1.5)), duration: (effect.duration || 2) * (t.burnDur || 1.4) };
     }
   }
+  // 元素使天賦烈焰精通：對即時凍結有免疫，預警只疊 1 層屡而不会立刻凍結
+  if (effect.kind === 'chill' && (effect.stacks || 1) >= (effect.max || 4)) {
+    const tt = getCharacter(target.charId).talent;
+    if (tt && tt.id === 'pyromancy') {
+      e = { ...e, stacks: 1 };
+    }
+  }
   applyEffect(target, e.kind, e, srcId);
 }
 
@@ -119,18 +131,24 @@ function applyAllyBuff(state, caster, ally) {
 
 function executeAction(state, p, a, opts = {}) {
   const silent = !!opts.silent; // 大招以單一 'ultimate' fx 取代動作自身的施放 fx，避免重複觸發
+  const dmgMul = opts.chargeFactor || 1;        // 蓄力傷害倍數 (1x~2x)
+  const chargeRatio = opts.chargeRatio || 0;   // 蓄力比例 0~1，供速度/半徑/特效縮放
   const cos = Math.cos(p.facing), sin = Math.sin(p.facing);
   switch (a.type) {
     case 'projectile': {
       const m = outMult(p, a);
       const n = a.count || 1;
+      // chargeMax 技能才套蓄力縮放，避免影響其他角色飛彈
+      const speedMul  = a.chargeMax ? 1 + chargeRatio * 0.6  : 1; // 速度 1x~1.6x
+      const radiusMul = a.chargeMax ? 1 + chargeRatio * 1.2  : 1; // 碰撞半徑 1x~2.2x
+      const projVfx   = a.chargeMax && chargeRatio > 0 ? a.vfx + '_charged' : a.vfx;
       for (let i = 0; i < n; i++) {
         const ang = p.facing + (i - (n - 1) / 2) * (a.spread || 0);
         const c = Math.cos(ang), s = Math.sin(ang);
         state.projectiles.push(makeProjectile(
           p.id, p.x + c * PLAYER_RADIUS, p.y + s * PLAYER_RADIUS,
-          c * a.speed, s * a.speed,
-          { dmg: a.dmg * m, radius: a.radius, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect, split: a.split, homing: a.homing, vfx: a.vfx }
+          c * a.speed * speedMul, s * a.speed * speedMul,
+          { dmg: a.dmg * m * dmgMul, radius: a.radius * radiusMul, lifetime: a.lifetime, color: a.color, knockback: a.knockback, pierce: a.pierce, effect: a.effect, split: a.split, homing: a.homing, freezeBonus: a.freezeBonus || 0, vfx: projVfx }
         ));
       }
       break;
@@ -256,10 +274,36 @@ function executeAction(state, p, a, opts = {}) {
   if (a.ally) applyAllyBuff(state, p, a.ally); // 施放瞬間對友軍的 AoE 增益 (治療/護盾/減傷)
 }
 
+// 開始蔀力 (chargeMax 技能: 均不打出，只記錄撇)
+function tryStartCharge(p, a, slot) {
+  if (p.chargeState) return; // 已在蔀力另一個技能，否戙
+  p.chargeState = { slot, time: 0 }; // 開始蔀力，不消費償力/冷却
+}
+
+// 搹力技能確實發射：推進反寶對記錄 + 傷害贈旍
+// 譯力時間贈旍: 1 + (chargeTime / chargeMax) * 最大 1 = 2x
+function executeChargedAction(state, p, slot) {
+  const c = getCharacter(p.charId);
+  const a = c[slot];
+  if (!a || !a.chargeMax) return;
+  if (p.chargeState && p.chargeState.slot !== slot) return; // 無效例外
+  const t = p.chargeState ? p.chargeState.time : 0;
+  const ratio = Math.min(1, t / a.chargeMax); // 0~1
+  const chargeFac = 1 + ratio;               // 傷害 1x~2x
+  executeAction(state, p, a, { chargeFactor: chargeFac, chargeRatio: ratio });
+  p.chargeState = null; // 清除蔀力
+}
+
 function tryAction(state, p, slot) {
   const c = getCharacter(p.charId);
   const a = c[slot];
   if (!a || p.cd[slot] > 0) return;
+  // 如果是蔀力技能，開始蔀力而不是程せ打出
+  if (a.chargeMax) {
+    tryStartCharge(p, a, slot);
+    return;
+  }
+  // 一般技能
   const freeMana = state.flags && state.flags.freeMana;
   if (!freeMana && a.manaCost && p.mana < a.manaCost) return;
   if (a.hpCost && p.hp <= a.hpCost) return;
@@ -356,7 +400,9 @@ function updateProjectiles(state, dt) {
     for (const o of Object.values(state.players)) {
       if (!isEnemy(state, pr.owner, o) || pr.hit[o.id]) continue;
       if (dist(pr.x, pr.y, o.x, o.y) <= pr.radius + PLAYER_RADIUS) {
-        dealDamage(state, o, pr.dmg, pr.owner);
+        // 凍結加成：目標處於封凍狀態(stun)時傷害提升 (烎燃溶冰組合)
+        const hitDmg = (pr.freezeBonus && o.effects && o.effects.stun) ? pr.dmg * pr.freezeBonus : pr.dmg;
+        dealDamage(state, o, hitDmg, pr.owner);
         if (pr.knockback) {
           const l = Math.hypot(pr.vx, pr.vy) || 1;
           o.kvx += (pr.vx / l) * pr.knockback; o.kvy += (pr.vy / l) * pr.knockback;
@@ -568,7 +614,13 @@ export function step(state, inputs, dt) {
         e.tickTimer -= dt * (moving ? e.moveMult : 1);
         if (e.tickTimer <= 0) { e.tickTimer += e.tick; dealDamage(state, p, e.dmg, e.srcId); addFx(state, { type: 'burn', x: p.x, y: p.y, color: '#e84141', life: 0.3, radius: PLAYER_RADIUS }); }
       } else if (kind === 'chill') {
-        if (e.stacks >= e.max && !e.froze) { e.froze = true; applyEffect(p, 'stun', { duration: e.freezeDur }); e.remaining = 0; addFx(state, { type: 'hit', x: p.x, y: p.y, color: '#9fe8ff', life: 0.3, radius: PLAYER_RADIUS * 1.6 }); }
+        if (e.stacks >= e.max && !e.froze) {
+          e.froze = true;
+          applyEffect(p, 'stun', { duration: e.freezeDur });
+          applyEffect(p, 'frozen', { duration: e.freezeDur }); // 凍結視覺標記，供渲染器顯示冰晶效果
+          e.remaining = 0;
+          addFx(state, { type: 'hit', x: p.x, y: p.y, color: '#9fe8ff', life: 0.4, radius: PLAYER_RADIUS * 2.5, vfx: 'mage_iceshard' });
+        }
       }
       if (e.remaining <= 0) delete p.effects[kind];
     }
@@ -600,6 +652,27 @@ export function step(state, inputs, dt) {
       }
 
       processTrail(state, p, dt); // 移動留痕 (冰霜足跡)
+
+      // 蓄力技能：每幀累計時間，鬆開時發射
+      if (p.chargeState) {
+        if (input[p.chargeState.slot]) {
+          // 還在按著：累計蓄力時間
+          const a = getCharacter(p.charId)[p.chargeState.slot];
+          p.chargeState.time = Math.min(p.chargeState.time + dt, a?.chargeMax || 5);
+        } else {
+          // 鬆開了：檢查魔力並發射
+          const slot = p.chargeState.slot;
+          const a = getCharacter(p.charId)[slot];
+          const freeMana = state.flags && state.flags.freeMana;
+          if (a && (!freeMana && a.manaCost ? p.mana >= a.manaCost : true)) {
+            if (!freeMana && a.manaCost) p.mana -= a.manaCost;
+            p.cd[slot] = a.cd;
+            executeChargedAction(state, p, slot);
+          } else {
+            p.chargeState = null; // 魔力不足，取消
+          }
+        }
+      }
 
       if (!p.effects.stun) {
         if (input.basic) tryAction(state, p, 'basic');
