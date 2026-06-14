@@ -2,18 +2,18 @@
 //
 // 設計目標：
 // - 低延遲、可重疊、可空間化（依本地玩家位置做距離衰減 + 左右聲道定位）。
-// - 「丟檔即生效」慣例：play('<name>') 會載入 `${BASE}assets/sfx/<name>.mp3`，缺檔則靜音不報錯。
+// - 「丟檔即生效」慣例：play('<name>') 會載入 assets/sfx/<name>.mp3（正式，優先）或 .wav（佔位），缺檔則靜音不報錯。
 // - 純前端、全 renderer-side：不影響 simulation / network 的決定性。
 // - 無 AudioContext（headless / 不支援）時全部 no-op，不丟例外。
 //
 // 觸發點（呼叫端）：
-// - 腳步聲：renderer.js syncPlayers 依走路相位（models.js ud.phase 跨越 nπ）呼叫 playFootstep。
+// - 腳步聲：renderer.js syncPlayers 依走路相位（models.js ud.phase 跨越 nπ）呼叫 playFootstep（隨機播一個腳步變體）。
 // - 出手 / 受傷：renderer.js syncPlayers 依 cd 上跳 / hp 下降呼叫 play('swing'|'cast'|'dash'|'blink'|'ultimate'|'hurt')。
 // - 命中 / 死亡：fxbus.js onSpawn 依 fx.type 'hit' / 'death' 呼叫 play。
 //
-// 命名慣例（public/assets/sfx/<name>.mp3）：
-//   footstep / swing / cast / hit / hurt / death / ultimate / dash / blink / buff
-//   外加每角色專屬：以該動作 vfx id 命名（如 warrior_grapple.mp3、fighter_ultimate.mp3），
+// 命名慣例（public/assets/sfx/<name>.mp3 或 .wav）：
+//   footstep1 / footstep2 / footstep3（腳步變體，隨機播）、swing / cast / hit / hurt / death / ultimate / dash / blink / buff
+//   外加每角色專屬：以該動作 vfx id 命名（如 warrior_grapple、fighter_ultimate），
 //   缺檔時自動回退泛型名（play 的 fallback 參數）。
 
 /// <reference types="vite/client" />
@@ -33,18 +33,14 @@ export interface SfxPlayOptions {
   minInterval?: number;
   /** 主音效缺檔時改用的回退名（用於每角色覆寫→泛型）。 */
   fallback?: string;
-  /** 從緩衝區的此秒數開始播放（用於腳步切片）。 */
-  offset?: number;
-  /** 播放長度（秒，用於腳步切片）。 */
-  duration?: number;
   /** 距離衰減的最大半徑（世界單位）；超過則靜音。 */
   maxDistance?: number;
 }
 
 export interface SfxManager {
-  /** 播放具名音效（慣例載入 assets/sfx/<name>.mp3）。缺檔靜音；可帶空間化 / 節流 / 回退。 */
+  /** 播放具名音效（慣例載入 assets/sfx/<name>.mp3 或 .wav）。缺檔靜音；可帶空間化 / 節流 / 回退。 */
   play(name: string, opts?: SfxPlayOptions): void;
-  /** 播放一步腳步聲（輪播 footstep.mp3 切出的單步片段 + 微隨機，較自然）。 */
+  /** 播放一步腳步聲（從 footstep1/2/3 隨機選一 + 微隨機，較自然）。 */
   playFootstep(opts?: SfxPlayOptions): void;
   /** 設定聆聽者（本地玩家）世界座標，供空間化計算。 */
   setListener(x: number, y: number): void;
@@ -58,14 +54,11 @@ export interface SfxManager {
   unlock(): void;
 }
 
-interface FootSegment {
-  offset: number;
-  duration: number;
-}
-
 // import.meta.env.BASE_URL 由 Vite 注入（對應 vite.config.ts 的 base '/fighting-game/'）。
+// 副檔名嘗試順序：.mp3（正式音效，優先）→ .wav（佔位音效）。每名取第一個「能成功解碼」的。
 const BASE = import.meta.env.BASE_URL;
-const sfxUrl = (name: string) => `${BASE}assets/sfx/${name}.mp3`;
+const SFX_EXTS = ['mp3', 'wav'];
+const sfxUrl = (name: string, ext: string) => `${BASE}assets/sfx/${name}.${ext}`;
 
 // 空間化參數（世界單位；座標系見 render3d/coords.js，場地中心約 600,400）。
 const NEAR_DIST = 130; // 此半徑內全音量
@@ -74,7 +67,8 @@ const PAN_RANGE = 560; // 左右滿偏所需的水平距離
 
 const MAX_VOICES = 24; // 同時最大聲部，避免爆音 / 過載
 
-// 腳步切片預設
+// 腳步變體（隨機播一）；依序載入存在的，缺檔自動跳過。
+const FOOTSTEP_NAMES = ['footstep1', 'footstep2', 'footstep3'];
 const FOOTSTEP_VOLUME = 0.42;
 const FOOTSTEP_MAX_DIST = 780;
 
@@ -132,25 +126,39 @@ function createSfxManager(): SfxManager {
     const inflight = loading.get(name);
     if (inflight) return inflight;
 
-    const p = fetch(sfxUrl(name))
-      .then((res) => {
-        if (!res.ok) throw new Error(`sfx ${name} ${res.status}`);
-        return res.arrayBuffer();
-      })
-      .then((ab) => audioCtx.decodeAudioData(ab))
+    const p = decodeFirst(name)
       .then((buf) => {
         buffers.set(name, buf);
         loading.delete(name);
         return buf;
       })
       .catch(() => {
-        // 缺檔 / 解碼失敗：快取 null（靜音），不報錯。
         buffers.set(name, null);
         loading.delete(name);
         return null;
       });
     loading.set(name, p);
     return p;
+  }
+
+  // 依 SFX_EXTS 順序 fetch + 解碼，回傳第一個「成功解碼」的 buffer，都不行→null。
+  // 重要：dev server 對缺檔會以 index.html 回 200（SPA fallback），所以不能只看 res.ok——
+  // 必須「真的解碼成功」才算數，否則 .mp3 缺檔會拿到 HTML 誤判成功而不再試 .wav（原 fallback bug）。
+  async function decodeFirst(name: string): Promise<AudioBuffer | null> {
+    for (const ext of SFX_EXTS) {
+      try {
+        const res = await fetch(sfxUrl(name, ext));
+        if (!res.ok) continue;
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('text/html')) continue; // SPA fallback 回傳的 HTML，非音效
+        const ab = await res.arrayBuffer();
+        // decodeAudioData 不看副檔名、只看 bytes；HTML/損壞檔會丟例外→試下一個。
+        return await audioCtx.decodeAudioData(ab);
+      } catch {
+        /* 此副檔名失敗 → 試下一個 */
+      }
+    }
+    return null;
   }
 
   function throttled(opts?: SfxPlayOptions): boolean {
@@ -220,9 +228,7 @@ function createSfxManager(): SfxManager {
       }
     };
 
-    const offset = Math.max(0, opts.offset ?? 0);
-    if (opts.duration !== undefined) src.start(0, offset, opts.duration);
-    else src.start(0, offset);
+    src.start(0);
   }
 
   function play(name: string, opts: SfxPlayOptions = {}): void {
@@ -249,108 +255,30 @@ function createSfxManager(): SfxManager {
     });
   }
 
-  // ---- 腳步聲：分析 footstep.mp3 的能量包絡，切出各「單步」片段供輪播 ----
-  let footSegs: FootSegment[] | null = null;
-  let footBuf: AudioBuffer | null = null;
+  // ---- 腳步聲：載入 footstep1/2/3 兩三個變體，每步隨機選一 + 微隨機音高/音量 ----
+  const footBufs: AudioBuffer[] = [];
   let footReq = false;
-  let footIdx = 0;
-
-  function analyzeFootsteps(buf: AudioBuffer): FootSegment[] {
-    const sr = buf.sampleRate;
-    const ch = buf.numberOfChannels;
-    const N = buf.length;
-    if (N === 0) return [];
-
-    // 單聲道混音
-    const data = new Float32Array(N);
-    for (let c = 0; c < ch; c++) {
-      const d = buf.getChannelData(c);
-      for (let i = 0; i < N; i++) data[i] += d[i] / ch;
-    }
-
-    // 短時 RMS 能量包絡
-    const hopSec = 0.005;
-    const winSec = 0.02;
-    const hop = Math.max(1, Math.floor(sr * hopSec));
-    const win = Math.max(1, Math.floor(sr * winSec));
-    const frames = Math.max(0, Math.floor((N - win) / hop));
-    if (frames < 4) return [];
-    const env = new Float32Array(frames);
-    let maxEnv = 0;
-    for (let f = 0; f < frames; f++) {
-      const start = f * hop;
-      let sum = 0;
-      for (let i = 0; i < win; i++) {
-        const s = data[start + i];
-        sum += s * s;
-      }
-      const rms = Math.sqrt(sum / win);
-      env[f] = rms;
-      if (rms > maxEnv) maxEnv = rms;
-    }
-    if (maxEnv <= 0) return [];
-    for (let f = 0; f < frames; f++) env[f] /= maxEnv;
-
-    // onset 偵測：能量上升穿越門檻、且距上個 onset 至少 minGap
-    const thr = 0.18;
-    const minGapFrames = Math.max(1, Math.floor(0.14 / hopSec));
-    const onsets: number[] = [];
-    let last = -minGapFrames;
-    for (let f = 1; f < frames; f++) {
-      if (env[f] >= thr && env[f - 1] < thr && f - last >= minGapFrames) {
-        onsets.push(f);
-        last = f;
-      }
-    }
-
-    const segs: FootSegment[] = [];
-    const backoff = 0.012; // onset 前微退，保留起音
-    for (let k = 0; k < onsets.length; k++) {
-      const t = (onsets[k] * hop) / sr;
-      const nextT = k + 1 < onsets.length ? (onsets[k + 1] * hop) / sr : t + 0.4;
-      const offset = Math.max(0, t - backoff);
-      let dur = Math.min(nextT - offset, 0.45);
-      if (dur < 0.1) dur = 0.1;
-      segs.push({ offset, duration: dur });
-    }
-    return segs;
-  }
 
   function ensureFootsteps(): void {
     if (footReq) return;
     footReq = true;
-    load('footstep').then((buf) => {
-      if (!buf) return;
-      footBuf = buf;
-      let segs = analyzeFootsteps(buf);
-      if (segs.length < 2) {
-        // 分析不到多步 → 退回單一固定窗
-        segs = [{ offset: 0, duration: Math.min(0.4, buf.duration) }];
-      }
-      footSegs = segs;
-      // 開發時可確認切出的步數 / 時間點
-      console.info(
-        `[sfx] footstep 切片 ${segs.length} 段`,
-        segs.map((s) => +s.offset.toFixed(3)),
-      );
-    });
+    for (const n of FOOTSTEP_NAMES) {
+      load(n).then((buf) => { if (buf) footBufs.push(buf); });
+    }
   }
 
   function playFootstep(opts: SfxPlayOptions = {}): void {
     if (muted) return;
     if (throttled(opts)) return;
-    if (!footBuf || !footSegs || footSegs.length === 0) {
-      ensureFootsteps(); // 尚未就緒：觸發載入，本步略過（避免首載延遲爆音）
+    if (footBufs.length === 0) {
+      ensureFootsteps(); // 尚未就緒：觸發載入，本步略過（避免首載延遲）
       return;
     }
-    const seg = footSegs[footIdx % footSegs.length];
-    footIdx++;
-    const rate = 1 + (Math.random() * 2 - 1) * 0.06; // ±6% 音高變化
-    const volJitter = 1 + (Math.random() * 2 - 1) * 0.1; // ±10% 音量變化
-    playBuffer(footBuf, {
+    const buf = footBufs[(Math.random() * footBufs.length) | 0];
+    const rate = 1 + (Math.random() * 2 - 1) * 0.08;  // ±8% 音高變化
+    const volJitter = 1 + (Math.random() * 2 - 1) * 0.12; // ±12% 音量變化
+    playBuffer(buf, {
       ...opts,
-      offset: seg.offset,
-      duration: seg.duration,
       rate: opts.rate ?? rate,
       volume: (opts.volume ?? FOOTSTEP_VOLUME) * volJitter,
       maxDistance: opts.maxDistance ?? FOOTSTEP_MAX_DIST,

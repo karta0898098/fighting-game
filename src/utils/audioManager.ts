@@ -6,9 +6,11 @@ export type MusicTrack = 'lobby' | 'game';
 interface AudioManager {
   currentTrack: MusicTrack | null;
   audio: HTMLAudioElement | null;
+  volume: number;
   playMusic: (track: MusicTrack) => void;
   stopMusic: () => void;
   setVolume: (volume: number) => void;
+  getVolume: () => number;
 }
 
 let instance: AudioManager | null = null;
@@ -25,6 +27,7 @@ export function getAudioManager(): AudioManager {
     instance = {
       currentTrack: null,
       audio: null,
+      volume: 0.5, // 預設背景音樂音量（可由設定覆寫）
 
       playMusic(track: MusicTrack) {
         // 如果已在播放同一首音乐，不需要重新开始
@@ -42,8 +45,9 @@ export function getAudioManager(): AudioManager {
         if (!this.audio) {
           this.audio = new Audio();
           this.audio.loop = true; // 循环播放
-          this.audio.volume = 0.2; // 默认音量 50%
         }
+        // 套用目前音量（每次播放都套，確保切歌不會重置）
+        this.audio.volume = Math.max(0, Math.min(1, this.volume));
 
         // 切换音乐源并播放
         this.audio.src = MUSIC_PATHS[track];
@@ -63,9 +67,14 @@ export function getAudioManager(): AudioManager {
       },
 
       setVolume(volume: number) {
+        this.volume = Math.max(0, Math.min(1, volume));
         if (this.audio) {
-          this.audio.volume = Math.max(0, Math.min(1, volume));
+          this.audio.volume = this.volume;
         }
+      },
+
+      getVolume() {
+        return this.volume;
       },
     };
   }

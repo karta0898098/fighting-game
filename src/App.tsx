@@ -4,10 +4,12 @@
 import { useEffect, useState } from 'react';
 import { getController } from './game/controller';
 import { getAudioManager } from './utils/audioManager';
+import { applyAudioSettings } from './utils/audioSettings';
 import { MenuScreen } from './components/MenuScreen';
 import { LobbyScreen } from './components/LobbyScreen';
 import { GameScreen } from './components/GameScreen';
 import { GameOverScreen } from './components/GameOverScreen';
+import { AudioSettingsButton } from './components/AudioSettingsButton';
 import type { AppPhase, ControlScheme, GameFlags, GameOverView, LobbyView } from './types';
 
 const EMPTY_LOBBY: LobbyView = { players: [], selfId: null, isHost: false, roomCode: '', gameFlags: { freeMana: false, noCooldown: false, noDamage: false } };
@@ -48,6 +50,11 @@ export function App() {
     }
   }, [controller]);
 
+  // 套用已儲存的音效/音樂音量設定（掛載時一次，確保載入的音量在音樂開始前生效）
+  useEffect(() => {
+    applyAudioSettings();
+  }, []);
+
   // 根據遊戲階段切換背景音樂
   useEffect(() => {
     const audioManager = getAudioManager();
@@ -79,44 +86,54 @@ export function App() {
     controller.selectGameFlags(flags);
   }
 
-  switch (phase) {
-    case 'menu':
-      return (
-        <MenuScreen
-          status={menuStatus}
-          onCreate={(name) => controller.createRoom(name)}
-          onJoin={(name, code) => controller.joinRoom(name, code)}
-        />
-      );
-    case 'lobby':
-      return (
-        <LobbyScreen
-          lobby={lobby}
-          status={lobbyStatus}
-          selectedChar={selectedChar}
-          selectedControlScheme={selectedControlScheme}
-          selectedTeam={selectedTeam}
-          onSelectChar={handleSelectChar}
-          onSelectControlScheme={handleSelectControlScheme}
-          onSelectTeam={handleSelectTeam}
-          onSelectGameFlags={handleSelectGameFlags}
-          onAddNpc={() => controller.addNpc()}
-          onRemoveNpc={() => controller.removeNpc()}
-          onStart={() => controller.startGame()}
-          onLeave={() => controller.leave()}
-        />
-      );
-    case 'game':
-      return <GameScreen controller={controller} />;
-    case 'gameover':
-      return gameover ? (
-        <GameOverScreen
-          view={gameover}
-          onToLobby={() => controller.returnToLobby()}
-          onLeave={() => controller.leave()}
-        />
-      ) : null;
-    default:
-      return null;
+  function renderScreen() {
+    switch (phase) {
+      case 'menu':
+        return (
+          <MenuScreen
+            status={menuStatus}
+            onCreate={(name) => controller.createRoom(name)}
+            onJoin={(name, code) => controller.joinRoom(name, code)}
+          />
+        );
+      case 'lobby':
+        return (
+          <LobbyScreen
+            lobby={lobby}
+            status={lobbyStatus}
+            selectedChar={selectedChar}
+            selectedControlScheme={selectedControlScheme}
+            selectedTeam={selectedTeam}
+            onSelectChar={handleSelectChar}
+            onSelectControlScheme={handleSelectControlScheme}
+            onSelectTeam={handleSelectTeam}
+            onSelectGameFlags={handleSelectGameFlags}
+            onAddNpc={() => controller.addNpc()}
+            onRemoveNpc={() => controller.removeNpc()}
+            onStart={() => controller.startGame()}
+            onLeave={() => controller.leave()}
+          />
+        );
+      case 'game':
+        return <GameScreen controller={controller} />;
+      case 'gameover':
+        return gameover ? (
+          <GameOverScreen
+            view={gameover}
+            onToLobby={() => controller.returnToLobby()}
+            onLeave={() => controller.leave()}
+          />
+        ) : null;
+      default:
+        return null;
+    }
   }
+
+  // 音效設定鈕全域疊在最上層 → 選單/大廳/遊戲中/結算皆可調整（遊戲內外通用）。
+  return (
+    <>
+      {renderScreen()}
+      <AudioSettingsButton />
+    </>
+  );
 }
