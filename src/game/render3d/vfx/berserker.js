@@ -81,22 +81,78 @@ registerVfx('berserker_ultimate', {
 
 registerVfx('berserker_axes', {
   onCast(ctx, f, c) {
-    // 雙斧交叉劈砍 + 血色火花
+    const THREE = ctx.THREE;
     slashBlade(ctx, c, f.facing + 0.25, { color: '#ff4d4d', len: f.range * 1.1, w: 14, swing: -0.8, life: 0.2 });
     slashBlade(ctx, c, f.facing - 0.25, { color: '#cd6155', len: f.range * 1.1, w: 14, swing: 0.8, life: 0.2 });
     cone(ctx, c, f.facing, { color: ['#ff4d4d', '#922b21', '#ffffff'], count: 12, speed: 240, spread: 0.6, offset: f.range * 0.4, up: 30, life: 0.35 });
+    
+    const axeGeo = new THREE.RingGeometry(f.range * 0.5, f.range * 1.1, 16, 1, 0, Math.PI * 0.5);
+    const axeMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+    
+    const a1 = new THREE.Mesh(axeGeo, axeMat);
+    a1.position.set(c.x, 14, c.z);
+    a1.rotation.set(-Math.PI / 2, 0, -f.facing);
+    
+    const a2 = new THREE.Mesh(axeGeo, axeMat);
+    a2.position.set(c.x, 14, c.z);
+    a2.rotation.set(-Math.PI / 2, 0, -f.facing - Math.PI * 0.5);
+    
+    ctx.addTransient(a1, 0.22, (mesh, t) => {
+      mesh.rotation.z = -f.facing + t * 0.8;
+      axeMat.opacity = 0.8 * (1 - t);
+    });
+    ctx.addTransient(a2, 0.22, (mesh, t) => {
+      mesh.rotation.z = -f.facing - Math.PI * 0.5 - t * 0.8;
+    });
+    
+    a1.userData.geo = axeGeo;
+    a1.userData.mat = axeMat;
+    
     addShake(ctx, 4);
   },
 });
 
 registerVfx('berserker_rage', {
   onCast(ctx, f, c) {
-    // 血怒爆發：地面血環 + 上升血焰柱 + 暗紅地燒 + 震動閃光
-    pillar(ctx, c, { color: '#e74c3c', h: 130, r: 26, taper: 0.5, life: 0.6, alpha: 0.6, grow: 0.5 });
+    const THREE = ctx.THREE;
+    pillar(ctx, c, { color: '#e74c3c', h: 130, r: 26, taper: 0.5, life: 0.6, alpha: 0.5, grow: 0.5 });
     ring(ctx, c, { color: '#922b21', from: 14, to: 110, life: 0.5, y: 3, ease: true, alpha: 0.9 });
     column(ctx, c, { color: ['#e74c3c', '#ff7043', '#3a0d0d'], count: 32, radius: 28, speed: 180, life: 0.8, size: 4 });
     burst(ctx, c, { color: '#e74c3c', count: 18, speed: 160, up: 80, flat: true, life: 0.6 });
-    addShake(ctx, 8); addFlash(ctx, 0.2, '#e74c3c');
+    
+    const headGeo = new THREE.ConeGeometry(14, 28, 4);
+    const earGeo = new THREE.ConeGeometry(4, 10, 3);
+    const wolfMat = new THREE.MeshBasicMaterial({ color: 0xff3b2f, transparent: true, opacity: 0.9, wireframe: true });
+    
+    const headGroup = new THREE.Group();
+    const head = new THREE.Mesh(headGeo, wolfMat);
+    head.rotation.x = Math.PI / 2;
+    headGroup.add(head);
+    
+    const earL = new THREE.Mesh(earGeo, wolfMat);
+    earL.position.set(-6, 8, -6);
+    earL.rotation.set(0.3, 0, 0.4);
+    
+    const earR = new THREE.Mesh(earGeo, wolfMat);
+    earR.position.set(6, 8, -6);
+    earR.rotation.set(0.3, 0, -0.4);
+    
+    headGroup.add(earL, earR);
+    headGroup.position.set(c.x, 38, c.z);
+    headGroup.rotation.y = -f.facing;
+    
+    ctx.addTransient(headGroup, 0.65, (grp, t) => {
+      grp.position.y = 38 + t * 28;
+      const scale = 1.0 + t * 0.9;
+      grp.scale.set(scale, scale, scale);
+      wolfMat.opacity = 0.9 * (1 - t);
+    });
+    
+    headGroup.userData.geo = { dispose: () => { headGeo.dispose(); earGeo.dispose(); } };
+    headGroup.userData.mat = wolfMat;
+    
+    addShake(ctx, 8);
+    addFlash(ctx, 0.2, '#e74c3c');
   },
 });
 
@@ -120,3 +176,54 @@ registerVfx('berserker_whirlwind', {
     addShake(ctx, 9);
   },
 });
+
+registerVfx('berserker_leap', {
+  onCast(ctx, f, c) {
+    ring(ctx, c, { color: '#ff3b2f', from: 10, to: f.range || 130, life: 0.44, y: 3, ease: true });
+    addShake(ctx, 12);
+    addFlash(ctx, 0.18, '#ff3b2f');
+  },
+  onHit(ctx, f, c) {
+    const THREE = ctx.THREE;
+    const R = f.radius || 130;
+    
+    const craterGeo = new THREE.CircleGeometry(R * 0.9, 32);
+    const craterMat = new THREE.MeshBasicMaterial({
+      color: 0x1a0505,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.NormalBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const crater = new THREE.Mesh(craterGeo, craterMat);
+    crater.rotation.x = -Math.PI / 2;
+    crater.position.set(c.x, 1.25, c.z);
+    
+    if (c.x > -595 && c.x < 595 && c.z > -395 && c.z < 395) {
+      ctx.addTransient(crater, 1.2, (mesh, t) => {
+        mesh.material.opacity = 0.8 * (1 - t);
+        mesh.scale.setScalar(1 - t * 0.15);
+      });
+      crater.userData.geo = craterGeo;
+      crater.userData.mat = craterMat;
+    } else {
+      craterGeo.dispose();
+      craterMat.dispose();
+    }
+    
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const spd = 120 + Math.random() * 160;
+      ctx.particles.spawn({
+        x: c.x, y: 5, z: c.z,
+        vx: Math.cos(a) * spd, vy: 140 + Math.random() * 160, vz: Math.sin(a) * spd,
+        gravity: 380, drag: 1.1, life: 0.5 + Math.random() * 0.4,
+        size: 4 + Math.random() * 4, color: Math.random() < 0.65 ? '#ff3b2f' : '#922b21', fade: true
+      });
+    }
+    
+    ring(ctx, c, { color: '#922b21', from: 4, to: R * 1.1, life: 0.38, y: 6 });
+  }
+});
+

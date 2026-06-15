@@ -98,78 +98,160 @@ registerVfx('tank_ultimate', {
 
 registerVfx('tank_punch', {
   onCast(ctx, f, c) {
-    // 沉重前拳：扁平衝擊環 + 塵土 + 碎石
+    const THREE = ctx.THREE;
     ring(ctx, c, { color: '#cfd8dc', from: 8, to: f.range * 1.2, life: 0.3, y: 4, alpha: 0.9 });
     cone(ctx, c, f.facing, { color: ['#aab7b8', '#7f8c8d'], count: 14, speed: 220, spread: 0.5, offset: f.range * 0.4, up: 50, gravity: 260, life: 0.45, size: 4 });
+    
+    const fistGeo = new THREE.IcosahedronGeometry(f.range * 0.48, 1);
+    const fistMat = new THREE.MeshStandardMaterial({
+      color: 0x5a3a1f,
+      emissive: 0x3d2714,
+      emissiveIntensity: 0.5,
+      roughness: 0.95
+    });
+    const fist = new THREE.Mesh(fistGeo, fistMat);
+    fist.position.set(c.x, 14, c.z);
+    
+    const dx = Math.cos(f.facing);
+    const dz = Math.sin(f.facing);
+    
+    ctx.addTransient(fist, 0.32, (mesh, t) => {
+      const dist = f.range * 0.7 * Math.sin(t * Math.PI * 0.5);
+      mesh.position.set(c.x + dx * dist, 14, c.z + dz * dist);
+      mesh.rotation.y = -f.facing;
+      mesh.rotation.x = t * 4;
+      fistMat.opacity = Math.max(0, 1.0 - t);
+      mesh.material.transparent = true;
+    });
+    fist.userData.geo = fistGeo;
+    fist.userData.mat = fistMat;
+    
     addShake(ctx, 6);
   },
 });
 
 registerVfx('tank_shield', {
   onCast(ctx, f, c) {
-    // 六角護盾罩成形：放大後短暫停留再淡出
-    const color = new THREE.Color('#dfe6e9');
+    const THREE = ctx.THREE;
+    const color = new THREE.Color('#dfcbb5');
     const geo = new THREE.IcosahedronGeometry(1, 1);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true,
-    }));
-    m.position.set(c.x, 26, c.z);
-    ctx.addTransient(m, 0.7, (mesh, t) => {
-      const s = 44 * Math.min(1, t * 4);
-      mesh.scale.setScalar(s);
-      mesh.rotation.y += 0.04; mesh.rotation.x += 0.02;
-      mesh.material.opacity = 0.5 * (1 - t);
+    const solidMat = new THREE.MeshStandardMaterial({
+      color: 0xffa500,
+      emissive: 0xcc6600,
+      emissiveIntensity: 1.5,
+      transparent: true,
+      opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
-    m.userData.mat = m.material; m.userData.geo = geo;
-    ring(ctx, c, { color: '#9fe8ff', from: 10, to: 60, life: 0.4, y: 3 });
-    burst(ctx, c, { color: '#dfe6e9', count: 12, speed: 90, up: 70, flat: true, life: 0.5 });
+    const wireMat = new THREE.MeshBasicMaterial({
+      color: 0xffd700,
+      transparent: true,
+      opacity: 0.65,
+      wireframe: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    
+    const g = new THREE.Group();
+    const mSolid = new THREE.Mesh(geo, solidMat);
+    const mWire = new THREE.Mesh(geo, wireMat);
+    g.add(mSolid, mWire);
+    g.position.set(c.x, 26, c.z);
+    
+    ctx.addTransient(g, 0.72, (grp, t) => {
+      const s = 44 * Math.min(1, t * 4);
+      grp.scale.setScalar(s);
+      mSolid.rotation.y += 0.02;
+      mWire.rotation.y -= 0.03; mWire.rotation.x += 0.01;
+      solidMat.opacity = 0.22 * (1 - t);
+      wireMat.opacity = 0.65 * (1 - t);
+    });
+    
+    g.userData.geo = geo;
+    g.userData.mat = { dispose: () => { solidMat.dispose(); wireMat.dispose(); } };
+    
+    ring(ctx, c, { color: '#ffd700', from: 10, to: 60, life: 0.4, y: 3 });
+    burst(ctx, c, { color: '#ffd700', count: 12, speed: 90, up: 70, flat: true, life: 0.5 });
   },
 });
 
-// 震地：自身範圍 (無 delay)，自訂 zone 做地裂
 registerVfx('tank_quake', {
   zone(ctx, z) {
+    const THREE = ctx.THREE;
     const g = new THREE.Group();
-    const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 40),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color('#a0744a'), transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
-    );
-    disc.rotation.x = -Math.PI / 2; disc.position.y = 1; disc.scale.setScalar(z.radius);
+    
+    const discGeo = new THREE.CircleGeometry(z.radius, 32);
+    const discMat = new THREE.MeshBasicMaterial({
+      color: 0x110d0a,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const disc = new THREE.Mesh(discGeo, discMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = 1.0;
     g.add(disc);
-    // 放射地裂線
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const crack = new THREE.Mesh(
-        new THREE.BoxGeometry(z.radius, 1, 4),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color('#5a3a1f'), transparent: true, opacity: 0.85 })
-      );
-      crack.position.set(Math.cos(a) * z.radius * 0.5, 1.2, Math.sin(a) * z.radius * 0.5);
-      crack.rotation.y = -a;
-      g.add(crack);
-    }
-    let fired = false; let age = 0;
+    
+    const ringGeo = new THREE.RingGeometry(z.radius * 0.94, z.radius, 32);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xa0744a,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = -Math.PI / 2;
+    ringMesh.position.y = 1.1;
+    g.add(ringMesh);
+
+    g.userData.geo = { dispose: () => { discGeo.dispose(); ringGeo.dispose(); } };
+    g.userData.mat = { dispose: () => { discMat.dispose(); ringMat.dispose(); } };
+
+    let fired = false;
+    let age = 0;
+    let particleTimer = 0;
+    
     return {
       object3D: g,
       update(dt) {
         age += dt;
+        disc.rotation.z += dt * 0.5;
+        ringMesh.rotation.z -= dt * 0.8;
+        
         if (!fired) {
           fired = true;
           const c = { x: g.position.x, y: 10, z: g.position.z };
           ring(ctx, c, { color: '#caa472', from: 14, to: z.radius, life: 0.4, y: 4, alpha: 0.9, ease: true });
-          // 大量碎石噴起
-          for (let i = 0; i < 30; i++) {
-            const a = Math.random() * Math.PI * 2, rr = Math.random() * z.radius;
-            ctx.particles.spawn({
-              x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr,
-              vx: (Math.random() - 0.5) * 80, vy: 160 + Math.random() * 220, vz: (Math.random() - 0.5) * 80,
-              gravity: 460, drag: 1, life: 0.6 + Math.random() * 0.5, size: 4 + Math.random() * 4,
-              color: Math.random() < 0.5 ? '#7f8c8d' : '#5a3a1f', fade: false,
-            });
-          }
-          addShake(ctx, 18); addFlash(ctx, 0.2, '#a0744a');
+          addShake(ctx, 18);
+          addFlash(ctx, 0.2, '#a0744a');
         }
-        disc.material.opacity = Math.max(0, 0.4 * (1 - age / Math.max(0.2, z.lifetime)));
-      },
+        
+        const remaining = Math.max(0, 1 - age / z.lifetime);
+        discMat.opacity = 0.5 * remaining;
+        ringMat.opacity = 0.85 * remaining;
+        
+        particleTimer += dt;
+        if (particleTimer >= 0.06) {
+          particleTimer = 0;
+          const angle = Math.random() * Math.PI * 2;
+          const startR = z.radius * (0.8 + Math.random() * 0.4);
+          const px = g.position.x + Math.cos(angle) * startR;
+          const pz = g.position.z + Math.sin(angle) * startR;
+          
+          const pullSpd = 120 + Math.random() * 80;
+          ctx.particles.spawn({
+            x: px, y: 4, z: pz,
+            vx: -Math.cos(angle) * pullSpd, vy: 40 + Math.random() * 80, vz: -Math.sin(angle) * pullSpd,
+            gravity: 280, drag: 1.1, life: 0.45,
+            size: 3.5 + Math.random() * 3,
+            color: Math.random() < 0.5 ? '#7f8c8d' : '#5a3a1f', fade: true
+          });
+        }
+      }
     };
-  },
+  }
 });

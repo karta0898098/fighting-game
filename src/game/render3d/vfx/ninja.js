@@ -3,6 +3,47 @@ import * as THREE from 'three';
 import { registerVfx } from './registry.js';
 import { ring, burst, column } from './lib.js';
 
+// Calligraphy canvas texture helper for Japanese/Chinese ink style text
+function createCalligraphyTexture(text, colorStr = '#1a1a1a', size = 128) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+
+  // Soft ink splash background
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size * 0.45);
+  grad.addColorStop(0, 'rgba(44, 62, 80, 0.25)');
+  grad.addColorStop(0.5, 'rgba(26, 37, 48, 0.1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ink splatter particles
+  ctx.fillStyle = colorStr;
+  for (let i = 0; i < 7; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = size * (0.22 + Math.random() * 0.2);
+    const r = size * (0.02 + Math.random() * 0.04);
+    ctx.beginPath();
+    ctx.arc(size / 2 + Math.cos(angle) * dist, size / 2 + Math.sin(angle) * dist, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw the calligraphy character
+  ctx.font = `bold ${size * 0.65}px "Kaiti", "STKaiti", "SimSun", "Microsoft YaHei", serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(text, size / 2, size / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
 // 大絕招 — 煙影亂舞：忍秘傳·百刃煙嵐陣
 registerVfx('ninja_ultimate', {
   onCast(ctx, f, c) {
@@ -142,26 +183,73 @@ registerVfx('ninja_ultimate', {
 
 registerVfx('ninja_shuriken', {
   projectile(ctx, pr) {
+    const THREE = ctx.THREE;
     const g = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: 0xced6dc, emissive: new THREE.Color('#95a5a6'), emissiveIntensity: 0.8, metalness: 0.85, roughness: 0.25, side: THREE.DoubleSide });
-    // 四角星：兩個交叉薄盒
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x151b24,
+      emissive: 0x2c3e50,
+      emissiveIntensity: 1.5,
+      metalness: 0.9,
+      roughness: 0.15,
+      side: THREE.DoubleSide
+    });
     const r = pr.radius * 2.2;
-    const a = new THREE.Mesh(new THREE.BoxGeometry(r * 2, 0.8, r * 0.5), mat);
-    const b = new THREE.Mesh(new THREE.BoxGeometry(r * 0.5, 0.8, r * 2), mat);
-    g.add(a); g.add(b);
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.3, r * 0.3, 1.2, 8), mat);
-    g.add(hub);
+    const aGeo = new THREE.BoxGeometry(r * 2, 0.8, r * 0.45);
+    const bGeo = new THREE.BoxGeometry(r * 0.45, 0.8, r * 2);
+    const hubGeo = new THREE.CylinderGeometry(r * 0.28, r * 0.28, 1.2, 8);
+    
+    const a = new THREE.Mesh(aGeo, mat);
+    const b = new THREE.Mesh(bGeo, mat);
+    const hub = new THREE.Mesh(hubGeo, mat);
+    g.add(a, b, hub);
+    
+    g.userData.geo = {
+      dispose() {
+        aGeo.dispose();
+        bGeo.dispose();
+        hubGeo.dispose();
+      }
+    };
+    g.userData.mat = mat;
+
     return {
       object3D: g,
       update(dt) {
-        g.rotation.y += dt * 30; // 高速旋轉 (繞垂直軸，平躺旋轉感)
-        if (Math.random() < 0.5) ctx.particles.spawn({ x: g.position.x, y: g.position.y, z: g.position.z, vx: 0, vy: 0, vz: 0, drag: 6, life: 0.16, size: pr.radius, color: '#c8d0d6', fade: true });
+        g.rotation.y += dt * 32; // Spin flat
+        // Ink splatter trail
+        if (Math.random() < 0.65) {
+          ctx.particles.spawn({
+            x: g.position.x + (Math.random() - 0.5) * 1.5,
+            y: g.position.y,
+            z: g.position.z + (Math.random() - 0.5) * 1.5,
+            vx: (Math.random() - 0.5) * 8,
+            vy: (Math.random() - 0.5) * 8,
+            vz: (Math.random() - 0.5) * 8,
+            drag: 3,
+            life: 0.28 + Math.random() * 0.22,
+            size: pr.radius * (1.3 + Math.random() * 0.7),
+            color: Math.random() < 0.65 ? '#1a1a1a' : '#2c3e50',
+            fade: true
+          });
+        }
       },
     };
   },
   onHit(ctx, f, c) {
-    ring(ctx, c, { color: '#bdc3c7', from: 3, to: (f.radius || 14) * 2, life: 0.22, y: 8 });
-    burst(ctx, c, { color: '#dfe6e9', count: 8, speed: 180, life: 0.28, size: 2.2 });
+    // Ink ring and splash
+    ring(ctx, c, { color: '#2c3e50', from: 4, to: (f.radius || 14) * 2.8, life: 0.32, y: 8, alpha: 0.85 });
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const spd = 70 + Math.random() * 120;
+      ctx.particles.spawn({
+        x: c.x, y: 8, z: c.z,
+        vx: Math.cos(a) * spd, vy: 50 + Math.random() * 90, vz: Math.sin(a) * spd,
+        drag: 1.8, life: 0.42 + Math.random() * 0.28,
+        size: 3.5 + Math.random() * 4,
+        color: Math.random() < 0.6 ? '#1a1a1a' : '#2c3e50',
+        fade: true
+      });
+    }
   },
 });
 
@@ -183,9 +271,125 @@ registerVfx('ninja_smoke', {
 
 registerVfx('ninja_shadowblink', {
   onCast(ctx, f, c) {
-    // 影分身瞬移：墨黑煙 + 上升暗影殘像 + 環
+    const THREE = ctx.THREE;
+    const R = f.range || 320;
+    
+    const startX = c.x - Math.cos(f.facing) * R;
+    const startZ = c.z - Math.sin(f.facing) * R;
+    const safeStartX = Math.max(-595, Math.min(595, startX));
+    const safeStartZ = Math.max(-395, Math.min(395, startZ));
+    
+    // Spawn at start and end positions
+    const points = [
+      { x: safeStartX, z: safeStartZ },
+      { x: c.x, z: c.z }
+    ];
+    
+    points.forEach((pt) => {
+      // Calligraphy Sprite
+      const tex = createCalligraphyTexture('忍', '#111111');
+      const mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.NormalBlending
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.set(pt.x, 14, pt.z);
+      sprite.scale.set(28, 28, 1);
+      
+      ctx.addTransient(sprite, 0.75, (mesh, t) => {
+        mesh.position.y = 14 + t * 24;
+        mat.opacity = 0.95 * (1 - t);
+        mesh.scale.setScalar(28 * (1 + t * 0.45));
+      });
+      
+      sprite.userData.geo = {
+        dispose() {
+          tex.dispose();
+        }
+      };
+      sprite.userData.mat = mat;
+      
+      // Ink burst particles
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 70 + Math.random() * 90;
+        ctx.particles.spawn({
+          x: pt.x, y: 8, z: pt.z,
+          vx: Math.cos(a) * sp, vy: 30 + Math.random() * 65, vz: Math.sin(a) * sp,
+          drag: 1.7, life: 0.45 + Math.random() * 0.35,
+          size: 5 + Math.random() * 5.5,
+          color: Math.random() < 0.6 ? '#151b24' : '#4b5358',
+          fade: true
+        });
+      }
+    });
+
     ring(ctx, c, { color: '#636e72', from: 4, to: 56, life: 0.32, y: 6, alpha: 0.8 });
-    burst(ctx, c, { color: ['#2c3e50', '#1a242f', '#636e72'], count: 24, speed: 150, up: 30, gravity: -15, drag: 1.4, life: 0.6, size: 6, fade: false });
-    column(ctx, c, { color: '#2c3e50', count: 12, radius: 14, speed: 130, life: 0.45, size: 5, fade: false });
   },
 });
+
+registerVfx('ninja_bind', {
+  projectile(ctx, pr) {
+    const THREE = ctx.THREE;
+    const g = new THREE.Group();
+    
+    const talGeo = new THREE.BoxGeometry(pr.radius * 2.5, 0.4, pr.radius * 1.2);
+    const talMat = new THREE.MeshStandardMaterial({
+      color: 0x210e30,
+      emissive: 0x9b59b6,
+      emissiveIntensity: 2.2,
+      roughness: 0.5
+    });
+    const tal = new THREE.Mesh(talGeo, talMat);
+    g.add(tal);
+    
+    g.userData.geo = talGeo;
+    g.userData.mat = talMat;
+
+    return {
+      object3D: g,
+      update(dt) {
+        tal.rotation.y += dt * 10;
+        tal.rotation.x += dt * 5;
+        
+        ctx.particles.spawn({
+          x: g.position.x, y: g.position.y, z: g.position.z,
+          vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, vz: (Math.random() - 0.5) * 12,
+          drag: 3, life: 0.24, size: pr.radius * 0.9,
+          color: Math.random() < 0.6 ? '#636e72' : '#9b59b6', fade: false
+        });
+      }
+    };
+  },
+  onHit(ctx, f, c) {
+    const THREE = ctx.THREE;
+    ring(ctx, c, { color: '#9b59b6', from: 4, to: (f.radius || 11) * 2.8, life: 0.5, y: 8 });
+    
+    const ropeGeo = new THREE.CylinderGeometry(f.radius || 11, f.radius || 11, 28, 8, 1, true);
+    const ropeMat = new THREE.MeshBasicMaterial({
+      color: 0x2c3e50,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.NormalBlending
+    });
+    
+    const rope = new THREE.Mesh(ropeGeo, ropeMat);
+    rope.position.set(c.x, 14, c.z);
+    
+    ctx.addTransient(rope, 0.75, (mesh, t) => {
+      mesh.scale.set(1 - t * 0.3, 1, 1 - t * 0.3);
+      mesh.rotation.y += 0.05;
+      mesh.material.opacity = 0.85 * (1 - t);
+    });
+    
+    rope.userData.geo = ropeGeo;
+    rope.userData.mat = ropeMat;
+    
+    burst(ctx, c, { color: ['#2c3e50', '#9b59b6', '#000000'], count: 12, speed: 120, up: 30, life: 0.5 });
+  }
+});
+

@@ -157,7 +157,49 @@ function makeArrow(ctx, pr, tint) {
 }
 
 registerVfx('archer_arrow', {
-  projectile(ctx, pr) { return makeArrow(ctx, pr, '#2ecc71'); },
+  projectile(ctx, pr) {
+    const THREE = ctx.THREE;
+    const g = new THREE.Group();
+    const col = new THREE.Color('#2ecc71');
+    const white = new THREE.Color('#ffffff');
+    
+    const shaftGeo = new THREE.CylinderGeometry(pr.radius * 0.28, pr.radius * 0.28, pr.radius * 5.5, 6);
+    const shaftMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: col,
+      emissiveIntensity: 2.2,
+      roughness: 0.2
+    });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.rotation.z = Math.PI / 2;
+    g.add(shaft);
+    
+    const ringGeo = new THREE.TorusGeometry(pr.radius * 1.15, pr.radius * 0.16, 4, 12);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: white,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending
+    });
+    const windRing = new THREE.Mesh(ringGeo, ringMat);
+    windRing.rotation.y = Math.PI / 2;
+    g.add(windRing);
+    
+    g.userData.geo = { dispose: () => { shaftGeo.dispose(); ringGeo.dispose(); } };
+    g.userData.mat = { dispose: () => { shaftMat.dispose(); ringMat.dispose(); } };
+
+    return {
+      object3D: g,
+      update(dt) {
+        windRing.rotation.x += dt * 12;
+        ctx.particles.spawn({
+          x: g.position.x, y: g.position.y, z: g.position.z,
+          vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, vz: (Math.random() - 0.5) * 10,
+          drag: 4, life: 0.22, size: pr.radius * 0.9, color: '#2ecc71', fade: true,
+        });
+      }
+    };
+  },
   onHit(ctx, f, c) {
     ring(ctx, c, { color: '#2ecc71', from: 4, to: (f.radius || 16) * 2.2, life: 0.26, y: 8 });
     burst(ctx, c, { color: ['#2ecc71', '#7bed9f'], count: 12, speed: 180, up: 40, life: 0.4, size: 2.6 });
@@ -268,3 +310,51 @@ registerVfx('archer_trap', {
     };
   },
 });
+
+registerVfx('archer_parasite', {
+  projectile(ctx, pr) {
+    const THREE = ctx.THREE;
+    const g = new THREE.Group();
+    const col = new THREE.Color('#00ff66');
+    
+    const shaftGeo = new THREE.CylinderGeometry(pr.radius * 0.28, pr.radius * 0.28, pr.radius * 5.5, 6);
+    const shaftMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: col,
+      emissiveIntensity: 2.2,
+      roughness: 0.2
+    });
+    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+    shaft.rotation.z = Math.PI / 2;
+    g.add(shaft);
+    
+    g.userData.geo = shaftGeo;
+    g.userData.mat = shaftMat;
+
+    return {
+      object3D: g,
+      update(dt) {
+        ctx.particles.spawn({
+          x: g.position.x, y: g.position.y, z: g.position.z,
+          vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, vz: (Math.random() - 0.5) * 12,
+          drag: 4, life: 0.32, size: pr.radius * 1.2,
+          color: Math.random() < 0.6 ? '#00ff66' : '#2ecc71', fade: true
+        });
+      }
+    };
+  },
+  onHit(ctx, f, c) {
+    ring(ctx, c, { color: '#00ff66', from: 4, to: (f.radius || 12) * 2.2, life: 0.3, y: 8 });
+    burst(ctx, c, { color: ['#00ff66', '#2ecc71', '#16a085'], count: 14, speed: 140, up: 30, life: 0.45 });
+    for (let i = 0; i < 8; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 12;
+      ctx.particles.spawn({
+        x: c.x + Math.cos(a) * r, y: 4, z: c.z + Math.sin(a) * r,
+        vx: 0, vy: 40 + Math.random() * 50, vz: 0,
+        gravity: -20, drag: 1.2, life: 0.6 + Math.random() * 0.4,
+        size: 3 + Math.random() * 3, color: '#00ff66', fade: true
+      });
+    }
+  }
+});
+

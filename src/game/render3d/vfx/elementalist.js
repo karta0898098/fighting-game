@@ -238,45 +238,188 @@ registerVfx('elem_ultimate', {
 
 registerVfx('elem_spark', {
   onCast(ctx, f, c) {
-    // 前向火焰舌
-    cone(ctx, c, f.facing, { color: ['#f39c12', '#ff7043', '#ffd166'], count: 20, speed: 300, spread: 0.45, offset: 10, up: 20, gravity: -10, drag: 2, life: 0.4, size: 4 });
+    const THREE = ctx.THREE;
+    const dx = Math.cos(f.facing);
+    const dy = Math.sin(f.facing);
+    
+    // 1. Spawning tri-element rotating core
+    const g = new THREE.Group();
+    const fireGeo = new THREE.SphereGeometry(2.5, 8, 8);
+    const iceGeo = new THREE.OctahedronGeometry(2.4, 0);
+    const stormGeo = new THREE.IcosahedronGeometry(2.2, 0);
+
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff5a1f });
+    const iceMat = new THREE.MeshBasicMaterial({ color: 0x74e0ff });
+    const stormMat = new THREE.MeshBasicMaterial({ color: 0xb388ff });
+
+    const s1 = new THREE.Mesh(fireGeo, fireMat);
+    const s2 = new THREE.Mesh(iceGeo, iceMat);
+    const s3 = new THREE.Mesh(stormGeo, stormMat);
+
+    const radius = 6.5;
+    s1.position.set(radius, 0, 0);
+    s2.position.set(radius * Math.cos(Math.PI * 2 / 3), 0, radius * Math.sin(Math.PI * 2 / 3));
+    s3.position.set(radius * Math.cos(Math.PI * 4 / 3), 0, radius * Math.sin(Math.PI * 4 / 3));
+
+    g.add(s1, s2, s3);
+    g.position.set(c.x, c.y + 12, c.z);
+
+    const geos = [fireGeo, iceGeo, stormGeo];
+    const mats = [fireMat, iceMat, stormMat];
+    g.userData.geo = { dispose: () => geos.forEach(geo => geo.dispose()) };
+    g.userData.mat = { dispose: () => mats.forEach(mat => mat.dispose()) };
+
+    let popped = false;
+    ctx.addTransient(g, 0.38, (mesh, t) => {
+      const dist = f.range || 135;
+      mesh.position.set(c.x + dx * dist * t, c.y + 12, c.z + dy * dist * t);
+      mesh.rotation.y = t * Math.PI * 8;
+      mesh.rotation.z = t * Math.PI * 4;
+      mesh.scale.setScalar(1 - t * 0.25);
+      
+      if (t >= 0.96 && !popped) {
+        popped = true;
+        const popPt = { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z };
+        const colors = ['#ff5a1f', '#74e0ff', '#b388ff'];
+        colors.forEach((col) => {
+          for (let i = 0; i < 8; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const spd = 100 + Math.random() * 100;
+            ctx.particles.spawn({
+              x: popPt.x, y: popPt.y, z: popPt.z,
+              vx: Math.cos(a) * spd, vy: (Math.random() - 0.5) * 60, vz: Math.sin(a) * spd,
+              drag: 2, life: 0.35 + Math.random() * 0.25,
+              size: 3 + Math.random() * 2.5, color: col, fade: true
+            });
+          }
+        });
+      }
+    });
+
     ring(ctx, c, { color: '#f39c12', from: 4, to: 30, life: 0.2, y: 4 });
   },
 });
 
-// 火焰地帶：持續 4s 燃燒
+// 火焰地帶：持續 4s 燃燒 (升級為滾動的 3D 火牆)
 registerVfx('elem_firezone', {
   zone(ctx, z) {
+    const THREE = ctx.THREE;
     const g = new THREE.Group();
-    const col = new THREE.Color('#e74c3c');
-    const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 40),
-      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
-    );
-    disc.rotation.x = -Math.PI / 2; disc.position.y = 1; disc.scale.setScalar(z.radius); g.add(disc);
-    let acc = 0; let age = 0;
+    const R = z.radius || 110;
+    
+    // 預警與地面氣流圈
+    const discGeo = new THREE.CircleGeometry(R, 32);
+    const discMat = new THREE.MeshBasicMaterial({
+      color: 0xe74c3c,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const disc = new THREE.Mesh(discGeo, discMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.y = 1;
+    g.add(disc);
+
+    // 建立 3 個火柱
+    const numCols = 3;
+    const columnsList = [];
+    const geos = [discGeo];
+    const mats = [discMat];
+
+    const coneGeo = new THREE.ConeGeometry(R * 0.2, R * 0.65, 6);
+    const innerGeo = new THREE.ConeGeometry(R * 0.12, R * 0.55, 6);
+    geos.push(coneGeo, innerGeo);
+
+    const outerMat = new THREE.MeshStandardMaterial({
+      color: 0xff3b0f,
+      emissive: 0xff3b0f,
+      emissiveIntensity: 1.8,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending,
+      wireframe: true
+    });
+    const innerMat = new THREE.MeshBasicMaterial({
+      color: 0xffd166,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    });
+    mats.push(outerMat, innerMat);
+
+    const offsets = [
+      { x: 0, z: 0 },
+      { x: -R * 0.55, z: -10 },
+      { x: R * 0.55, z: -10 }
+    ];
+
+    for (let i = 0; i < numCols; i++) {
+      const colGroup = new THREE.Group();
+      colGroup.position.set(offsets[i].x, R * 0.325, offsets[i].z);
+
+      const outer = new THREE.Mesh(coneGeo, outerMat);
+      const inner = new THREE.Mesh(innerGeo, innerMat);
+      colGroup.add(outer, inner);
+      g.add(colGroup);
+
+      columnsList.push({
+        group: colGroup,
+        outer,
+        inner,
+        phase: i * Math.PI * 0.5
+      });
+    }
+
+    g.userData.geo = { dispose: () => geos.forEach(geo => geo.dispose()) };
+    g.userData.mat = { dispose: () => mats.forEach(mat => mat.dispose()) };
+
+    let age = 0;
+    let acc = 0;
+    
     return {
       object3D: g,
       update(dt) {
         age += dt;
-        disc.material.opacity = 0.22 + 0.1 * Math.sin(age * 8);
-        disc.rotation.z += dt * 0.4;
-        // 持續竄火 (節流)
+        discMat.opacity = 0.2 + 0.1 * Math.sin(age * 7);
+        
+        columnsList.forEach((col) => {
+          col.group.rotation.y += dt * 3.5;
+          col.outer.rotation.z = Math.sin(age * 5 + col.phase) * 0.15;
+          
+          const scaleY = 1.0 + Math.sin(age * 14 + col.phase) * 0.2;
+          const scaleXZ = 1.0 + Math.cos(age * 12 + col.phase) * 0.12;
+          col.group.scale.set(scaleXZ, scaleY, scaleXZ);
+        });
+
+        // 持續竄火
         acc += dt;
-        const rate = 0.02;
+        const rate = 0.022;
         while (acc >= rate) {
           acc -= rate;
-          const a = Math.random() * Math.PI * 2, rr = Math.random() * z.radius;
-          ctx.particles.spawn({
-            x: g.position.x + Math.cos(a) * rr, y: 2, z: g.position.z + Math.sin(a) * rr,
-            vx: (Math.random() - 0.5) * 20, vy: 80 + Math.random() * 110, vz: (Math.random() - 0.5) * 20,
-            gravity: -20, drag: 1.2, life: 0.4 + Math.random() * 0.4, size: 4 + Math.random() * 4,
-            color: Math.random() < 0.4 ? '#ffd166' : (Math.random() < 0.6 ? '#ff7043' : '#e74c3c'), fade: true,
+          columnsList.forEach((col) => {
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.random() * R * 0.18;
+            ctx.particles.spawn({
+              x: g.position.x + col.group.position.x + Math.cos(angle) * r,
+              y: 4,
+              z: g.position.z + col.group.position.z + Math.sin(angle) * r,
+              vx: (Math.random() - 0.5) * 30,
+              vy: 80 + Math.random() * 130,
+              vz: (Math.random() - 0.5) * 30,
+              gravity: -25,
+              drag: 1.25,
+              life: 0.45 + Math.random() * 0.4,
+              size: 4 + Math.random() * 4.5,
+              color: Math.random() < 0.4 ? '#ffd166' : (Math.random() < 0.6 ? '#ff7043' : '#e74c3c'),
+              fade: true
+            });
           });
         }
-      },
+      }
     };
-  },
+  }
 });
 
 // 隕石：delay 期間天降隕石 + 預警圈；落地時 hit fx 觸發大爆炸
@@ -340,3 +483,75 @@ registerVfx('elem_meteor', {
     };
   },
 });
+
+registerVfx('elem_frost', {
+  onCast(ctx, f, c) {
+    ring(ctx, c, { color: '#bfefff', from: 8, to: f.radius || 90, life: 0.38, y: 4, ease: true });
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 24;
+      ctx.particles.spawn({
+        x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr,
+        vx: (Math.random() - 0.5) * 20, vy: 60 + Math.random() * 80, vz: (Math.random() - 0.5) * 20,
+        drag: 1.5, life: 0.4 + Math.random() * 0.4,
+        size: 3 + Math.random() * 3, color: '#bfefff', fade: true
+      });
+    }
+  },
+  zone(ctx, z) {
+    const THREE = ctx.THREE;
+    const g = new THREE.Group();
+    const color = new THREE.Color('#9fe8ff');
+    
+    const iceGeo = new THREE.IcosahedronGeometry(z.radius * 0.7, 1);
+    iceGeo.scale(1, 0.12, 1);
+    const iceMat = new THREE.MeshStandardMaterial({
+      color,
+      emissive: 0x5dade2,
+      emissiveIntensity: 1.2,
+      transparent: true,
+      opacity: 0.7,
+      roughness: 0.1,
+      metalness: 0.1
+    });
+    const iceMesh = new THREE.Mesh(iceGeo, iceMat);
+    iceMesh.position.y = 1.0;
+    iceMesh.rotation.y = Math.random() * Math.PI;
+    g.add(iceMesh);
+    
+    g.userData.geo = iceGeo;
+    g.userData.mat = iceMat;
+
+    let age = 0;
+    let timeAcc = 0;
+    return {
+      object3D: g,
+      update(dt) {
+        age += dt;
+        
+        const remaining = Math.max(0, 1 - age / z.lifetime);
+        iceMat.opacity = 0.7 * remaining;
+        
+        timeAcc += dt;
+        const rate = 0.15;
+        while (timeAcc >= rate) {
+          timeAcc -= rate;
+          const a = Math.random() * Math.PI * 2, r = Math.random() * z.radius * 0.5;
+          ctx.particles.spawn({
+            x: g.position.x + Math.cos(a) * r,
+            y: 2,
+            z: g.position.z + Math.sin(a) * r,
+            vx: (Math.random() - 0.5) * 8,
+            vy: 20 + Math.random() * 30,
+            vz: (Math.random() - 0.5) * 8,
+            drag: 2,
+            life: 0.35 + Math.random() * 0.25,
+            size: 3,
+            color: '#bfefff',
+            fade: true
+          });
+        }
+      }
+    };
+  }
+});
+

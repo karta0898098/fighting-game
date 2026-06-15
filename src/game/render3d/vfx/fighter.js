@@ -206,48 +206,180 @@ registerVfx('fighter_ultimate', {
 
 registerVfx('fighter_combo', {
   onCast(ctx, f, c) {
-    // 快速拳擊衝擊 pop：大型金屬爆閃 + 衝擊氣流環 + 噴射粒子
-    const d = { x: Math.cos(f.facing), z: Math.sin(f.facing) };
-    const R = f.range || 58;
-    const hit = { x: c.x + d.x * R * 0.6, y: c.y ?? 18, z: c.z + d.z * R * 0.6 };
-    const scaleFactor = R / 58;
+    const THREE = ctx.THREE;
+    const dx = Math.cos(f.facing);
+    const dy = Math.sin(f.facing);
+    const R = f.range || 95;
+
+    // Helper to build a fist
+    const createFist = (colorHex) => {
+      const g = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 1.8,
+        transparent: true,
+        opacity: 0.95
+      });
+      const palmGeo = new THREE.BoxGeometry(6, 5, 6);
+      const knuckleGeo = new THREE.BoxGeometry(2, 4.5, 5);
+      const palm = new THREE.Mesh(palmGeo, mat);
+      const knuckle = new THREE.Mesh(knuckleGeo, mat);
+      knuckle.position.set(3.5, 0, 0);
+      g.add(palm, knuckle);
+
+      g.userData.geo = { dispose: () => { palmGeo.dispose(); knuckleGeo.dispose(); } };
+      g.userData.mat = mat;
+      return g;
+    };
+
+    // Spawn 3 rapid punches with staggered delays
+    const numPunches = 3;
+    const life = 0.35;
     
-    // 金色衝擊球與氣流環
-    sphereFlash(ctx, hit, { color: '#f7dc6f', from: 4 * scaleFactor, to: 34 * scaleFactor, life: 0.18, alpha: 0.98 });
-    ring(ctx, hit, { color: '#ffe27a', from: 2 * scaleFactor, to: 28 * scaleFactor, life: 0.22, y: 3, alpha: 0.88 });
-    
-    // 密集朝前噴發的能量火花
-    cone(ctx, c, f.facing, { color: ['#ffe27a', '#ffffff'], count: 24, speed: 300, spread: 0.45, offset: R * 0.45, life: 0.32, size: 3.6 * scaleFactor });
-  },
+    for (let i = 0; i < numPunches; i++) {
+      const delay = i * 0.08;
+      const fist = createFist(0xffd700);
+      fist.visible = false;
+      
+      const sideOffset = (i === 1 ? -6 : (i === 2 ? 6 : 0));
+      const perpX = -dy * sideOffset;
+      const perpZ = dx * sideOffset;
+
+      ctx.addTransient(fist, life, (mesh, t) => {
+        const elapsed = t * life;
+        if (elapsed < delay) {
+          mesh.visible = false;
+        } else {
+          mesh.visible = true;
+          const localT = (elapsed - delay) / (life - delay);
+          const currentDist = localT * R;
+          mesh.position.set(
+            c.x + dx * currentDist + perpX,
+            c.y + 12 + Math.sin(localT * Math.PI) * 5,
+            c.z + dy * currentDist + perpZ
+          );
+          mesh.rotation.y = -f.facing;
+          mesh.scale.setScalar(0.75 + localT * 0.5);
+          mesh.userData.mat.opacity = 0.95 * (1 - localT);
+        }
+      });
+    }
+
+    // Standard splash
+    sphereFlash(ctx, c, { color: '#f7dc6f', from: 4, to: 28, life: 0.18, alpha: 0.95 });
+    ring(ctx, c, { color: '#ffe27a', from: 2, to: 24, life: 0.2, y: 3 });
+  }
 });
 
 registerVfx('fighter_uppercut', {
   onCast(ctx, f, c) {
-    // 上勾拳 (升龍-tier 重擊)：高聳光柱 + 上沖氣流 + 擊飛環 + 爆閃
-    const R = f.range || 72;
-    const scaleFactor = R / 72;
-    pillar(ctx, c, { color: '#f9e79f', h: 170, r: 20 * scaleFactor, taper: 0.35, life: 0.5, alpha: 0.75, grow: 0.4 });
-    sphereFlash(ctx, c, { color: '#fff4c2', from: 6 * scaleFactor, to: 50 * scaleFactor, life: 0.2, alpha: 0.9 });
-    ring(ctx, c, { color: '#f1c40f', from: 6 * scaleFactor, to: 90 * scaleFactor, life: 0.36, y: 3, ease: true });
-    for (let i = 0; i < 30; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 22 * scaleFactor;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 240, vz: Math.sin(a) * 50, gravity: 240, drag: 1.2, life: 0.6, size: 4 * scaleFactor, color: '#f9e79f', fade: true });
+    const THREE = ctx.THREE;
+
+    // Golden heavy fist mesh
+    const fistGroup = new THREE.Group();
+    fistGroup.position.set(c.x, c.y, c.z);
+    fistGroup.rotation.y = -f.facing;
+
+    const palmGeo = new THREE.BoxGeometry(10, 8, 10);
+    const knuckleGeo = new THREE.BoxGeometry(3.5, 7, 8.5);
+    const palmMat = new THREE.MeshStandardMaterial({
+      color: 0xffd700,
+      emissive: 0xff9900,
+      emissiveIntensity: 2.2,
+      transparent: true,
+      opacity: 0.95
+    });
+
+    const palm = new THREE.Mesh(palmGeo, palmMat);
+    const knuckle = new THREE.Mesh(knuckleGeo, palmMat);
+    knuckle.position.set(5.5, 0, 0);
+    fistGroup.add(palm, knuckle);
+
+    // Point the fist straight UP locally!
+    fistGroup.rotation.z = Math.PI / 2;
+
+    fistGroup.userData.geo = { dispose: () => { palmGeo.dispose(); knuckleGeo.dispose(); } };
+    fistGroup.userData.mat = palmMat;
+
+    ctx.addTransient(fistGroup, 0.45, (mesh, t) => {
+      // Thrust upwards
+      mesh.position.y = c.y + t * 58;
+      mesh.rotation.x = t * Math.PI * 3; // Spin around upward axis
+      
+      const scale = 2.0 * Math.sin(t * Math.PI * 0.5);
+      mesh.scale.set(scale, scale, scale);
+      palmMat.opacity = 0.95 * (1 - t);
+    });
+
+    // High upward light pillar and rings
+    pillar(ctx, c, { color: '#f9e79f', h: 170, r: 24, taper: 0.35, life: 0.5, alpha: 0.75, grow: 0.4 });
+    sphereFlash(ctx, c, { color: '#fff4c2', from: 6, to: 55, life: 0.2, alpha: 0.9 });
+    ring(ctx, c, { color: '#f1c40f', from: 6, to: 95, life: 0.36, y: 3, ease: true });
+
+    // Rising particles
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 26;
+      ctx.particles.spawn({
+        x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr,
+        vx: Math.cos(a) * 55, vy: 300 + Math.random() * 250, vz: Math.sin(a) * 55,
+        gravity: 220, drag: 1.15, life: 0.65, size: 4.5, color: '#f9e79f', fade: true
+      });
     }
-    addShake(ctx, 8);
-  },
+
+    addShake(ctx, 9);
+  }
 });
 
 registerVfx('fighter_counter', {
   onCast(ctx, f, c) {
-    // 格擋架式：金色六角護環 + 火花環 + 閃光
-    const color = new THREE.Color('#f4d03f');
-    const geo = new THREE.RingGeometry(0.7, 1, 6);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    m.position.set(c.x, 26, c.z); m.lookAt(c.x, 26, c.z + 1);
-    ctx.addTransient(m, 0.5, (mesh, t) => { mesh.scale.setScalar(28 * Math.min(1, t * 5)); mesh.rotation.z += 0.06; mesh.material.opacity = 0.9 * (1 - t); });
-    m.userData.mat = m.material; m.userData.geo = geo;
+    const THREE = ctx.THREE;
+    const g = new THREE.Group();
+    g.position.set(c.x, 20, c.z);
+    g.rotation.y = -f.facing; // face facing direction
+
+    const geos = [];
+    const mats = [];
+
+    const outerGeo = new THREE.RingGeometry(18, 20, 8);
+    const innerGeo = new THREE.RingGeometry(13, 15, 8);
+    geos.push(outerGeo, innerGeo);
+
+    const shieldMat = new THREE.MeshBasicMaterial({
+      color: 0xffd700,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    mats.push(shieldMat);
+
+    const outerMesh = new THREE.Mesh(outerGeo, shieldMat);
+    const innerMesh = new THREE.Mesh(innerGeo, shieldMat);
+    g.add(outerMesh, innerMesh);
+
+    // Add small trigram boxes on the ring
+    const boxGeo = new THREE.BoxGeometry(3, 1, 0.8);
+    geos.push(boxGeo);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const trigram = new THREE.Mesh(boxGeo, shieldMat);
+      trigram.position.set(Math.cos(angle) * 16.5, Math.sin(angle) * 16.5, 0);
+      trigram.rotation.z = angle;
+      g.add(trigram);
+    }
+
+    g.userData.geo = { dispose: () => geos.forEach(geo => geo.dispose()) };
+    g.userData.mat = shieldMat;
+
+    ctx.addTransient(g, 0.55, (mesh, t) => {
+      mesh.scale.setScalar(Math.min(1.2, t * 6) * (1 - t * 0.15));
+      mesh.rotation.z = t * Math.PI * 2.5; // spin it!
+      shieldMat.opacity = 0.9 * (1 - t);
+    });
+
     ring(ctx, c, { color: '#f4d03f', from: 8, to: 56, life: 0.36, y: 3 });
     burst(ctx, c, { color: ['#f4d03f', '#ffffff'], count: 14, speed: 150, up: 50, flat: true, life: 0.4 });
     addFlash(ctx, 0.14, '#f4d03f');
-  },
+  }
 });
