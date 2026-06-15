@@ -60,7 +60,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
         if (!tpl) return;
         if (models.get(p.id) !== e) return; // 已被釋放或換角
         const skin = instantiateSkin(tpl);
-        if (skin) attachSkin(e.group, skin);
+        if (skin) attachSkin(e.group, skin, p.charId);
       }).catch(() => {});
     }
     return e;

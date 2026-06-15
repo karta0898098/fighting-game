@@ -8,9 +8,9 @@ import * as THREE from 'three';
 // 以世界 facing 角度求場景平面前進向量 (X=cos, Z=sin)
 export function dirFromFacing(f) { return { x: Math.cos(f), z: Math.sin(f) }; }
 
-// 放射狀粒子爆發
+// 放射狀粒子爆發 (粒子數提升，視覺更飽滿)
 export function burst(ctx, c, opt = {}) {
-  const n = opt.count || 20;
+  const n = Math.round((opt.count || 20) * 2.5);
   const speed = opt.speed || 160;
   const up = opt.up || 0;
   for (let i = 0; i < n; i++) {
@@ -21,45 +21,45 @@ export function burst(ctx, c, opt = {}) {
       x: c.x, y: c.y, z: c.z,
       vx: Math.cos(a) * spd, vy: up + spd * el * (opt.flat ? 0 : 1), vz: Math.sin(a) * spd,
       gravity: opt.gravity ?? 220, drag: opt.drag ?? 2.2,
-      life: (opt.life || 0.5) * (0.6 + Math.random() * 0.6),
-      size: opt.size || (3 + Math.random() * 3),
+      life: (opt.life || 0.55) * (0.6 + Math.random() * 0.6),
+      size: opt.size || (3.5 + Math.random() * 4.5),
       color: pick(opt.color), fade: opt.fade !== false,
     });
   }
 }
 
-// 前向錐狀噴發 (近戰/拳擊/火花)
+// 前向錐狀噴發 (近戰/拳擊/火花 - 粒子量與發散感大幅提升)
 export function cone(ctx, c, facing, opt = {}) {
   const d = dirFromFacing(facing);
   const base = Math.atan2(d.z, d.x);
   const spread = opt.spread ?? 0.7;
-  const n = opt.count || 16;
-  const speed = opt.speed || 240;
+  const n = Math.round((opt.count || 16) * 2.8);
+  const speed = (opt.speed || 240) * 1.15;
   for (let i = 0; i < n; i++) {
     const a = base + (Math.random() * 2 - 1) * spread;
     const spd = speed * (0.5 + Math.random());
     ctx.particles.spawn({
       x: c.x + d.x * (opt.offset || 0), y: c.y + (opt.rise || 0), z: c.z + d.z * (opt.offset || 0),
-      vx: Math.cos(a) * spd, vy: (opt.up || 0) + (Math.random() * 2 - 1) * (opt.vspread || 30),
+      vx: Math.cos(a) * spd, vy: (opt.up || 0) + (Math.random() * 2 - 1) * (opt.vspread || 40),
       vz: Math.sin(a) * spd,
       gravity: opt.gravity ?? 160, drag: opt.drag ?? 2.4,
-      life: (opt.life || 0.4) * (0.6 + Math.random() * 0.7),
-      size: opt.size || (2.5 + Math.random() * 3), color: pick(opt.color), fade: opt.fade !== false,
+      life: (opt.life || 0.45) * (0.6 + Math.random() * 0.7),
+      size: opt.size || (3.0 + Math.random() * 4.0), color: pick(opt.color), fade: opt.fade !== false,
     });
   }
 }
 
-// 上升柱狀粒子 (治療/血怒/光柱)
+// 上升柱狀粒子 (治療/血怒/光柱 - 密集上升星辰)
 export function column(ctx, c, opt = {}) {
-  const n = opt.count || 24, r = opt.radius || 26;
+  const n = Math.round((opt.count || 24) * 2.8), r = opt.radius || 26;
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, rr = Math.random() * r;
     ctx.particles.spawn({
       x: c.x + Math.cos(a) * rr, y: opt.y0 ?? 0, z: c.z + Math.sin(a) * rr,
-      vx: 0, vy: (opt.speed || 130) * (0.6 + Math.random() * 0.8), vz: 0,
+      vx: 0, vy: (opt.speed || 130) * (0.75 + Math.random() * 0.95), vz: 0,
       gravity: opt.gravity ?? -20, drag: opt.drag ?? 0.6,
       life: (opt.life || 0.7) * (0.6 + Math.random() * 0.6),
-      size: opt.size || 3, color: pick(opt.color), fade: opt.fade !== false,
+      size: opt.size || 3.5, color: pick(opt.color), fade: opt.fade !== false,
     });
   }
 }
@@ -114,24 +114,59 @@ export function pillar(ctx, c, opt = {}) {
   m.userData.mat = m.material; m.userData.geo = geo;
 }
 
-// 細長刀光/斬擊 (盒狀，沿 facing)
+// 弧形月牙斬擊 (扇形面，沿 facing 劃過，並在斬擊軌跡上釋放大量發光火星)
 export function slashBlade(ctx, c, facing, opt = {}) {
   const color = new THREE.Color(pick(opt.color) || '#ffffff');
-  const len = opt.len || 80, w = opt.w || 10, h = opt.h || 4;
-  const geo = new THREE.BoxGeometry(len, h, w);
+  const len = opt.len || 80;
+  const swingArc = Math.abs(opt.swing) || 1.35;
+  const swingDir = opt.swing < 0 ? -1 : 1;
+  const life = opt.life || 0.28;
+
+  // 使用 RingGeometry 繪製完美的月牙弧形斬擊面
+  const geo = new THREE.RingGeometry(len * 0.4, len * 1.05, 32, 1, -swingArc / 2, swingArc);
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-    color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false,
+    color, transparent: true, opacity: 0.98, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
   }));
+  m.rotation.x = -Math.PI / 2; // 水平躺在地面上
+
   const g = new THREE.Group();
-  g.position.set(c.x, c.y ?? 22, c.z);
-  g.rotation.y = -facing - (opt.swing || 0) * 0.5;
+  g.position.set(c.x, opt.y ?? (c.y ?? 18), c.z);
+  g.rotation.y = -facing;
   g.add(m);
-  m.position.x = len * 0.45;
-  ctx.addTransient(g, opt.life || 0.2, (grp, t) => {
-    grp.rotation.y = -facing - (opt.swing || 0) * 0.5 + (opt.swing || 0) * t;
-    m.material.opacity = (1 - t) * 0.95;
-    grp.scale.setScalar(0.7 + 0.4 * t);
+
+  // 漸變淡出與扇形展開動畫
+  ctx.addTransient(g, life, (grp, t) => {
+    // 隨時間稍微外擴並淡出
+    const scale = 0.82 + 0.38 * t;
+    m.scale.set(scale, scale, 1);
+    m.material.opacity = (1 - t) * (opt.alpha ?? 0.95);
+    // 隨揮動方向旋轉
+    grp.rotation.y = -facing + (swingDir * swingArc * 0.3 * (t - 0.5));
   });
+
+  // 伴隨斬擊，在軌跡上產生一整排亮眼的噴射火星，讓刀光極其明顯
+  const sparkCount = Math.round((opt.sparkCount || 15) * 1.5);
+  for (let i = 0; i < sparkCount; i++) {
+    const ratio = i / (sparkCount - 1);
+    // 沿著扇形弧度均勻分佈火星
+    const angle = -facing + (ratio - 0.5) * swingArc * swingDir;
+    const dist = len * (0.45 + Math.random() * 0.55);
+    const px = c.x + Math.cos(angle) * dist;
+    const pz = c.z + Math.sin(angle) * dist;
+    
+    ctx.particles.spawn({
+      x: px, y: opt.y ?? (c.y ?? 18), z: pz,
+      vx: Math.cos(angle) * 180 + (Math.random() - 0.5) * 60,
+      vy: 12 + Math.random() * 90,
+      vz: Math.sin(angle) * 180 + (Math.random() - 0.5) * 60,
+      gravity: 120, drag: 2.0,
+      life: 0.35 + Math.random() * 0.3,
+      size: 3.2 + Math.random() * 3.5,
+      color: [color, '#ffffff'],
+      fade: true
+    });
+  }
+
   g.userData.mat = m.material; g.userData.geo = geo;
 }
 
@@ -147,27 +182,31 @@ export function makeSpinPlate(THREE3, color, r) {
 export function addShake(ctx, m) { ctx.sceneMgr.addShake(m); }
 export function addFlash(ctx, a, color) { ctx.sceneMgr.addFlash(a, color); }
 
-// 大招通用爆發底：三層擴張環 + 中心爆閃球 + 雙光柱 + 漫天上升光點 + 大震動/閃光。各角色再疊自己的招牌特效。
+// 大招通用爆發底：多層擴張環 + 雙重中心球 + 衝天巨型雙光柱 + 極為密集的上升流星 + 大範圍地裂火花
 export function ultimateBurst(ctx, c, opt = {}) {
   const color = opt.color || '#ffffff';
   const R = opt.radius || 150;
-  // 三層擴張地環：主色實環 + 白核 + 外擴衝擊波
-  ring(ctx, c, { color, from: 16, to: R, life: 0.62, y: 4, alpha: 0.95, ease: true });
-  ring(ctx, c, { color: '#ffffff', from: 8, to: R * 0.6, life: 0.46, y: 7, alpha: 0.85 });
-  ring(ctx, c, { color, from: R * 0.5, to: R * 1.35, life: 0.72, y: 3, alpha: 0.5, inner: 0.92, ease: true });
-  // 中心爆閃球 (亮核 + 彩殼)
-  sphereFlash(ctx, c, { color: '#ffffff', from: 6, to: R * 0.34, life: 0.26, alpha: 0.95, detail: 2 });
-  sphereFlash(ctx, c, { color, from: 4, to: R * 0.52, life: 0.36, alpha: 0.6 });
-  // 衝天光柱 (主柱 + 細白芯)
+  // 四層地表衝擊環，極限張力
+  ring(ctx, c, { color, from: 16, to: R, life: 0.65, y: 4, alpha: 0.95, ease: true });
+  ring(ctx, c, { color: '#ffffff', from: 8, to: R * 0.6, life: 0.48, y: 7, alpha: 0.85 });
+  ring(ctx, c, { color: '#ffffff', from: 4, to: R * 0.85, life: 0.4, y: 8, alpha: 0.9 });
+  ring(ctx, c, { color, from: R * 0.4, to: R * 1.5, life: 0.78, y: 3, alpha: 0.55, inner: 0.94, ease: true });
+  
+  // 雙重發光爆閃球
+  sphereFlash(ctx, c, { color: '#ffffff', from: 8, to: R * 0.38, life: 0.28, alpha: 0.95, detail: 2 });
+  sphereFlash(ctx, c, { color, from: 6, to: R * 0.6, life: 0.38, alpha: 0.65 });
+  
+  // 衝天雙光柱
   if (opt.pillar !== false) {
-    pillar(ctx, c, { color, h: opt.pillarH || 160, r: opt.pillarR || 28, taper: 0.35, life: 0.62, alpha: 0.6, grow: 0.6 });
-    pillar(ctx, c, { color: '#ffffff', h: (opt.pillarH || 160) * 1.05, r: (opt.pillarR || 28) * 0.42, taper: 0.2, life: 0.5, alpha: 0.5, grow: 0.3 });
+    pillar(ctx, c, { color, h: opt.pillarH || 170, r: opt.pillarR || 30, taper: 0.35, life: 0.65, alpha: 0.65, grow: 0.6 });
+    pillar(ctx, c, { color: '#ffffff', h: (opt.pillarH || 170) * 1.05, r: (opt.pillarR || 30) * 0.45, taper: 0.2, life: 0.52, alpha: 0.55, grow: 0.3 });
   }
-  // 漫天上升光點 + 地面放射火星
-  column(ctx, c, { color: [color, '#ffffff'], count: opt.count || 40, radius: R * 0.42, speed: 220, life: 0.9, size: 4.5 });
-  burst(ctx, c, { color: [color, '#ffffff'], count: 18, speed: 220, up: 40, flat: true, life: 0.5, size: 4 });
-  ctx.sceneMgr.addShake(opt.shake ?? 18);
-  ctx.sceneMgr.addFlash(opt.flash ?? 0.32, color);
+  // 漫天密集上升星屑 (count * 2.8 倍) + 地表猛烈擴散能量火星
+  column(ctx, c, { color: [color, '#ffffff'], count: Math.round((opt.count || 40) * 2.8), radius: R * 0.48, speed: 250, life: 1.05, size: 5 });
+  burst(ctx, c, { color: [color, '#ffffff'], count: 45, speed: 240, up: 50, flat: true, life: 0.55, size: 4.5 });
+  
+  ctx.sceneMgr.addShake(opt.shake ?? 22);
+  ctx.sceneMgr.addFlash(opt.flash ?? 0.38, color);
 }
 
 function pick(c) {

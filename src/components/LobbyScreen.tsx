@@ -126,6 +126,8 @@ export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme
           </button>
         </div>
 
+
+
         <h3>選擇角色</h3>
         <div className="char-grid">
           {CHARACTERS.map((c) => (

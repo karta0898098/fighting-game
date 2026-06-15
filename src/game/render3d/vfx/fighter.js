@@ -6,42 +6,52 @@ import { ring, pillar, burst, cone, sphereFlash, addShake, addFlash, ultimateBur
 // 大絕招 — 真·昇龍霸：金色衝天氣旋
 registerVfx('fighter_ultimate', {
   onCast(ctx, f, c) {
-    ultimateBurst(ctx, c, { color: '#ffe27a', radius: 130, pillarH: 280, pillarR: 24, shake: 18, flash: 0.34 });
+    const R = f.range || 130;
+    ultimateBurst(ctx, c, { color: '#ffe27a', radius: R, pillarH: 280, pillarR: 24, shake: 18, flash: 0.34 });
     for (let k = 0; k < 5; k++) {
       const geo = new THREE.TorusGeometry(1, 0.18, 8, 32);
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffe27a'), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
       m.rotation.x = -Math.PI / 2; m.position.set(c.x, 8, c.z);
       const baseY = 10 + k * 44;
-      ctx.addTransient(m, 0.6, (mesh, t) => { mesh.position.y = baseY + t * 60; mesh.scale.setScalar((34 - k * 4) * (0.5 + 0.6 * t)); mesh.material.opacity = (1 - t) * 0.8; });
+      ctx.addTransient(m, 0.6, (mesh, t) => { mesh.position.y = baseY + t * 60; mesh.scale.setScalar((34 - k * 4) * (R / 130) * (0.5 + 0.6 * t)); mesh.material.opacity = (1 - t) * 0.8; });
       m.userData.mat = m.material; m.userData.geo = geo;
     }
     for (let i = 0; i < 44; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 28;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 60, vy: 300 + Math.random() * 260, vz: Math.sin(a) * 60, gravity: 240, drag: 1, life: 0.7, size: 4.5, color: '#ffe27a', fade: true });
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 28 * (R / 130);
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 60, vy: 300 + Math.random() * 260, vz: Math.sin(a) * 60, gravity: 240, drag: 1, life: 0.7, size: 4.5 * (R / 130), color: '#ffe27a', fade: true });
     }
-    pillar(ctx, c, { color: '#fff4c2', h: 300, r: 10, taper: 0.1, life: 0.5, alpha: 0.6, grow: 0.2 });
+    pillar(ctx, c, { color: '#fff4c2', h: 300, r: 10 * (R / 130), taper: 0.1, life: 0.5, alpha: 0.6, grow: 0.2 });
   },
 });
 
 registerVfx('fighter_combo', {
   onCast(ctx, f, c) {
-    // 快速拳擊衝擊 pop
+    // 快速拳擊衝擊 pop：大型金屬爆閃 + 衝擊氣流環 + 噴射粒子
     const d = { x: Math.cos(f.facing), z: Math.sin(f.facing) };
-    const hit = { x: c.x + d.x * f.range * 0.6, y: c.y, z: c.z + d.z * f.range * 0.6 };
-    sphereFlash(ctx, hit, { color: '#f7dc6f', from: 3, to: 22, life: 0.16, alpha: 0.9 });
-    cone(ctx, c, f.facing, { color: '#f9e79f', count: 8, speed: 240, spread: 0.3, offset: f.range * 0.5, life: 0.22, size: 2.6 });
+    const R = f.range || 58;
+    const hit = { x: c.x + d.x * R * 0.6, y: c.y ?? 18, z: c.z + d.z * R * 0.6 };
+    const scaleFactor = R / 58;
+    
+    // 金色衝擊球與氣流環
+    sphereFlash(ctx, hit, { color: '#f7dc6f', from: 4 * scaleFactor, to: 34 * scaleFactor, life: 0.18, alpha: 0.98 });
+    ring(ctx, hit, { color: '#ffe27a', from: 2 * scaleFactor, to: 28 * scaleFactor, life: 0.22, y: 3, alpha: 0.88 });
+    
+    // 密集朝前噴發的能量火花
+    cone(ctx, c, f.facing, { color: ['#ffe27a', '#ffffff'], count: 24, speed: 300, spread: 0.45, offset: R * 0.45, life: 0.32, size: 3.6 * scaleFactor });
   },
 });
 
 registerVfx('fighter_uppercut', {
   onCast(ctx, f, c) {
     // 上勾拳 (升龍-tier 重擊)：高聳光柱 + 上沖氣流 + 擊飛環 + 爆閃
-    pillar(ctx, c, { color: '#f9e79f', h: 170, r: 20, taper: 0.35, life: 0.5, alpha: 0.75, grow: 0.4 });
-    sphereFlash(ctx, c, { color: '#fff4c2', from: 6, to: 50, life: 0.2, alpha: 0.9 });
-    ring(ctx, c, { color: '#f1c40f', from: 6, to: 90, life: 0.36, y: 3, ease: true });
+    const R = f.range || 72;
+    const scaleFactor = R / 72;
+    pillar(ctx, c, { color: '#f9e79f', h: 170, r: 20 * scaleFactor, taper: 0.35, life: 0.5, alpha: 0.75, grow: 0.4 });
+    sphereFlash(ctx, c, { color: '#fff4c2', from: 6 * scaleFactor, to: 50 * scaleFactor, life: 0.2, alpha: 0.9 });
+    ring(ctx, c, { color: '#f1c40f', from: 6 * scaleFactor, to: 90 * scaleFactor, life: 0.36, y: 3, ease: true });
     for (let i = 0; i < 30; i++) {
-      const a = Math.random() * Math.PI * 2, rr = Math.random() * 22;
-      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 240, vz: Math.sin(a) * 50, gravity: 240, drag: 1.2, life: 0.6, size: 4, color: '#f9e79f', fade: true });
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 22 * scaleFactor;
+      ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: Math.cos(a) * 50, vy: 280 + Math.random() * 240, vz: Math.sin(a) * 50, gravity: 240, drag: 1.2, life: 0.6, size: 4 * scaleFactor, color: '#f9e79f', fade: true });
     }
     addShake(ctx, 8);
   },

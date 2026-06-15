@@ -23,56 +23,46 @@ import { PLAYER_RADIUS } from '../constants.js';
 const FOOTPRINT_FILL = 6;
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
-const modelUrl = (file) => asset(`gltf_source/${file}`);
+const modelUrl = (file) => asset(`assets/characters/models/${file}`);
 
-// charId -> 檔名（與 public/assets/characters 既有命名一致）
+// charId -> 檔名 (全部對應到人形模型)
 const CHAR_FILES = [
-  'Bull',        // 0: warrior
-  'Fox',         // 1: mage
-  'Wolf',        // 2: assassin
-  'Horse',       // 3: tank
-  'Deer',        // 4: archer
-  'Alpaca',      // 5: healer
-  'Stag',        // 6: berserker
-  'Husky',       // 7: ninja
-  'Horse_White', // 8: elementalist
-  'ShibaInu',    // 9: fighter
+  'humanoid', // 0: warrior
+  'humanoid', // 1: mage
+  'humanoid', // 2: assassin
+  'humanoid', // 3: tank
+  'humanoid', // 4: archer
+  'humanoid', // 5: healer
+  'humanoid', // 6: berserker
+  'humanoid', // 7: ninja
+  'humanoid', // 8: elementalist
+  'humanoid', // 9: fighter
 ];
 
-// charId -> 檔案格式 (.glb 或 .gltf)；未指定則預設 .glb
+// charId -> 檔案格式
 const CHAR_FORMATS = {
-  0: 'gltf', // warrior → Bull
-  1: 'gltf', // mage → Fox
-  2: 'gltf', // assassin → Wolf
-  3: 'gltf', // tank → Horse
-  4: 'gltf', // archer → Deer
-  5: 'gltf', // healer → Alpaca
-  6: 'gltf', // berserker → Stag
-  7: 'gltf', // ninja → Husky
-  8: 'gltf', // elementalist → Horse_White
-  9: 'gltf', // fighter → ShibaInu
+  0: 'glb', 1: 'glb', 2: 'glb', 3: 'glb', 4: 'glb',
+  5: 'glb', 6: 'glb', 7: 'glb', 8: 'glb', 9: 'glb',
 };
 
-// 各動作的候選 clip 名稱（不同來源命名不一，依序比對，先精確再模糊包含）。
+// 各動作的候選 clip 名稱 (對照 humanoid.glb 內建動畫)
 const DEFAULT_CLIPS = {
-  idle: ['Idle', 'idle', 'Idle_Neutral', 'CharacterArmature|Idle', 'Armature|Idle', 'mixamo.com'],
-  walk: ['Walk', 'walk', 'Walking', 'Run', 'run', 'CharacterArmature|Walk', 'Armature|Walk'],
-  attack: ['Attack', 'attack', 'Punch', 'Slash', 'Sword', 'Cast', 'Spellcast', 'CharacterArmature|Attack', 'Armature|Attack'],
-  hit: ['Hit', 'hit', 'HitRecieve', 'HitReceive', 'HitReact', 'Damage', 'Death', 'CharacterArmature|Hit'],
+  idle: ['idle', 'Idle'],
+  walk: ['walk', 'Walk'],
+  run: ['run', 'Run'],
+  attack: ['agree', 'Punch', 'Attack'],
+  hit: ['headShake', 'hit', 'Hit'],
 };
 
-// 每角色覆寫：皮膚會依 bounding box 自動縮放對齊碰撞大小並貼地，
-// 因此這裡通常只需設 rotationY (朝向)；如需再微調可加 scaleMul / yOffset。
-const DEFAULT_CFG = { scaleMul: 1, yOffset: 0, rotationY: Math.PI / 2 };
+// 每角色覆寫：微調人形的朝向、大小或高度
+const DEFAULT_CFG = { scaleMul: 0.38, yOffset: 0, rotationY: Math.PI / 2 };
 const OVERRIDES = {
-  // 例：3: { scaleMul: 1.1 },           // 坦克視覺再放大一點
-  // 例：1: { rotationY: -Math.PI / 2 },  // 朝向相反時翻轉
-  // 例：3: { yOffset: 1 },              // 略微抬高避免陥地
+  3: { scaleMul: 0.46 }, // 坦克稍微大一點
+  6: { scaleMul: 0.42 }, // 狂戰士稍微大一點
 };
 
 export function getSkinConfig(charId) {
-  const file = CHAR_FILES[charId];
-  if (!file) return null;
+  const file = CHAR_FILES[charId] || 'humanoid';
   const format = CHAR_FORMATS[charId] || 'glb';
   return {
     url: modelUrl(`${file}.${format}`),
@@ -85,17 +75,10 @@ export function getSkinConfig(charId) {
 const loader = new GLTFLoader();
 const cache = new Map(); // charId -> Promise<Template|null>
 
-// 載入並快取 gltf 模板（共用 geometry，逐實例再 clone 骨架）。無檔/失敗回 null。
+// 載入並快取 gltf 模板。無檔/失敗回 null。
 export function prepareSkin(charId) {
-  if (cache.has(charId)) return cache.get(charId);
-  // const cfg = getSkinConfig(charId);
-  const cfg = undefined;
-  if (!cfg) { const p = Promise.resolve(null); cache.set(charId, p); return p; }
-  const p = loader.loadAsync(cfg.url)
-    .then((gltf) => ({ scene: gltf.scene, animations: gltf.animations || [], cfg }))
-    .catch(() => null); // 404 / 解析失敗 → 回退程序化
-  cache.set(charId, p);
-  return p;
+  // 停用 GLB 皮膚，全面採用精緻的程序化二頭身鋼彈 Mecha 模型
+  return Promise.resolve(null);
 }
 
 function pickClip(animations, names) {
