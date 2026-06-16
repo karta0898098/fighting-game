@@ -36,13 +36,13 @@ registerVfx('bard_note', {
 // 激昂戰歌：上升的金粉音符與品紅光環 (友方增傷)
 registerVfx('bard_anthem', {
   onCast(ctx, f, c) {
-    const R = f.radius || 300;
-    ring(ctx, c, { color: PINK, from: 12, to: R * 0.6, life: 0.6, y: 4, alpha: 0.8, ease: true });
+    const R = f.allyRadius || 300;
+    ring(ctx, c, { color: PINK, from: R, to: R, inner: 0.98, life: 0.8, y: 3.5, alpha: 0.85 });
+    ring(ctx, c, { color: PINK, from: 12, to: R, life: 0.6, y: 4, alpha: 0.6, ease: true });
     ring(ctx, c, { color: '#ffd76a', from: 8, to: R * 0.4, life: 0.5, y: 7, alpha: 0.7 });
     column(ctx, c, { color: [PINK, ROSE, '#ffd76a'], count: 30, radius: 40, speed: 180, life: 0.9, size: 4 });
     sphereFlash(ctx, c, { color: '#ffe3ef', from: 8, to: 60, life: 0.3, alpha: 0.85 });
     addFlash(ctx, 0.16, PINK);
-    // 上飄音符粒子
     for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, rr = Math.random() * 50; ctx.particles.spawn({ x: c.x + Math.cos(a) * rr, y: 2, z: c.z + Math.sin(a) * rr, vx: 0, vy: 120 + Math.random() * 100, vz: 0, drag: 0.5, life: 1.0, size: 4.5, color: Math.random() < 0.5 ? PINK : '#ffd76a', fade: true }); }
   },
 });
@@ -73,10 +73,13 @@ registerVfx('bard_discord', {
 registerVfx('bard_ultimate', {
   onCast(ctx, f, c) {
     const R = f.radius || 180;
+    const AR = f.allyRadius || R;
     ctx.sceneMgr.addShake(14);
     ctx.sceneMgr.addFlash(0.32, PINK);
     ultimateBurst(ctx, c, { color: PINK, radius: R, pillarH: 180, pillarR: 30, count: 44, shake: 14, flash: 0 });
-    // 旋繞的彩光音符環
+    ring(ctx, c, { color: PINK, from: AR, to: AR, inner: 0.98, life: 0.9, y: 3.5, alpha: 0.9 });
+    ring(ctx, c, { color: '#ffd76a', from: R, to: AR, life: 0.7, y: 4, alpha: 0.7, ease: true });
+
     const TH = ctx.THREE;
     const cols = [0xff4081, 0xffd76a, 0x4dd0e1, 0x7bed9f];
     for (let i = 0; i < 10; i++) {
@@ -92,4 +95,39 @@ registerVfx('bard_ultimate', {
       note.userData.geo = geo; note.userData.mat = mat;
     }
   },
+});
+
+registerVfx('bard_anthem_ally', {
+  onCast(ctx, f, c) {
+    pillar(ctx, c, { color: PINK, h: 90, r: 18, life: 0.5, alpha: 0.65 });
+    ring(ctx, c, { color: '#ffd76a', from: 8, to: 45, life: 0.45, y: 3, ease: true });
+    column(ctx, c, { color: [PINK, '#ffd76a'], count: 12, radius: 16, speed: 110, life: 0.6, size: 3.5 });
+    for (let i = 0; i < 4; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 12;
+      ctx.particles.spawn({
+        x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr,
+        vx: (Math.random() - 0.5) * 15, vy: 80 + Math.random() * 60, vz: (Math.random() - 0.5) * 15,
+        drag: 0.6, life: 0.7 + Math.random() * 0.3, size: 4.0,
+        color: Math.random() < 0.5 ? PINK : '#ffd76a', fade: true
+      });
+    }
+  }
+});
+
+registerVfx('bard_ultimate_ally', {
+  onCast(ctx, f, c) {
+    const cols = [PINK, '#ffd76a', '#4dd0e1', '#7bed9f'];
+    pillar(ctx, c, { color: PINK, h: 120, r: 24, life: 0.65, alpha: 0.7 });
+    ring(ctx, c, { color: '#4dd0e1', from: 10, to: 60, life: 0.5, y: 3, ease: true });
+    column(ctx, c, { color: cols, count: 18, radius: 20, speed: 130, life: 0.75, size: 3.8 });
+    for (let i = 0; i < 6; i++) {
+      const a = Math.random() * Math.PI * 2, rr = Math.random() * 15;
+      ctx.particles.spawn({
+        x: c.x + Math.cos(a) * rr, y: 4, z: c.z + Math.sin(a) * rr,
+        vx: (Math.random() - 0.5) * 20, vy: 100 + Math.random() * 80, vz: (Math.random() - 0.5) * 20,
+        drag: 0.5, life: 0.8 + Math.random() * 0.4, size: 4.2,
+        color: cols[i % cols.length], fade: true
+      });
+    }
+  }
 });

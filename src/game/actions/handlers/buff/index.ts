@@ -29,7 +29,18 @@ export function buff(ctx) {
   }
   if (action.effect) applyEffect(caster, action.effect.kind, action.effect);
   if (action.trail) caster.trail = { remaining: action.trail.duration || 3, spacing: action.trail.spacing || 42, lastx: caster.x, lasty: caster.y, zone: action.trail.zone };
-  if (!silent) addFx(state, { type: 'buff', x: caster.x, y: caster.y, color: action.color, life: 0.4, radius: PLAYER_RADIUS * 2.2, vfx: action.vfx });
+  if (!silent) {
+    addFx(state, {
+      type: 'buff',
+      x: caster.x,
+      y: caster.y,
+      color: action.color,
+      life: 0.4,
+      radius: PLAYER_RADIUS * 2.2,
+      allyRadius: action.ally ? action.ally.radius : undefined,
+      vfx: action.vfx
+    });
+  }
 }
 
 export const handlers = { buff };

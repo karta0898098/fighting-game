@@ -211,8 +211,10 @@ registerVfx('healer_heal', {
 registerVfx('healer_cleanse', {
   onCast(ctx, f, c) {
     const THREE = ctx.THREE;
+    const R = f.allyRadius || 100;
     sphereFlash(ctx, c, { color: '#ffffff', from: 6, to: 60, life: 0.24, alpha: 0.85 });
-    ring(ctx, c, { color: '#55efc4', from: 10, to: 100, life: 0.5, y: 3, ease: true });
+    ring(ctx, c, { color: '#55efc4', from: R, to: R, inner: 0.98, life: 0.8, y: 3, alpha: 0.85 });
+    ring(ctx, c, { color: '#2ecc71', from: 10, to: R, life: 0.6, y: 3.2, alpha: 0.6, ease: true });
     column(ctx, c, { color: ['#55efc4', '#ffffff'], count: 24, radius: 30, speed: 170, life: 0.7 });
     
     const featherGeo = new THREE.ConeGeometry(3, 24, 3);
@@ -309,6 +311,29 @@ registerVfx('healer_aura', {
         }
       }
     };
+  }
+});
+
+registerVfx('healer_heal_ally', {
+  onCast(ctx, f, c) {
+    pillar(ctx, c, { color: '#7CFFA0', h: 90, r: 18, life: 0.5, alpha: 0.65 });
+    ring(ctx, c, { color: '#2ecc71', from: 8, to: 45, life: 0.4, y: 3, ease: true });
+    column(ctx, c, { color: ['#7CFFA0', '#ffffff'], count: 12, radius: 18, speed: 120, life: 0.6, size: 3.0 });
+  }
+});
+
+registerVfx('healer_ultimate_ally', {
+  onCast(ctx, f, c) {
+    pillar(ctx, c, { color: '#aaffcc', h: 140, r: 26, life: 0.7, alpha: 0.7 });
+    ring(ctx, c, { color: '#ffd76a', from: 10, to: 70, life: 0.6, y: 3, ease: true });
+    column(ctx, c, { color: ['#aaffcc', '#ffd76a', '#ffffff'], count: 20, radius: 24, speed: 150, life: 0.8, size: 3.8 });
+  }
+});
+
+registerVfx('healer_aura_heal_tick', {
+  onCast(ctx, f, c) {
+    ring(ctx, c, { color: '#55efc4', from: 4, to: 24, life: 0.3, y: 3, ease: true, alpha: 0.6 });
+    column(ctx, c, { color: ['#55efc4', '#ffffff'], count: 5, radius: 12, speed: 70, life: 0.4, size: 2.2 });
   }
 });
 

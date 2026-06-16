@@ -77,12 +77,13 @@ export function processChannel(state, p, dt) {
   if (!ch) return;
   ch.remaining -= dt;
   ch.tickTimer -= dt;
-  if (ch.tickTimer <= 0) {
-    ch.tickTimer += ch.tick;
+
+  let target = state.players[ch.targetId];
+  if (!target || !target.alive || dist(p.x, p.y, target.x, target.y) > ch.range || !isEnemy(state, p.id, target)) {
     let best = null;
     let bd = Infinity;
     for (const o of Object.values(state.players)) {
-      if (!isEnemy(state, p.id, o)) continue;
+      if (!isEnemy(state, p.id, o) || !o.alive) continue;
       const d = dist(p.x, p.y, o.x, o.y);
       if (d <= ch.range && d < bd) {
         bd = d;
@@ -90,10 +91,21 @@ export function processChannel(state, p, dt) {
       }
     }
     if (best) {
-      dealDamage(state, best, ch.dmg, p.id);
+      ch.targetId = best.id;
+      target = best;
+    } else {
+      ch.targetId = null;
+      target = null;
+    }
+  }
+
+  if (ch.tickTimer <= 0) {
+    ch.tickTimer += ch.tick;
+    if (target) {
+      dealDamage(state, target, ch.dmg, p.id);
       if (ch.heal) p.hp = Math.min(p.maxHp, p.hp + ch.heal);
-      if (ch.effect) applyEffectFrom(state, best, ch.effect, p.id);
-      addFx(state, { type: 'hit', x: best.x, y: best.y, color: ch.color, life: 0.2, radius: 20, vfx: ch.vfx });
+      if (ch.effect) applyEffectFrom(state, target, ch.effect, p.id);
+      addFx(state, { type: 'hit', x: target.x, y: target.y, color: ch.color, life: 0.2, radius: 20, vfx: ch.vfx });
     }
   }
   if (ch.remaining <= 0) p.channel = null;

@@ -88,7 +88,17 @@ export function tryUltimate(state, p) {
   executeAction(state, p, action, { silent: true });
   p.iaiReady = false;
   if (talent && talent.id === 'timeprism') applyEffect(p, 'haste', { duration: talent.duration || 1.5, factor: talent.factor || 1.25 });
-  addFx(state, { type: 'ultimate', x: p.x, y: p.y, facing: p.facing, color: action.color, life: 0.7, radius: action.radius || 140, vfx: action.vfx });
+  addFx(state, {
+    type: 'ultimate',
+    x: p.x,
+    y: p.y,
+    facing: p.facing,
+    color: action.color,
+    life: 0.7,
+    radius: action.radius || 140,
+    allyRadius: action.ally ? action.ally.radius : undefined,
+    vfx: action.vfx
+  });
 }
 
 export function castInputActions(state, p, input, dt) {

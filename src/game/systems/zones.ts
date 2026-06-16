@@ -66,7 +66,20 @@ export function updateZones(state, dt) {
           }
           hits++;
         } else if (isAlly(state, zone.owner, o)) {
-          if (zone.allyHeal) o.hp = Math.min(o.maxHp, o.hp + zone.allyHeal);
+          if (zone.allyHeal) {
+            o.hp = Math.min(o.maxHp, o.hp + zone.allyHeal);
+            if (zone.vfx === 'healer_aura') {
+              addFx(state, {
+                type: 'hit',
+                x: o.x,
+                y: o.y,
+                color: zone.color || '#55efc4',
+                life: 0.2,
+                radius: o.hitR || PLAYER_RADIUS * 1.2,
+                vfx: 'healer_aura_heal_tick'
+              });
+            }
+          }
           if (zone.allyEffect) applyEffect(o, zone.allyEffect.kind, zone.allyEffect, zone.owner);
         }
       }

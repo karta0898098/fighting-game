@@ -40,6 +40,18 @@ export function applyAllyBuff(state, caster, ally) {
     if (ally.shield) applyEffect(target, 'shield', { amount: ally.shield, duration: ally.duration || 5 });
     if (ally.effect) applyEffect(target, ally.effect.kind, ally.effect, caster.id);
     if (ally.effects) for (const effect of ally.effects) applyEffect(target, effect.kind, effect, caster.id);
+    
+    if (ally.vfx) {
+      addFx(state, {
+        type: 'hit',
+        x: target.x,
+        y: target.y,
+        color: ally.color || '#ffffff',
+        life: ally.vfxLife || 0.5,
+        radius: target.hitR || PLAYER_RADIUS * 1.5,
+        vfx: ally.vfx
+      });
+    }
   }
 }
 

@@ -13,9 +13,9 @@ const data = {
     synergy: '增傷型核心：放大隊友 carry 的輸出；人越多越強，配多 carry 陣容滾雪球。',
     talent: { id: 'warsong', name: '戰歌共鳴', desc: '周圍 250 內每多一名友方，自身與友方額外 +5% 傷害（最多 +15%）。', radius: 250, perAlly: 0.05, maxAllies: 3 },
     basic: { name: '音波衝擊', type: 'projectile', dmg: 18, speed: 600, radius: 12, lifetime: 1.3, knockback: 60, cd: 0.5, color: '#ff6fa5', vfx: 'bard_note' },
-    skill1: { name: '激昂戰歌', type: 'buff', manaCost: 30, cd: 9, color: '#ff8fb8', vfx: 'bard_anthem', ally: { radius: 300, effect: { kind: 'rage', duration: 6, speed: 1.15, dmg: 1.3 } } },
+    skill1: { name: '激昂戰歌', type: 'buff', manaCost: 30, cd: 9, color: '#ff8fb8', vfx: 'bard_anthem', ally: { radius: 300, effect: { kind: 'rage', duration: 6, speed: 1.15, dmg: 1.3 }, vfx: 'bard_anthem_ally', color: '#ff8fb8' } },
     skill2: { name: '不諧和音', type: 'projectile', dmg: 40, speed: 720, radius: 13, lifetime: 0.9, pierce: true, knockback: 80, manaCost: 30, cd: 8, color: '#ec407a', effect: { kind: 'stun', duration: 0.5 }, vfx: 'bard_discord' },
-    ultimate: { name: '英雄頌歌', type: 'zone', range: 0, radius: 180, dmg: 30, lifetime: 0.6, tick: 0.6, knockback: 60, effect: { kind: 'slow', duration: 1.5, factor: 0.6 }, cd: 12, color: '#ff4081', vfx: 'bard_ultimate', ally: { radius: 340, shield: 160, cleanse: true, effects: [{ kind: 'rage', duration: 7, speed: 1.2, dmg: 1.4 }, { kind: 'haste', duration: 7, factor: 1.3 }] } },
+    ultimate: { name: '英雄頌歌', type: 'zone', range: 0, radius: 180, dmg: 30, lifetime: 0.6, tick: 0.6, knockback: 60, effect: { kind: 'slow', duration: 1.5, factor: 0.6 }, cd: 12, color: '#ff4081', vfx: 'bard_ultimate', ally: { radius: 340, shield: 160, cleanse: true, effects: [{ kind: 'rage', duration: 7, speed: 1.2, dmg: 1.4 }, { kind: 'haste', duration: 7, factor: 1.3 }], vfx: 'bard_ultimate_ally', color: '#ff4081' } },
   };
 
 export class BardCharacter extends BaseCharacter {

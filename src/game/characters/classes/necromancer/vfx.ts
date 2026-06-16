@@ -33,7 +33,9 @@ registerVfx('necro_ray', {
 // 生命汲取：施法起手 + 每跳汲取鏈
 registerVfx('necro_drain', {
   onCast(ctx, f, c) {
-    ring(ctx, c, { color: GREEN, from: 8, to: 60, life: 0.4, y: 4, alpha: 0.7 });
+    const R = f.range || 320;
+    ring(ctx, c, { color: GREEN, from: R, to: R, inner: 0.98, life: 0.8, y: 3.5, alpha: 0.85 });
+    ring(ctx, c, { color: GREEN, from: 8, to: R, life: 0.6, y: 4, alpha: 0.6, ease: true });
     column(ctx, c, { color: [GREEN, SICK], count: 16, radius: 18, speed: 130, life: 0.6, size: 3.5 });
   },
   onHit(ctx, f, c) {

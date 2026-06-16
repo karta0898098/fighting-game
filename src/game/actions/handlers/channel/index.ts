@@ -16,7 +16,18 @@ export function channel(ctx) {
     color: action.color,
     vfx: action.vfx,
   };
-  if (!silent) addFx(state, { type: 'buff', x: caster.x, y: caster.y, color: action.color, life: 0.3, radius: PLAYER_RADIUS * 2, vfx: action.vfx });
+  if (!silent) {
+    addFx(state, {
+      type: 'buff',
+      x: caster.x,
+      y: caster.y,
+      color: action.color,
+      life: 0.3,
+      radius: PLAYER_RADIUS * 2,
+      range: action.range,
+      vfx: action.vfx
+    });
+  }
 }
 
 export const handlers = { channel };

@@ -55,6 +55,8 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
   let lastT = 0;
   const models = new Map();  // pid -> { group, charId }
   const prev = new Map();    // pid -> { x, y } 上一幀世界座標 (算速度)
+  const beams = new Map();   // pid -> { group, geo, core, glow, coreMat, glowMat, colorHex, targetId, used }
+  const rangeCircles = new Map(); // pid -> { mesh, geo, mat, colorHex, range, used }
 
   // 被獵殺頭頂箭頭：單一可重用物件，每幀定位到目標頭頂 (R7 等)
   let huntPhase = 0;
@@ -201,6 +203,127 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
         e.wasMoving = moving;
       }
 
+      // Check for channeled beam (e.g. Necromancer Life Drain)
+      if (p.channel && p.channel.targetId) {
+        const targetModel = models.get(p.channel.targetId);
+        if (targetModel && targetModel.group.visible) {
+          const A = new THREE.Vector3(sceneX(e.rx), 26, sceneZ(e.ry));
+          const B = new THREE.Vector3(sceneX(targetModel.rx), 26, sceneZ(targetModel.ry));
+          
+          let beam = beams.get(p.id);
+          const colorHex = p.channel.color || '#7bed9f';
+          if (!beam || beam.colorHex !== colorHex || beam.targetId !== p.channel.targetId) {
+            if (beam) {
+              scene.remove(beam.group);
+              beam.geo.dispose();
+              beam.coreMat.dispose();
+              beam.glowMat.dispose();
+            }
+            
+            const group = new THREE.Group();
+            const color = new THREE.Color(colorHex);
+            const geo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+            
+            const coreMat = new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+              transparent: true,
+              opacity: 0.9,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              side: THREE.DoubleSide
+            });
+            const core = new THREE.Mesh(geo, coreMat);
+            
+            const glowMat = new THREE.MeshBasicMaterial({
+              color: color,
+              transparent: true,
+              opacity: 0.45,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              side: THREE.DoubleSide
+            });
+            const glow = new THREE.Mesh(geo, glowMat);
+            
+            group.add(core);
+            group.add(glow);
+            scene.add(group);
+            
+            beam = { group, geo, core, glow, coreMat, glowMat, colorHex, targetId: p.channel.targetId };
+            beams.set(p.id, beam);
+          }
+          
+          const direction = new THREE.Vector3().subVectors(B, A);
+          const length = direction.length();
+          const dir = direction.clone().normalize();
+          
+          const alignQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          
+          const pulse = 0.85 + 0.15 * Math.sin(performance.now() / 80);
+          beam.core.scale.set(1.5 * pulse, 1.0, 1.5 * pulse);
+          beam.glow.scale.set(4.0 * pulse, 1.0, 4.0 * pulse);
+          
+          beam.group.position.copy(A).add(B).multiplyScalar(0.5);
+          beam.group.scale.set(1.0, length, 1.0);
+          beam.group.setRotationFromQuaternion(alignQuat);
+          
+          if (Math.random() < 0.35) {
+            const t = Math.random();
+            const px = B.x + (A.x - B.x) * t;
+            const py = B.y + (A.y - B.y) * t;
+            const pz = B.z + (A.z - B.z) * t;
+            const pdir = new THREE.Vector3().subVectors(A, B).normalize();
+            particles.spawn({
+              x: px, y: py, z: pz,
+              vx: pdir.x * 120 + (Math.random() - 0.5) * 20,
+              vy: pdir.y * 120 + (Math.random() - 0.5) * 20,
+              vz: pdir.z * 120 + (Math.random() - 0.5) * 20,
+              drag: 1.0,
+              life: 0.4 + Math.random() * 0.3,
+              size: 2.5 + Math.random() * 2.5,
+              color: colorHex,
+              fade: true
+            });
+          }
+          
+          beam.used = true;
+        }
+      }
+
+      // Check for channeled range circle
+      if (p.channel) {
+        const range = p.channel.range || 320;
+        const colorHex = p.channel.color || '#7bed9f';
+        let circle = rangeCircles.get(p.id);
+        if (!circle || circle.colorHex !== colorHex || circle.range !== range) {
+          if (circle) {
+            scene.remove(circle.mesh);
+            circle.geo.dispose();
+            circle.mat.dispose();
+          }
+          
+          const color = new THREE.Color(colorHex);
+          const geo = new THREE.RingGeometry(range * 0.985, range, 64);
+          const mat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.35,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.rotation.x = -Math.PI / 2;
+          scene.add(mesh);
+          
+          circle = { mesh, geo, mat, colorHex, range };
+          rangeCircles.set(p.id, circle);
+        }
+        
+        circle.mesh.position.set(sceneX(e.rx), 1.5, sceneZ(e.ry));
+        circle.mat.opacity = 0.35 + 0.15 * Math.sin(performance.now() / 150);
+        circle.used = true;
+      }
+
       // 聆聽者 = 本地玩家位置
       if (p.id === selfId) { selfX = e.rx; selfY = e.ry; }
     }
@@ -208,6 +331,31 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl') {
     // 離開房間的玩家才釋放模型
     for (const [pid, e] of models) {
       if (!seen.has(pid)) { disposeModel(e); models.delete(pid); prev.delete(pid); }
+    }
+
+    // Clean up unused beams
+    for (const [pid, beam] of beams) {
+      if (!beam.used) {
+        scene.remove(beam.group);
+        beam.geo.dispose();
+        beam.coreMat.dispose();
+        beam.glowMat.dispose();
+        beams.delete(pid);
+      } else {
+        beam.used = false;
+      }
+    }
+
+    // Clean up unused range circles
+    for (const [pid, circle] of rangeCircles) {
+      if (!circle.used) {
+        scene.remove(circle.mesh);
+        circle.geo.dispose();
+        circle.mat.dispose();
+        rangeCircles.delete(pid);
+      } else {
+        circle.used = false;
+      }
     }
   }
 
