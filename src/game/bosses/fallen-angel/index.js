@@ -13,6 +13,15 @@ const fallenAngel = {
     model: { bulk: 5.0, weapon: 'sword', scale: 2.6, head: 'triangle', wings: true, emissiveCore: '#fff2b0' },
     ai: 'fallen_angel',
     mechanic: { soulBind: { count: 2, minGap: 200, dmg: 18, tick: 0.5 }, phases: 2 }, // 隨機綁定 2 人，過近雙扣
+    hint: '牠會用鎖鏈把兩名玩家綁在一起 —— 被綁就和隊友拉開距離，否則一起扣血！',
+    tags: [
+      { icon: '🔗', text: '會綁定兩名玩家' },
+      { icon: '↔️', text: '被綁要和隊友拉開' },
+      { icon: '⚔️', text: '第二階段更兇' },
+    ],
+    hazardText: '☀️ 站在審判光柱下！快離開',
+    hazardColor: '#ffd24a',
+
     basic: { name: '聖劍光弧', type: 'melee', dmg: 40, range: 140, arc: 1.4, knockback: 180, cd: 1.2, windup: 0.5, telegraph: 'arc', color: '#fff2b0', vfx: 'boss_angel_slash' },
     skill1: { name: '靈魂綁定', type: 'soul_bind', count: 2, minGap: 200, dmg: 18, duration: 6, cd: 13, windup: 0.9, telegraph: 'self', color: '#d8b3ff', vfx: 'boss_angel_bind' },
     skill2: { name: '審判光柱', type: 'zone', range: 150, radius: 110, dmg: 60, lifetime: 0.5, tick: 0.5, delay: 1.0, count: 3, scatter: 240, stagger: 0.2, cd: 10, windup: 1.0, telegraph: 'circle', color: '#fff7d6', vfx: 'boss_angel_judgment' },

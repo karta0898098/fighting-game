@@ -13,6 +13,15 @@ const voidMage = {
     model: { bulk: 3.0, weapon: 'orb', robe: true, scale: 1.8, head: 'circle', float: true, emissiveCore: '#c39bff' },
     ai: 'void_mage',
     mechanic: { rewind: true }, // 大招倒流玩家位置
+    hint: '符咒會打亂你的移動、黑洞會把你吸進去、大招把你拉回幾秒前 —— 看到預警快閃開！',
+    tags: [
+      { icon: '🌀', text: '符咒會打亂你的操作' },
+      { icon: '🕳️', text: '黑洞會吸入·別靠近' },
+      { icon: '⏪', text: '大招會倒流你的位置' },
+    ],
+    hazardText: '🕳️ 被黑洞吸住了！快脫離',
+    hazardColor: '#a06cff',
+
     basic: { name: '虛空彈', type: 'projectile', dmg: 28, speed: 520, radius: 14, lifetime: 1.6, count: 3, spread: 0.4, knockback: 50, cd: 1.0, windup: 0.4, telegraph: 'line', color: '#c39bff', vfx: 'boss_void_bolt' },
     skill1: { name: '混沌符咒', type: 'apply_scramble', radius: 320, duration: 2.4, cd: 9, windup: 0.8, telegraph: 'circle', color: '#b14fd8', vfx: 'boss_void_scramble' },
     skill2: { name: '奇點黑洞', type: 'zone', range: 140, radius: 200, dmg: 30, lifetime: 2.4, tick: 0.4, delay: 0.6, pull: 360, effect: SLOW(1.0, 0.5), cd: 11, windup: 0.7, telegraph: 'circle', color: '#5b2c8e', swapHit: true, vfx: 'boss_void_blackhole' },

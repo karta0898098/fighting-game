@@ -13,6 +13,15 @@ const frostAssassin = {
     model: { bulk: 2.5, weapon: 'daggers', scale: 1.5, head: 'triangle', emissiveCore: '#bfefff', translucent: true },
     ai: 'frost_assassin',
     mechanic: { clones: 3, swapTell: true }, // 召喚 3 個假身；真身可與分身換位 (有細微 tell)
+    hint: '牠會放分身騙你 —— 真身較「實」、分身半透明會閃，認準真身再打！',
+    tags: [
+      { icon: '👥', text: '會放 3 個假分身' },
+      { icon: '🗡️', text: '真身較實·分身半透明' },
+      { icon: '❄️', text: '攻擊會冰凍堆疊' },
+    ],
+    hazardText: '❄️ 站在冰域裡會被凍！快離開',
+    hazardColor: '#74e0ff',
+
     basic: { name: '寒霜疾刺', type: 'melee', dmg: 34, range: 70, arc: 0.9, knockback: 90, cd: 0.7, windup: 0.25, telegraph: 'arc', color: '#9fe8ff', effect: CHILL(1), vfx: 'boss_frost_slash' },
     skill1: { name: '霜影突襲', type: 'blink', range: 280, dmg: 55, hitRadius: 95, knockback: 120, effect: CHILL(2), cd: 5, windup: 0.4, telegraph: 'self', color: '#74e0ff', vfx: 'boss_frost_blink' },
     skill2: { name: '鏡花幻影', type: 'summon_clones', count: 3, cd: 13, windup: 0.6, telegraph: 'self', color: '#bfefff', vfx: 'boss_frost_clones' },

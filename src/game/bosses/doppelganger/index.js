@@ -13,6 +13,15 @@ const doppelganger = {
     model: { bulk: 7.0, weapon: 'none', scale: 3.0, head: 'circle', emissiveCore: '#ffffff', phases: 3, voidBody: true },
     ai: 'doppelganger',
     mechanic: { mirrorPlayers: true, phases: 3 }, // 複製全體玩家成鏡像；多階段
+    hint: '牠會複製全體玩家、還會偷學你們的大招 —— 牠出的招跟你們一樣，預判它！',
+    tags: [
+      { icon: '🪞', text: '複製全體玩家' },
+      { icon: '🎭', text: '會偷用你們的大招' },
+      { icon: '💠', text: '多階段·會變形' },
+    ],
+    hazardText: '💥 站在終焉領域裡！快離開',
+    hazardColor: '#c9c0ff',
+
     basic: { name: '虛空裂斬', type: 'melee', dmg: 44, range: 150, arc: 1.3, knockback: 200, cd: 1.0, windup: 0.4, telegraph: 'arc', color: '#ffffff', vfx: 'boss_doppel_slash' },
     skill1: { name: '鏡像複製', type: 'mirror_players', cd: 22, once: true, windup: 1.0, telegraph: 'self', color: '#cfcfff', vfx: 'boss_doppel_mirror' },
     skill2: { name: '竊取絕技', type: 'steal_ultimate', cd: 10, windup: 0.8, telegraph: 'self', color: '#b0b0ff', vfx: 'boss_doppel_steal' },
