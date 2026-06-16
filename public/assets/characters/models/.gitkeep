@@ -1,6 +1,0 @@
-# 把 rigged glTF 角色模型放這裡（檔名對應 charId）：
-#   warrior.glb  mage.glb  assassin.glb  tank.glb  archer.glb
-#   healer.glb   berserker.glb  ninja.glb  elementalist.glb  fighter.glb
-#
-# 含 idle / walk / attack / hit 動畫最佳。放入後自動套用；
-# 沒有檔案時遊戲會回退到程序化模型。設定見 src/game/render3d/skins.js。

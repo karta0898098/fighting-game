@@ -11,47 +11,8 @@ import * as THREE from 'three';
 import { getCharacter } from '../characters.js';
 import { WALK_THRESHOLD } from '../constants.js';
 
-import { buildWarrior } from './classes/warrior.js';
-import { buildMage } from './classes/mage.js';
-import { buildAssassin } from './classes/assassin.js';
-import { buildTank } from './classes/tank.js';
-import { buildArcher } from './classes/archer.js';
-import { buildHealer } from './classes/healer.js';
-import { buildBerserker } from './classes/berserker.js';
-import { buildNinja } from './classes/ninja.js';
-import { buildElementalist } from './classes/elementalist.js';
-import { buildFighter } from './classes/fighter.js';
-import { buildPaladin } from './classes/paladin.js';
-import { buildHexer } from './classes/hexer.js';
-import { buildBard } from './classes/bard.js';
-import { buildSamurai } from './classes/samurai.js';
-import { buildGunslinger } from './classes/gunslinger.js';
-import { buildSummoner } from './classes/summoner.js';
-import { buildNecromancer } from './classes/necromancer.js';
-import { buildChronomancer } from './classes/chronomancer.js';
-import { buildDefault } from './classes/default.js';
-
-// 原型設定：bulk(體型) / weapon(武器) / 顏色由角色資料 color 決定
-const ARCHE = {
-  0: { bulk: 2.36, weapon: 'sword' },     // 戰士
-  1: { bulk: 1.84, weapon: 'staff', robe: true },   // 法師
-  2: { bulk: 1.64, weapon: 'daggers' },   // 刺客
-  3: { bulk: 3.0, weapon: 'shield' },     // 坦克
-  4: { bulk: 1.92, weapon: 'bow' },       // 弓箭手
-  5: { bulk: 1.96, weapon: 'orb', robe: true },     // 治療師
-  6: { bulk: 2.6, weapon: 'axes' },       // 狂戰士
-  7: { bulk: 1.64, weapon: 'kunai' },     // 忍者
-  8: { bulk: 2.0, weapon: 'elements', robe: true }, // 元素使
-  9: { bulk: 2.1, weapon: 'gloves' },    // 格鬥家
-  10: { bulk: 2.5, weapon: 'warhammer' },          // 聖騎士
-  11: { bulk: 1.82, weapon: 'hexstaff', robe: true }, // 咒術師
-  12: { bulk: 1.74, weapon: 'lute' },              // 吟遊詩人
-  13: { bulk: 2.04, weapon: 'katana' },            // 武士
-  14: { bulk: 1.8, weapon: 'dualguns' },           // 槍手
-  15: { bulk: 1.92, weapon: 'summonorb', robe: true }, // 召喚師
-  16: { bulk: 1.92, weapon: 'scythe', robe: true },  // 死靈法師
-  17: { bulk: 1.86, weapon: 'clockstaff', robe: true }, // 時空術士
-};
+import { buildDefault } from './classes/default.ts';
+import { getCharacterModelDef, getCharacterTexturePainter, getWeaponBuilder } from '../characters/render3d.ts';
 
 function shade(hex, f) {
   const c = new THREE.Color(hex);
@@ -71,20 +32,6 @@ function mat(color, opt = {}) {
 }
 
 // ---- 程序化後備皮膚：質感 (布/金屬/皮革/肌膚) 與頭部配件 ----
-const SKIN_KIND = {
-  0: 'metal', 1: 'cloth', 2: 'leather', 3: 'metal', 4: 'leather',
-  5: 'cloth', 6: 'metal', 7: 'leather', 8: 'cloth', 9: 'skin',
-  10: 'metal', 11: 'cloth', 12: 'cloth', 13: 'metal', 14: 'leather',
-  15: 'cloth', 16: 'cloth', 17: 'cloth',
-};
-const HEADGEAR = {
-  0: 'helm', 1: 'hat', 2: 'hood', 3: 'helm', 4: 'hood',
-  5: 'hood', 6: 'horns', 7: 'mask', 8: 'hood', 9: 'band',
-  10: 'helm', 11: 'hood', 12: 'hat', 13: 'helm', 14: 'hat',
-  15: 'hood', 16: 'hood', 17: 'hood',
-};
-const PAULDRONS = new Set([0, 3, 6, 10, 13]); // 重甲系加肩甲
-
 // 以 canvas 程序生成表面貼圖 (依識別色 + 質感樣式)，快取避免重複建立。
 const _texCache = new Map();
 function panelTexture(baseHex, kind) {
@@ -133,7 +80,7 @@ function buildAccents(group, reg, o) {
   const dark = () => reg(mat(shade(o.base, -0.35), { rough: 0.5, metal: 0.45 }));
   const metalAccent = () => reg(mat(shade(o.base, 0.05), { rough: 0.42, metal: 0.6 }));
 
-  if (PAULDRONS.has(o.charId)) {
+  if (o.cfg.pauldron) {
     const pg = new THREE.SphereGeometry(o.torsoW * 0.28, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
     for (const sz of [-1, 1]) {
       const m = new THREE.Mesh(pg, metalAccent());
@@ -143,7 +90,7 @@ function buildAccents(group, reg, o) {
     }
   }
 
-  const hg = HEADGEAR[o.charId];
+  const hg = o.cfg.headgear;
   const topY = o.headY + 7;
   if (hg === 'hat') {
     const hat = add(new THREE.Mesh(new THREE.ConeGeometry(8.5, 20, 16), reg(mat(shade(o.base, -0.2), { rough: 0.7, metal: 0.05 }))));
@@ -178,9 +125,10 @@ function buildAccents(group, reg, o) {
 export function createCharacterModel(charId) {
   const ch = getCharacter(charId);
   const bossModel = ch.model || null; // 魔王程序化建模參數 (id>=100)
+  const modelDef = bossModel ? null : getCharacterModelDef(charId);
   const cfg = bossModel
     ? { bulk: bossModel.bulk || 2, weapon: bossModel.weapon || 'sword', robe: !!bossModel.robe }
-    : (ARCHE[charId] || { bulk: 1, weapon: 'sword' });
+    : (modelDef?.modelConfig || { bulk: 1, weapon: 'sword' });
   const base = ch.color;
   const skinMats = []; // 供隱身淡出
   const reg = (m) => { skinMats.push(m); return m; };
@@ -196,7 +144,7 @@ export function createCharacterModel(charId) {
   const headY = shoulderY + 7.5 * bulk;
 
   // 質感 (程序化後備皮膚)：機器人質感均採用 metal 或帶有精緻感的塗裝
-  const skinKind = SKIN_KIND[charId] || (bossModel ? (bossModel.robe ? 'cloth' : 'metal') : 'cloth');
+  const skinKind = cfg.skinKind || (bossModel ? (bossModel.robe ? 'cloth' : 'metal') : 'cloth');
   const kRough = skinKind === 'metal' ? 0.35 : skinKind === 'leather' ? 0.55 : skinKind === 'cloth' ? 0.65 : 0.5;
   const kMetal = skinKind === 'metal' ? 0.8 : skinKind === 'leather' ? 0.25 : skinKind === 'cloth' ? 0.15 : 0.3;
   const bodyTex = panelTexture(base, skinKind);
@@ -310,67 +258,8 @@ export function createCharacterModel(charId) {
     addAccent,
   };
 
-  // 依職業分流至個別檔案模組進行建模
-  let parts;
-  switch (charId) {
-    case 0:
-      parts = buildWarrior(ctx);
-      break;
-    case 1:
-      parts = buildMage(ctx);
-      break;
-    case 2:
-      parts = buildAssassin(ctx);
-      break;
-    case 3:
-      parts = buildTank(ctx);
-      break;
-    case 4:
-      parts = buildArcher(ctx);
-      break;
-    case 5:
-      parts = buildHealer(ctx);
-      break;
-    case 6:
-      parts = buildBerserker(ctx);
-      break;
-    case 7:
-      parts = buildNinja(ctx);
-      break;
-    case 8:
-      parts = buildElementalist(ctx);
-      break;
-    case 9:
-      parts = buildFighter(ctx);
-      break;
-    case 10:
-      parts = buildPaladin(ctx);
-      break;
-    case 11:
-      parts = buildHexer(ctx);
-      break;
-    case 12:
-      parts = buildBard(ctx);
-      break;
-    case 13:
-      parts = buildSamurai(ctx);
-      break;
-    case 14:
-      parts = buildGunslinger(ctx);
-      break;
-    case 15:
-      parts = buildSummoner(ctx);
-      break;
-    case 16:
-      parts = buildNecromancer(ctx);
-      break;
-    case 17:
-      parts = buildChronomancer(ctx);
-      break;
-    default:
-      parts = buildDefault(ctx);
-      break;
-  }
+  // 依職業分流至各角色資料夾中的 model.js；魔王與未知角色走共用 fallback。
+  const parts = modelDef?.buildModel ? modelDef.buildModel(ctx) : buildDefault(ctx);
 
   const { torso, head, armL, armR, legL, legR } = parts;
 
@@ -388,7 +277,8 @@ export function createCharacterModel(charId) {
   const handR = new THREE.Group();
   handR.position.y = -armLen;
   armR.add(handR);
-  buildWeapon(handR, cfg.weapon, base, reg);
+  const weaponBuilder = modelDef?.buildWeapon || getWeaponBuilder(cfg.weapon);
+  if (weaponBuilder) weaponBuilder(handR, ctx);
 
   // 頭頂發光識別徽記 (移至大頭上方)
   const emMat = new THREE.MeshStandardMaterial({
@@ -508,254 +398,6 @@ export function createPartModel(colorHex, scale = 1) {
   return group;
 }
 
-function buildWeapon(hand, type, base, reg) {
-  if (type === 'none' || !type) return; // 無持械魔王 (巨兵/分身)
-  const steel = reg(mat(0xb9c4cf, { rough: 0.2, metal: 0.9 }));
-  const dark = reg(mat(0x2d3436, { rough: 0.6, metal: 0.5 }));
-  const gold = reg(mat(0xffd700, { rough: 0.15, metal: 0.9 }));
-  const accent = reg(mat(shade(base, 0.25), { emissive: new THREE.Color(base), ei: 2.8 }));
-  const add = (m, x, y, z, rx = 0, ry = 0, rz = 0) => {
-    m.castShadow = true; m.position.set(x, y, z); m.rotation.set(rx, ry, rz); hand.add(m); return m;
-  };
-  
-  switch (type) {
-    case 'sword': { // 戰士：巨型光束大劍 (Giant Beam Saber)
-      // 巨大發光光束刃
-      const blade = add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 48, 1.6), accent), 4, 12, 0);
-      // 劍身側翼裝甲 (鋼製)
-      add(new THREE.Mesh(new THREE.BoxGeometry(5.2, 10, 0.8), steel), 4, 2, 0);
-      // 金色裝甲護手
-      add(new THREE.Mesh(new THREE.BoxGeometry(10, 4.5, 10), gold), 4, -12.5, 0);
-      // 重型劍柄
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.8, 16, 8), dark), 4, -22.5, 0);
-      // 劍柄配重發光核心
-      add(new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 8), accent), 4, -31, 0);
-      break;
-    }
-    case 'axes':
-    case 'axe': { // 狂戰士：雙重熱能巨斧 (Twin Heat Tomahawks)
-      // 巨型斧柄
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 52, 8), dark), 3, -10, 0);
-      // 巨大雙刃高熱發光斧面
-      const bladeL = add(new THREE.Mesh(new THREE.BoxGeometry(11, 24, 1.6), accent), 3, 10, 5.5);
-      const bladeR = add(new THREE.Mesh(new THREE.BoxGeometry(11, 24, 1.6), accent), 3, 10, -5.5);
-      // 斧頭主體結構 (鋼製)
-      add(new THREE.Mesh(new THREE.BoxGeometry(7, 18, 9), steel), 3, 10, 0);
-      // 金色金屬箍與頂部發光尖刺
-      add(new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 5, 8), gold), 3, 10, 0);
-      add(new THREE.Mesh(new THREE.ConeGeometry(2.0, 9, 6), steel), 3, 20, 0);
-      break;
-    }
-    case 'daggers': { // 刺客：等離子巨刃爪 (Giant Plasma Blades)
-      // 手部大型腕部掛載座 (Katar 樣式)
-      add(new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), dark), 3, 1, 0);
-      // 兩片巨大向外斜的光束利刃
-      const bladeL = add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 28, 0.6), accent), 3, 15, -2.5);
-      bladeL.rotation.z = 0.08;
-      const bladeR = add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 28, 0.6), accent), 3, 15, 2.5);
-      bladeR.rotation.z = -0.08;
-      // 金屬連接裝甲
-      add(new THREE.Mesh(new THREE.BoxGeometry(9, 6, 2.2), steel), 3, 2, 0);
-      break;
-    }
-    case 'kunai': { // 忍者：量子雷射巨型苦無 (Giant Quantum Kunai)
-      // 巨型苦無刀身
-      add(new THREE.Mesh(new THREE.ConeGeometry(4.5, 26, 4), accent), 3, 10, 0, 0, 0, Math.PI);
-      // 苦無柄
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 12, 8), steel), 3, 20, 0);
-      // 尾端金色量子鐵環
-      add(new THREE.Mesh(new THREE.TorusGeometry(3.5, 0.8, 6, 10), gold), 3, 26, 0, Math.PI / 2, 0, 0);
-      break;
-    }
-    case 'staff': { // 法師：粒子光束巨砲杖 (Megacannon Staff)
-      // 巨型槍炮杖身
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 56, 8), dark), 3, -4, 0);
-      // 金色巨砲發射器支架
-      add(new THREE.Mesh(new THREE.TorusGeometry(7.2, 1.6, 8, 20), gold), 3, 26, 0);
-      add(new THREE.Mesh(new THREE.CylinderGeometry(3.8, 4.8, 12, 8), steel), 3, 26, 0);
-      // 大型懸浮粒子發光水晶核心
-      const crystal = add(new THREE.Mesh(new THREE.IcosahedronGeometry(5.2, 0), accent), 3, 26, 0);
-      crystal.userData = { glow: true };
-      break;
-    }
-    case 'orb': { // 治療師：奈米修復十字巨杖 (Nanite Cross Staff)
-      // 巨型權杖把手
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 52, 8), steel), 3, -6, 0);
-      // 頂部巨型十字架裝飾
-      const scepterHead = new THREE.Group();
-      const crossV = new THREE.Mesh(new THREE.BoxGeometry(1.5, 14, 1.5), gold);
-      const crossH = new THREE.Mesh(new THREE.BoxGeometry(9, 1.5, 1.5), gold);
-      crossH.position.y = 3.2;
-      scepterHead.add(crossV);
-      scepterHead.add(crossH);
-      // 旋繞十字架的大型奈米發光環
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(8, 0.8, 8, 24), accent);
-      ring.position.y = 3.2;
-      scepterHead.add(ring);
-      // 頂部中心神聖水晶
-      const holyGem = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), accent);
-      holyGem.position.set(0, 3.2, 0);
-      scepterHead.add(holyGem);
-      add(scepterHead, 3, 25, 0);
-      break;
-    }
-    case 'bow': { // 弓箭手：脈衝強襲光束巨弓 (Strike Beam Bow)
-      const bowGroup = new THREE.Group();
-      // 巨大弧形 mecha 弓翼
-      const wingL = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.8, 28, 6), steel);
-      wingL.position.set(-8, 12, 0);
-      wingL.rotation.z = -0.5;
-      bowGroup.add(wingL);
-      const wingR = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.8, 28, 6), steel);
-      wingR.position.set(-8, -12, 0);
-      wingR.rotation.z = 0.5;
-      bowGroup.add(wingR);
-      
-      // 金色弓把
-      const grip = new THREE.Mesh(new THREE.BoxGeometry(4, 9, 4), gold);
-      grip.position.set(-16, 0, 0);
-      bowGroup.add(grip);
-      
-      // 脈衝能量弦
-      const string = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 48, 4), accent);
-      string.position.set(-4, 0, 0);
-      bowGroup.add(string);
-      
-      // 巨大發光光束箭
-      const arrow = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 38, 4), accent);
-      arrow.rotation.z = Math.PI / 2;
-      arrow.position.set(-2, 0, 0);
-      bowGroup.add(arrow);
-      
-      add(bowGroup, 4, -4, 0, 0, Math.PI / 2, 0);
-      break;
-    }
-    case 'shield': { // 坦克：重裝鋼彈巨型防禦盾 (Gundam Mega Shield)
-      // 巨大盾牌主體：重型厚裝甲板 (幾乎覆蓋半身)
-      add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 42, 28), steel), 5, -2, 0);
-      // 盾面裝甲飾條
-      add(new THREE.Mesh(new THREE.BoxGeometry(5.0, 44, 3.5), gold), 5, -2, 14);
-      add(new THREE.Mesh(new THREE.BoxGeometry(5.0, 44, 3.5), gold), 5, -2, -14);
-      add(new THREE.Mesh(new THREE.BoxGeometry(5.0, 3.5, 31), gold), 5, 19, 0);
-      add(new THREE.Mesh(new THREE.BoxGeometry(5.0, 3.5, 31), gold), 5, -23, 0);
-      // 盾面中央發光的巨型反應堆徽記
-      add(new THREE.Mesh(new THREE.SphereGeometry(6, 12, 12), accent), 7.2, -2, 0);
-      break;
-    }
-    case 'gloves': { // 格鬥家：火箭噴射動力鋼拳 (Heavy Rocket Gauntlets)
-      // 巨大鋼拳護套 (覆蓋手部)
-      const glove = add(new THREE.Mesh(new THREE.BoxGeometry(11, 11, 11), dark), 3, -1, 0);
-      // 火箭噴射口 (手背)
-      const nozzle = add(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.5, 4, 8), steel), -3.5, -1, 0);
-      nozzle.rotation.z = -Math.PI / 2;
-      const flame = add(new THREE.Mesh(new THREE.ConeGeometry(1.2, 6, 8), reg(mat(0xff4500, { emissive: 0xff4500, ei: 2.2 }))), -7.5, -1, 0);
-      flame.rotation.z = -Math.PI / 2;
-      
-      // 拳面巨大金色撞擊角
-      for (let i = -1; i <= 1; i++) {
-        add(new THREE.Mesh(new THREE.ConeGeometry(2.0, 5.5, 4), gold), 9.2, -1, i * 3.2, 0, 0, -Math.PI / 2);
-      }
-      // 護拳發光能量飾條
-      add(new THREE.Mesh(new THREE.BoxGeometry(11.4, 2.6, 11.4), accent), 3, 3, 0);
-      break;
-    }
-    case 'elements': { // 元素使：感應浮游砲 (Giant Funnels / Bits)
-      // 三個感應浮游裝備
-      for (let i = 0; i < 3; i++) {
-        const funnel = new THREE.Group();
-        // 浮游砲本體 (菱形裝甲)
-        const body = new THREE.Mesh(new THREE.BoxGeometry(3.5, 12, 3.5), steel);
-        body.castShadow = true;
-        funnel.add(body);
-        // 前端發光粒子射口
-        const emitter = new THREE.Mesh(new THREE.ConeGeometry(2.2, 5, 4), accent);
-        emitter.position.y = 7.5;
-        funnel.add(emitter);
-        // 尾端發光推進噴口
-        const thruster = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 3, 6), dark);
-        thruster.position.y = -7.5;
-        funnel.add(thruster);
-        
-        const o = add(funnel, 4, 0, 0);
-        o.userData.orbit = i;
-      }
-      break;
-    }
-    case 'warhammer': { // 聖騎士：黃金聖光戰錘
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 46, 8), dark), 3, -6, 0); // 長柄
-      add(new THREE.Mesh(new THREE.BoxGeometry(13, 14, 13), steel), 3, 18, 0);          // 錘頭
-      add(new THREE.Mesh(new THREE.BoxGeometry(14, 4.5, 4.5), gold), 3, 18, 0);         // 金箍十字
-      add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 14, 4.5), gold), 3, 18, 0);
-      add(new THREE.Mesh(new THREE.IcosahedronGeometry(3.2, 0), accent), 3, 18, 0);     // 發光聖光核心
-      add(new THREE.Mesh(new THREE.ConeGeometry(2.2, 8, 6), gold), 3, 27.5, 0);         // 頂尖
-      break;
-    }
-    case 'hexstaff': { // 咒術師：詛咒法杖 (骷髏 + 紫晶)
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 52, 8), dark), 3, -2, 0);
-      add(new THREE.Mesh(new THREE.IcosahedronGeometry(4.4, 0), reg(mat(0xe8e2d0, { rough: 0.5 }))), 3, 26, 0); // 骷髏(近似)
-      add(new THREE.Mesh(new THREE.TorusGeometry(6.2, 0.8, 6, 18), accent), 3, 26, 0, Math.PI / 2, 0, 0);       // 環繞符環
-      const hexGem = add(new THREE.Mesh(new THREE.OctahedronGeometry(3.2, 0), accent), 3, 33.5, 0);
-      hexGem.userData = { glow: true };
-      break;
-    }
-    case 'lute': { // 吟遊詩人：魯特琴
-      const woodMat = reg(mat(0x8a5a2b, { rough: 0.6, metal: 0.1 }));
-      add(new THREE.Mesh(new THREE.SphereGeometry(7, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), woodMat), 3, 0, 0, Math.PI, 0, 0); // 琴身(半球)
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 22, 8), woodMat), 3, 13, 0);  // 琴頸
-      add(new THREE.Mesh(new THREE.BoxGeometry(3, 4, 2.2), dark), 3, 25, 0);                 // 琴頭
-      add(new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.4, 6, 16), gold), 4.4, 1, 0, Math.PI / 2, 0, 0); // 音孔
-      for (let i = -1; i <= 1; i++) add(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 22, 4), accent), 4.2, 13, i * 1.2); // 琴弦發光
-      break;
-    }
-    case 'katana': { // 武士：緋紅太刀
-      add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 50, 3.6), accent), 3, 18, 0);   // 刀身(發光刃)
-      add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 50, 1.2), steel), 3, 18, 0);    // 刀脊
-      add(new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 1.2, 4), gold), 3, -6, 0, 0, Math.PI / 4, 0); // 鍔(方形護手)
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 12, 8), dark), 3, -12, 0); // 柄
-      break;
-    }
-    case 'dualguns': { // 槍手：雙重型手槍
-      const gunMat = reg(mat(0x4a4a4a, { metal: 0.85, rough: 0.25 }));
-      for (const sz of [-1, 1]) {
-        add(new THREE.Mesh(new THREE.BoxGeometry(14, 4, 2.4), gunMat), 6, 0, sz * 3.4);     // 槍管朝前(+X)
-        add(new THREE.Mesh(new THREE.BoxGeometry(4, 7, 2.2), dark), 1, -3.5, sz * 3.4);     // 握把
-        add(new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 2.8), accent), 12.8, 0.4, sz * 3.4); // 槍口發光
-        add(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 2.0, 8), gold), 3, 0.4, sz * 3.4, Math.PI / 2, 0, 0); // 轉輪
-      }
-      break;
-    }
-    case 'summonorb': { // 召喚師：浮空魔導書 + 環繞靈球
-      const bookMat = reg(mat(0x0e6b5a, { rough: 0.5, metal: 0.2 }));
-      add(new THREE.Mesh(new THREE.BoxGeometry(3, 9, 11), bookMat), 4, 2, 0);             // 書本
-      add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 8, 9.6), reg(mat(0xeafff8, { emissive: 0x4fe0c0, ei: 1.2 }))), 5, 2, 0); // 書頁發光
-      for (let i = 0; i < 3; i++) { // 三顆環繞靈球 (animateModel 依 orbit 公轉)
-        const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(2.0, 0), accent);
-        orb.castShadow = true; orb.position.set(4, 2, 0); hand.add(orb);
-        orb.userData.orbit = i;
-      }
-      break;
-    }
-    case 'scythe': { // 死靈法師：死神鐮刀
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 56, 8), dark), 3, -2, 0);  // 長桿
-      add(new THREE.Mesh(new THREE.TorusGeometry(13, 1.5, 6, 20, Math.PI * 0.9), accent), 3, 26, 0, 0, 0, Math.PI * 0.1); // 彎曲鐮刃(發光)
-      add(new THREE.Mesh(new THREE.TorusGeometry(13, 0.6, 6, 20, Math.PI * 0.9), steel), 3.4, 26, 0, 0, 0, Math.PI * 0.1);
-      add(new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 0), accent), 3, 27, 0);      // 連接處幽綠寶石
-      break;
-    }
-    case 'clockstaff': { // 時空術士：時鐘法杖
-      add(new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 50, 8), reg(mat(0x2b6c78, { metal: 0.6, rough: 0.3 }))), 3, -3, 0); // 杖身
-      add(new THREE.Mesh(new THREE.TorusGeometry(7, 1.0, 8, 24), gold), 3, 25, 0, Math.PI / 2, 0, 0);  // 鐘環
-      add(new THREE.Mesh(new THREE.CircleGeometry(6, 20), reg(mat(0xeafdff, { emissive: 0x4dd0e1, ei: 1.4 }))), 3.4, 25, 0, 0, -Math.PI / 2, 0); // 鐘面(發光)
-      const clkHand = add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 5, 0.4), accent), 3.7, 25, 0);    // 長指針
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 3.4, 0.4), accent), 3.7, 25, 0, 0, 0, Math.PI / 2); // 短指針
-      clkHand.userData = { glow: true };
-      break;
-    }
-    default:
-      add(new THREE.Mesh(new THREE.BoxGeometry(3.5, 26, 3.5), steel), 4, -4, 0);
-  }
-}
-
 const _white = new THREE.Color(0xffffff);
 
 function smoothstep(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
@@ -849,7 +491,6 @@ function createHumanoidTexture(charId, baseHex) {
   const col = new THREE.Color(baseHex);
   const hex = (c) => `#${c.getHexString()}`;
 
-  // 基礎漸層背景
   const grad = x.createLinearGradient(0, 0, 0, S);
   grad.addColorStop(0, hex(col.clone().lerp(new THREE.Color(0xffffff), 0.25)));
   grad.addColorStop(0.5, hex(col));
@@ -857,94 +498,9 @@ function createHumanoidTexture(charId, baseHex) {
   x.fillStyle = grad;
   x.fillRect(0, 0, S, S);
 
-  // 依據角色特性繪製專屬花紋
   x.lineWidth = 4;
-  if (charId === 0) { // 戰士：鎧甲板甲線條與金色裝飾
-    x.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    for (let i = 0; i < S; i += 64) {
-      x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
-      x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
-    }
-    x.fillStyle = 'rgba(255, 215, 0, 0.2)';
-    for (let i = 32; i < S; i += 128) {
-      x.beginPath(); x.arc(i, i, 12, 0, 7); x.fill();
-    }
-  } 
-  else if (charId === 1) { // 法師：奧術星辰與邊緣法線
-    x.fillStyle = 'rgba(255, 255, 255, 0.15)';
-    for (let i = 0; i < 40; i++) {
-      x.beginPath(); x.arc(Math.random() * S, Math.random() * S, 5 + Math.random() * 8, 0, 7); x.fill();
-    }
-    x.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    x.lineWidth = 8;
-    x.strokeRect(50, 50, S - 100, S - 100);
-  }
-  else if (charId === 2) { // 刺客：暗影束帶與紫色格紋
-    x.fillStyle = '#110b1a';
-    for (let i = 0; i < S; i += 32) {
-      x.fillRect(0, i, S, 8);
-    }
-    x.strokeStyle = 'rgba(155, 89, 182, 0.5)';
-    x.lineWidth = 12;
-    x.beginPath(); x.moveTo(0, 0); x.lineTo(S, S); x.moveTo(S, 0); x.lineTo(0, S); x.stroke();
-  }
-  else if (charId === 3) { // 坦克：重型金屬鋼板與螺栓
-    x.fillStyle = 'rgba(0,0,0,0.25)';
-    for (let i = 0; i < S; i += 128) {
-      x.fillRect(i, 0, 24, S);
-      x.fillRect(0, i, S, 24);
-    }
-    x.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-    x.lineWidth = 8;
-    x.strokeRect(20, 20, S - 40, S - 40);
-  }
-  else if (charId === 4) { // 弓箭手：皮甲拼貼與林地迷彩
-    x.fillStyle = 'rgba(46, 204, 113, 0.4)';
-    for (let i = 0; i < 30; i++) {
-      x.fillRect(Math.random() * S, Math.random() * S, 60, 30);
-    }
-  }
-  else if (charId === 5) { // 治療師：聖光十字與白絲質地
-    x.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-    x.lineWidth = 12;
-    x.beginPath();
-    x.moveTo(S / 2, 40); x.lineTo(S / 2, S - 40);
-    x.moveTo(40, S / 2); x.lineTo(S - 40, S / 2);
-    x.stroke();
-  }
-  else if (charId === 6) { // 狂戰士：血腥尖刺與怒火塗鴉
-    x.fillStyle = '#e74c3c';
-    for (let i = 0; i < 15; i++) {
-      x.beginPath();
-      const px = Math.random() * S, py = Math.random() * S;
-      x.moveTo(px, py); x.lineTo(px + 40, py + 80); x.lineTo(px - 40, py + 80);
-      x.closePath(); x.fill();
-    }
-  }
-  else if (charId === 7) { // 忍者：夜行緊身網格與忍具線條
-    x.fillStyle = 'rgba(0,0,0,0.5)';
-    x.fillRect(0, 0, S, S);
-    x.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    x.lineWidth = 3;
-    for (let i = 0; i < S; i += 16) {
-      x.beginPath(); x.moveTo(i, 0); x.lineTo(i, S); x.stroke();
-      x.beginPath(); x.moveTo(0, i); x.lineTo(S, i); x.stroke();
-    }
-  }
-  else if (charId === 8) { // 元素使：三元元素混沌流光
-    x.fillStyle = 'rgba(230, 126, 34, 0.4)'; // 火
-    x.fillRect(0, 0, S, S/3);
-    x.fillStyle = 'rgba(52, 152, 219, 0.4)'; // 冰
-    x.fillRect(0, S/3, S, S/3);
-    x.fillStyle = 'rgba(241, 196, 15, 0.4)'; // 雷
-    x.fillRect(0, 2*S/3, S, S/3);
-  }
-  else if (charId === 9) { // 格鬥家：武僧服飾滾邊與修煉印記
-    x.strokeStyle = '#000000';
-    x.lineWidth = 20;
-    x.strokeRect(0, 0, S, S);
-    x.strokeRect(80, 80, S - 160, S - 160);
-  }
+  const paint = getCharacterTexturePainter(charId);
+  if (paint) paint(x, S);
 
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -968,6 +524,7 @@ export function attachSkin(group, skin, charId = 0) {
 
   // 2. 遍歷 humanoid 的 Mesh，將 Beta_Surface 貼上我們的 Canvas 專屬材質；Beta_Joints 設定為暗金屬色
   const ch = getCharacter(charId);
+  const modelDef = getCharacterModelDef(charId);
   const baseColor = ch.color;
   const charTexture = createHumanoidTexture(charId, baseColor);
   const jointColor = new THREE.Color(baseColor).multiplyScalar(0.4);
@@ -1041,7 +598,7 @@ export function attachSkin(group, skin, charId = 0) {
         a.rotation.x = Math.PI / 2;
         
         // 微調不同職業頭飾的 local 位置、旋轉與縮放
-        const hg = HEADGEAR[charId];
+        const hg = getCharacterModelDef(charId)?.modelConfig?.headgear;
         if (hg === 'hat') {
           a.position.y = 10;
           a.position.x = 2;
@@ -1083,12 +640,12 @@ export function attachSkin(group, skin, charId = 0) {
   ud.skin = { mixer: skin.mixer, actions: skin.actions, cfg: skin.cfg, root: skin.root, cur: null, oneShot: null, oneShotT: 0, moving: false, glbMats, rightArmBone, rightForeArmBone, leftArmBone };
 
   // 5. 重新綁定肩甲 (pauldrons) 到肩膀/大臂骨骼
-  const pauldrons = new Set([0, 3, 6]);
+  const hasPauldrons = !!getCharacterModelDef(charId)?.modelConfig?.pauldron;
   if (ud.parts.accents) {
     const headY = ud.parts.head.position.y;
     let pauldronIdx = 0;
     for (const a of ud.parts.accents) {
-      const isPauldron = pauldrons.has(charId) && a.position.y < headY - 4;
+      const isPauldron = hasPauldrons && a.position.y < headY - 4;
       if (isPauldron) {
         if (pauldronIdx === 0 && leftArmBone) {
           leftArmBone.add(a);
@@ -1106,117 +663,10 @@ export function attachSkin(group, skin, charId = 0) {
     }
   }
 
-  // 6. 為各職業建立專屬特色 3D 裝備並綁定至對應骨骼
-  if (charId === 4 && spineBone) { // 弓箭手：背後箭筒
-    const quiverGroup = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.8 });
-    const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.5, 12, 8), bodyMat);
-    bodyMesh.castShadow = true;
-    quiverGroup.add(bodyMesh);
-
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
-    const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(2, 0.4, 8, 12), goldMat);
-    rimMesh.rotation.x = Math.PI / 2;
-    rimMesh.position.y = 6;
-    quiverGroup.add(rimMesh);
-
-    const arrowMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, roughness: 0.5 });
-    const featherMat = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.5 });
-    for (let i = -1; i <= 1; i++) {
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 8, 4), arrowMat);
-      shaft.position.set(i * 0.8, 8, 0);
-      shaft.rotation.z = i * 0.15;
-      quiverGroup.add(shaft);
-
-      const feather = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.2), featherMat);
-      feather.position.set(i * 0.8, 11, 0);
-      quiverGroup.add(feather);
-    }
-    spineBone.add(quiverGroup);
-    quiverGroup.position.set(0, 0, -3.2);
-    quiverGroup.rotation.set(0, Math.PI, -0.4);
-    quiverGroup.scale.setScalar(0.75);
-  }
-  else if (charId === 7 && spineBone) { // 忍者：腰後忍卷
-    const scrollGroup = new THREE.Group();
-    const paperMat = new THREE.MeshStandardMaterial({ color: 0xfdf6e3, roughness: 0.9 });
-    const paperMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 11, 8), paperMat);
-    paperMesh.rotation.z = Math.PI / 2;
-    paperMesh.castShadow = true;
-    scrollGroup.add(paperMesh);
-
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b0000, metalness: 0.1, roughness: 0.6 });
-    const capGeom = new THREE.CylinderGeometry(1.9, 1.9, 1.5, 8);
-    for (const side of [-1, 1]) {
-      const cap = new THREE.Mesh(capGeom, woodMat);
-      cap.rotation.z = Math.PI / 2;
-      cap.position.x = side * 6;
-      scrollGroup.add(cap);
-    }
-
-    const ribbonMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
-    const ribbon = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.2, 6, 12), ribbonMat);
-    scrollGroup.add(ribbon);
-
-    spineBone.add(scrollGroup);
-    scrollGroup.position.set(0, -4, -2.4);
-    scrollGroup.scale.setScalar(0.85);
-  }
-  else if (charId === 1 && leftHandBone) { // 法師：左手浮空法術書
-    const bookGroup = new THREE.Group();
-    const coverMat = new THREE.MeshStandardMaterial({ color: 0x4a148c, roughness: 0.6 });
-    const cover = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.4, 5.8), coverMat);
-    cover.castShadow = true;
-    bookGroup.add(cover);
-
-    const pagesMat = new THREE.MeshStandardMaterial({ color: 0xfffdd0, roughness: 0.9 });
-    const pages = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.35, 5.4), pagesMat);
-    pages.position.y = 0.05;
-    pages.position.x = 0.15;
-    bookGroup.add(pages);
-
-    const magicMat = new THREE.MeshStandardMaterial({ color: baseColor, emissive: baseColor, emissiveIntensity: 2.2 });
-    const magicOrb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 0), magicMat);
-    magicOrb.position.set(0, 1.2, 0);
-    bookGroup.add(magicOrb);
-
-    leftHandBone.add(bookGroup);
-    bookGroup.position.set(-3.2, 2.5, 1);
-    bookGroup.rotation.set(0.4, -0.2, 0.4);
-    bookGroup.scale.setScalar(0.8);
-    ud.skin.floatingItem = bookGroup;
-  }
-  else if (charId === 5 && hipsBone) { // 治療師：腰間金色十字架
-    const holyGroup = new THREE.Group();
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.15 });
-    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.7, 4.8, 0.7), goldMat);
-    const crossH = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 0.7), goldMat);
-    crossH.position.y = 0.8;
-    holyGroup.add(crossV);
-    holyGroup.add(crossH);
-
-    const rubyMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 1.5 });
-    const ruby = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), rubyMat);
-    ruby.position.set(0, 0.8, 0.4);
-    holyGroup.add(ruby);
-
-    hipsBone.add(holyGroup);
-    holyGroup.position.set(3, -2, 0.5);
-    holyGroup.rotation.set(0, -Math.PI / 4, 0.25);
-    holyGroup.scale.setScalar(0.9);
-  }
-  else if (charId === 9 && leftForeArmBone && rightForeArmBone) { // 格鬥家：雙腕金屬護腕
-    const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
-    const leftBrace = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.4, 4, 8), goldMat);
-    leftBrace.rotation.x = Math.PI / 2;
-    leftBrace.position.set(0, 5, 0);
-    leftForeArmBone.add(leftBrace);
-
-    const rightBrace = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.4, 4, 8), goldMat);
-    rightBrace.rotation.x = Math.PI / 2;
-    rightBrace.position.set(0, 5, 0);
-    rightForeArmBone.add(rightBrace);
-  }
+  // 6. 角色專屬 GLB 附加裝備由各角色資料夾提供。
+  modelDef?.attachSkinGear?.({
+    THREE, baseColor, spineBone, leftHandBone, hipsBone, leftForeArmBone, rightForeArmBone, ud,
+  });
 
   group.add(skin.root);
 }

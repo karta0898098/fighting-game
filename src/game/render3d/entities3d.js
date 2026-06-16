@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { setVecFromWorld, PROJECTILE_Y } from './coords.js';
-import { getVfx } from './vfx/index.js';
+import { getVfx } from './vfx/index.ts';
 
 export function createEntityLayer(scene, particles, opts = {}) {
   const group = new THREE.Group();

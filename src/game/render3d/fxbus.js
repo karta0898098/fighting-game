@@ -3,7 +3,7 @@
 
 import * as THREE from 'three';
 import { setVecFromWorld, PROJECTILE_Y } from './coords.js';
-import { getVfx } from './vfx/index.js';
+import { getVfx } from './vfx/index.ts';
 import { getSfxManager } from '../../utils/sfxManager';
 
 export function createFxBus({ scene, particles, sceneMgr }) {

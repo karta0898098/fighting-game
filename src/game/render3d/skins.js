@@ -6,8 +6,8 @@
 //      - Quaternius  https://quaternius.com  （Universal Animation Library / RPG Characters，已綁骨含多段動畫）
 //      - Kenney      https://kenney.nl/assets （Mini Characters / Blocky Characters）
 //      - Mixamo      https://mixamo.com       （自動綁骨 + 動畫，匯出 glTF Binary）
-// 2. 匯出成 .glb，放到：public/assets/characters/models/<名稱>.glb
-//    對應檔名見下方 CHAR_FILES（warrior.glb / mage.glb / ... / fighter.glb）。
+// 2. 匯出成 model.glb，放到：public/assets/characters/<職業 slug>/model.glb
+//    例如 public/assets/characters/warrior/model.glb。
 // 3. 皮膚會自動依 bounding box 縮放對齊碰撞大小並貼地；若朝向不對調整 OVERRIDES 的 rotationY
 //    (需要時也可加 scaleMul 微調視覺大小 / yOffset 微調高度)。
 //
@@ -23,26 +23,33 @@ import { PLAYER_RADIUS } from '../constants.js';
 const FOOTPRINT_FILL = 6;
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
-const modelUrl = (file) => asset(`assets/characters/models/${file}`);
+const modelUrl = (slug, format) => asset(`assets/characters/${slug}/model.${format}`);
 
-// charId -> 檔名 (全部對應到人形模型)
-const CHAR_FILES = [
-  'humanoid', // 0: warrior
-  'humanoid', // 1: mage
-  'humanoid', // 2: assassin
-  'humanoid', // 3: tank
-  'humanoid', // 4: archer
-  'humanoid', // 5: healer
-  'humanoid', // 6: berserker
-  'humanoid', // 7: ninja
-  'humanoid', // 8: elementalist
-  'humanoid', // 9: fighter
+// charId -> 職業資源資料夾 slug
+const CHAR_SLUGS = [
+  'warrior',
+  'mage',
+  'assassin',
+  'tank',
+  'archer',
+  'healer',
+  'berserker',
+  'ninja',
+  'elementalist',
+  'fighter',
+  'paladin',
+  'hexer',
+  'bard',
+  'samurai',
+  'gunner',
+  'summoner',
+  'necromancer',
+  'chronomancer',
 ];
 
 // charId -> 檔案格式
 const CHAR_FORMATS = {
-  0: 'glb', 1: 'glb', 2: 'glb', 3: 'glb', 4: 'glb',
-  5: 'glb', 6: 'glb', 7: 'glb', 8: 'glb', 9: 'glb',
+  0: 'gltf',
 };
 
 // 各動作的候選 clip 名稱 (對照 humanoid.glb 內建動畫)
@@ -62,10 +69,10 @@ const OVERRIDES = {
 };
 
 export function getSkinConfig(charId) {
-  const file = CHAR_FILES[charId] || 'humanoid';
+  const slug = CHAR_SLUGS[charId] || CHAR_SLUGS[0];
   const format = CHAR_FORMATS[charId] || 'glb';
   return {
-    url: modelUrl(`${file}.${format}`),
+    url: modelUrl(slug, format),
     clips: DEFAULT_CLIPS,
     ...DEFAULT_CFG,
     ...(OVERRIDES[charId] || {}),
