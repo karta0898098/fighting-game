@@ -5,8 +5,8 @@ import { clamp } from '../entities/math.ts';
 
 // Boss 全域基底速度倍率：讓所有魔王比玩家略慢 (玩家可拉開距離 / 風箏)，
 // 但移動仍流暢不卡頓。recover 破綻期再額外減速。
-const BOSS_BASE_SPEED_MULT = 0.82;
-const BOSS_RECOVER_SPEED_MULT = 0.6;
+const BOSS_BASE_SPEED_MULT = 0.95;
+const BOSS_RECOVER_SPEED_MULT = 0.62;
 
 export function speedOf(p) {
   const character = getCharacter(p.charId);
