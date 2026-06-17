@@ -24,6 +24,18 @@ const data = {
     ],
     hazardText: '❄️ 站在冰域裡會被凍！快離開',
     hazardColor: '#74e0ff',
+    theme: {
+      sky: 0x1a2a3a, fog: 0xa8d4f0, fogNear: 900, fogFar: 2600,
+      floor: 0xb8d4e8, ring: 0x6aa0c8,
+      wallStone: 0x4a5a6a, wallTrim: 0x9fe8ff,
+      hemiSky: 0xcde6f5, hemiGround: 0x2a3a4a, hemiInt: 0.6,
+      sunColor: 0xc8e0f8, sunInt: 1.6, rimColor: 0x6abfff, rimInt: 0.45,
+      decorations: ['crystal', 'rock'],
+      crystal: { count: 24, color: 0x9fe8ff, glow: 0x49d0ff, glowInt: 0.8 },
+      rock: { count: 12, color: 0x8aa0b0 },
+      atmosphere: { kind: 'snow', rate: 32 },
+      floorDecal: { kind: 'snowflake', color: '#cdeeff', opacity: 0.45, glow: 0.3 },
+    },
 
     phases: [
       { hpPct: 0.5, name: '冰鏡幻奏', sub: '繁衍分身', color: '#74e0ff', dmgMult: 1.2, speedMult: 1.15, cdMult: 0.6,

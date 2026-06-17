@@ -17,7 +17,8 @@ const data = {
     ai: 'juggernaut',
     mechanic: { frontArmor: 0.45, chargeWallStun: 2.2 }, // 正面前弧減傷 45%；衝鋒撞牆自暈 2.2s
     talent: { id: 'boss_frontarmor', name: '熔岩重甲', desc: '正面前方受到的傷害減免 45%，背後無防護。', frontArmor: 0.45, arc: 1.6 },
-    hint: '正面有厚甲擋傷 —— 繞到背後打！閃過衝鋒，牠撞牆會自己暈',
+    hint: '正面有厚甲擋傷 —— 繞到背後打！閃過衝鋒，誘導撞石柱會自暈',
+    environment: { pillars: { count: 6, hp: 240, r: 30, color: '#5a3a26' } },
     tags: [
       { icon: '🛡️', text: '正面減傷·打背後' },
       { icon: '💥', text: '衝鋒撞牆會自暈' },
@@ -25,6 +26,18 @@ const data = {
     ],
     hazardText: '🔥 站在烈焰上！快離開',
     hazardColor: '#ff5a2a',
+    theme: {
+      sky: 0x2a0c0a, fog: 0x3a1408, fogNear: 700, fogFar: 2200,
+      floor: 0x4a2a1f, ring: 0xff5a1f,
+      wallStone: 0x2b1b14, wallTrim: 0xff5a1f,
+      hemiSky: 0xff7043, hemiGround: 0x2a0a06, hemiInt: 0.55,
+      sunColor: 0xffb070, sunInt: 2.4, rimColor: 0xff3010, rimInt: 0.45,
+      decorations: ['rock', 'brazier'],
+      rock: { count: 18, color: 0x3a2218 },
+      brazier: { count: 10, flame: 0xff7a3d, flameGlow: 0xff3010 },
+      atmosphere: { kind: 'embers', rate: 28 },
+      floorDecal: { kind: 'flame', color: '#ff7a3d', opacity: 0.5, glow: 0.6 },
+    },
 
     phases: [
       { hpPct: 0.5, name: '熔岩沸騰', sub: '裝甲剝落', color: '#ff5a1f', dmgMult: 1.4, speedMult: 1.2, cdMult: 0.8,
@@ -36,7 +49,8 @@ const data = {
         ] },
     ],
 
-    basic: { name: '熔岩劈斬', type: 'melee', dmg: 50, range: 120, arc: 1.2, knockback: 200, cd: 1.4, windup: 0.7, telegraph: 'arc', color: '#ff7043', effect: BURN(8, 2), vfx: 'boss_juggernaut_slash' },
+    basic: { name: '熔岩劈斬', type: 'melee', dmg: 50, range: 120, arc: 1.2, knockback: 200, cd: 1.4, windup: 0.7, telegraph: 'arc', color: '#ff7043', effect: BURN(8, 2), vfx: 'boss_juggernaut_slash',
+      chain: [{ slot: 'skill2', windup: 0.6, delay: 0.3 }] },
     skill1: { name: '烈焰衝鋒', type: 'charge', speed: 900, range: 520, dmg: 80, hitRadius: 70, knockback: 320, stopOnHit: true, effect: STUN(1.0), cd: 8, windup: 0.9, telegraph: 'line', color: '#ff5a1f', wallStun: 2.2, vfx: 'boss_juggernaut_charge' },
     skill2: { name: '震地烈焰', type: 'zone', range: 90, radius: 150, dmg: 40, lifetime: 2.4, tick: 0.5, delay: 0.8, moving: 0, effect: BURN(12, 3), cd: 10, windup: 0.8, telegraph: 'circle', color: '#e74c3c', vfx: 'boss_juggernaut_quake' },
     ultimate: { name: '熔岩噴發', type: 'zone', range: 130, radius: 120, dmg: 55, lifetime: 4, tick: 0.5, delay: 0.9, count: 7, scatter: 280, stagger: 0.12, effect: BURN(14, 3), cd: 16, windup: 1.0, telegraph: 'circle', color: '#ff5a1f', vfx: 'boss_juggernaut_ult' },

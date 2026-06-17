@@ -22,6 +22,7 @@ const data = {
       coreArmorUntilPartsDown: 0.6, // 雙臂未破時核心減傷 60%
     },
     hint: '先打掉牠左右兩隻手臂！雙臂沒破時，本體會減傷 60%',
+    environment: { pillars: { count: 5, hp: 360, r: 34, color: '#7d8c95' } },
     tags: [
       { icon: '🦾', text: '先破壞左右雙臂' },
       { icon: '🛡️', text: '雙臂未破·本體減傷 60%' },
@@ -29,6 +30,18 @@ const data = {
     ],
     hazardText: '⚠️ 站在攻擊範圍裡！快閃開',
     hazardColor: '#ffa83a',
+    theme: {
+      sky: 0x2a2622, fog: 0x3a3228, fogNear: 800, fogFar: 2400,
+      floor: 0x7d7066, ring: 0x49d0ff,
+      wallStone: 0x6b6660, wallTrim: 0x49d0ff,
+      hemiSky: 0xc8b8a0, hemiGround: 0x2a2218, hemiInt: 0.4,
+      sunColor: 0xffd8a0, sunInt: 1.8, rimColor: 0xb0a070, rimInt: 0.3,
+      decorations: ['pillar', 'rock'],
+      pillar: { count: 14, color: 0x8a7060 },
+      rock: { count: 18, color: 0x6b5e4e },
+      atmosphere: { kind: 'ash', rate: 14 },
+      floorDecal: { kind: 'hex', color: '#49d0ff', opacity: 0.3, glow: 0.25 },
+    },
 
     phases: [
       { hpPct: 0.66, name: '核心過載', sub: '機關失序', color: '#49d0ff', dmgMult: 1.25, cdMult: 0.65,

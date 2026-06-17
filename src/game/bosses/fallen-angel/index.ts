@@ -25,6 +25,18 @@ const data = {
     ],
     hazardText: '☀️ 站在審判光柱下！快離開',
     hazardColor: '#ffd24a',
+    theme: {
+      sky: 0x2a1f3a, fog: 0x3a2a4a, fogNear: 800, fogFar: 2400,
+      floor: 0x5a4a55, ring: 0xfff2b0,
+      wallStone: 0x3a2c40, wallTrim: 0xfff2b0,
+      hemiSky: 0xfff7d6, hemiGround: 0x2a1a30, hemiInt: 0.5,
+      sunColor: 0xfff2b0, sunInt: 2.2, rimColor: 0xd8b3ff, rimInt: 0.5,
+      decorations: ['pillar', 'brazier'],
+      pillar: { count: 12, color: 0x7a6a70 },
+      brazier: { count: 8, flame: 0xfff2b0, flameGlow: 0xffd166 },
+      atmosphere: { kind: 'petals', color: '#fff2b0', rate: 12 },
+      floorDecal: { kind: 'rings', color: '#fff2b0', opacity: 0.5, glow: 0.45 },
+    },
 
     phases: [
       { hpPct: 0.6, name: '光明之翼', sub: '聖光綻放', color: '#fff2b0', dmgMult: 1.2, cdMult: 0.8,

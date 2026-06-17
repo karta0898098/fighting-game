@@ -12,6 +12,9 @@ import { createParticleSystem } from './render3d/particles.js';
 import { createEntityLayer } from './render3d/entities3d.js';
 import { createFxBus } from './render3d/fxbus.js';
 import { createHud } from './render3d/hud.js';
+import { applyDecorations, updateDecorationFade } from './render3d/decorations.js';
+import { createAtmosphere } from './render3d/atmosphere.js';
+import { getBossForRound } from './bosses.js';
 import { createCharacterModel, animateModel, attachSkin } from './render3d/models.js';
 import { computeBossVisualState, createBossPartModel } from './bosses/render3d.ts';
 import { sceneX, sceneZ } from './render3d/coords.js';
@@ -49,6 +52,9 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
   const fxbus = createFxBus({ scene, particles, sceneMgr });
   const entities = createEntityLayer(scene, particles, { addTransient: fxbus.addTransient, sceneMgr });
   const hud = createHud({ stage: sceneMgr.stage, scene, camera, controlScheme, hooks });
+  const atmosphere = createAtmosphere(particles);
+  let appliedThemeRound = -1;
+  let appliedThemeMode = '';
   const sfx = getSfxManager();
 
   // 本地視覺狀態 (不進 snapshot)
@@ -389,11 +395,43 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
 
     if (sceneMgr.resize()) hud.resize();
 
+    // 場景主題：偵測 (mode/round) 變化，套用 Boss 主題色 + 裝飾 + 大氣粒子
+    if (state.mode === 'boss') {
+      if (state.round !== appliedThemeRound || appliedThemeMode !== 'boss') {
+        const data = getBossForRound(state.round);
+        const theme = (data && data.theme) || null;
+        sceneMgr.applyTheme(theme);
+        applyDecorations(sceneMgr.themeGroup, theme || {});
+        atmosphere.setTheme(theme || {});
+        appliedThemeRound = state.round;
+        appliedThemeMode = 'boss';
+      }
+    } else if (appliedThemeMode !== 'ffa') {
+      sceneMgr.applyTheme(null);
+      applyDecorations(sceneMgr.themeGroup, {});
+      atmosphere.setTheme({});
+      appliedThemeMode = 'ffa';
+      appliedThemeRound = -1;
+    }
+
+    // 相機跟隨焦點 (給 destructibles 視線判斷與 setCameraFocus 用)
+    const meP = state.players[selfId];
+    let fx = 0, fz = 0;
+    if (meP && meP.alive) { fx = sceneX(meP.x); fz = sceneZ(meP.y); }
+    else {
+      for (const pp of Object.values(state.players)) {
+        if (pp.alive && !pp.ownerId && !pp.isBoss) { fx = sceneX(pp.x); fz = sceneZ(pp.y); break; }
+      }
+    }
+
     fxbus.process(state);
     syncPlayers(state, selfId, dt);
     updateHuntMarker(state, dt);
     entities.syncProjectiles(state.projectiles, dt);
     entities.syncZones(state.zones, dt);
+    entities.syncDestructibles(state.destructibles || [], dt, { x: fx, z: fz });
+    updateDecorationFade(sceneMgr.themeGroup, { x: fx, z: fz }, dt);
+    atmosphere.update(dt);
     particles.update(dt);
     fxbus.update(dt);
     // 登場動畫：把鏡頭朝 Boss 推近。intro 期間 strength 隨 t 由 0→1→0 (ease in/out)。
@@ -411,6 +449,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
       }
     }
     sceneMgr.setIntroFocus(introStr, bossSx, bossSz);
+    sceneMgr.setCameraFocus(fx, fz);
     sceneMgr.update(dt);
     hud.update(state, selfId);
 

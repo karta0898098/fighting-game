@@ -25,6 +25,18 @@ const data = {
     ],
     hazardText: '🕳️ 被黑洞吸住了！快脫離',
     hazardColor: '#a06cff',
+    theme: {
+      sky: 0x0a0820, fog: 0x180e30, fogNear: 600, fogFar: 2200,
+      floor: 0x261a45, ring: 0xa06cff,
+      wallStone: 0x1f1535, wallTrim: 0xa06cff,
+      hemiSky: 0xa06cff, hemiGround: 0x10081a, hemiInt: 0.45,
+      sunColor: 0x9870e0, sunInt: 1.4, rimColor: 0xa06cff, rimInt: 0.6,
+      decorations: ['crystal', 'pillar'],
+      crystal: { count: 22, color: 0xc39bff, glow: 0x8e44ad, glowInt: 0.8 },
+      pillar: { count: 8, color: 0x3a2a55 },
+      atmosphere: { kind: 'stardust', color: '#c39bff', rate: 28 },
+      floorDecal: { kind: 'arcane', color: '#c39bff', opacity: 0.45, glow: 0.5 },
+    },
 
     phases: [
       { hpPct: 0.5, name: '規則崩壞', sub: '時空紊亂', color: '#b14fd8', dmgMult: 1.25, cdMult: 0.7,

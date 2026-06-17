@@ -3,6 +3,11 @@ import { ARENA, PLAYER_RADIUS, KNOCKBACK_FRICTION } from '../constants.js';
 import { getCharacter } from '../characters.js';
 import { clamp } from '../entities/math.ts';
 
+// Boss 全域基底速度倍率：讓所有魔王比玩家略慢 (玩家可拉開距離 / 風箏)，
+// 但移動仍流暢不卡頓。recover 破綻期再額外減速。
+const BOSS_BASE_SPEED_MULT = 0.95;
+const BOSS_RECOVER_SPEED_MULT = 0.62;
+
 export function speedOf(p) {
   const character = getCharacter(p.charId);
   let speed = character.speed;
@@ -10,7 +15,11 @@ export function speedOf(p) {
   if (p.effects.chill) speed *= p.effects.chill.factor;
   if (p.effects.haste) speed *= p.effects.haste.factor;
   if (p.effects.rage) speed *= p.effects.rage.speed;
-  if (p.isBoss && p.phaseSpeedMult) speed *= p.phaseSpeedMult;
+  if (p.isBoss) {
+    speed *= BOSS_BASE_SPEED_MULT;
+    if (p.phaseSpeedMult) speed *= p.phaseSpeedMult;
+    if ((p.recoverWindow || 0) > 0) speed *= BOSS_RECOVER_SPEED_MULT;
+  }
   return speed;
 }
 

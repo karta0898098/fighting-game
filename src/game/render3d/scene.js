@@ -71,9 +71,39 @@ export function createSceneManager(canvas) {
   scene.add(rim);
 
   // ---- 地板 (格線材質) ----
-  scene.add(buildFloor());
+  const floorGroup = buildFloor();
+  scene.add(floorGroup);
   // ---- 邊界發光牆 (幫助景深 + bloom) ----
-  scene.add(buildWalls());
+  const wallsGroup = buildWalls();
+  scene.add(wallsGroup);
+  // ---- 主題層 (裝飾物體 / 大氣粒子)：applyTheme 時動態組裝 ----
+  const themeGroup = new THREE.Group();
+  scene.add(themeGroup);
+  // 預設主題 (沿用既有冷灰調)
+  const DEFAULT_THEME = {
+    sky: 0x0c0f14, fog: 0x0c0f14, fogNear: 1400, fogFar: 2900,
+    floor: 0x9a948c, ring: 0x6f6862,
+    wallStone: 0x5b5e66, wallTrim: 0x2f6dff,
+    hemiSky: 0xd8e2f0, hemiGround: 0x2a2622, hemiInt: 0.35,
+    sunColor: 0xffe6c4, sunInt: 2.3,
+    rimColor: 0x9fb4d6, rimInt: 0.28,
+  };
+  let activeTheme = DEFAULT_THEME;
+
+  function applyTheme(theme) {
+    const t = { ...DEFAULT_THEME, ...(theme || {}) };
+    activeTheme = t;
+    scene.background = new THREE.Color(t.sky);
+    scene.fog = new THREE.Fog(t.fog, t.fogNear, t.fogFar);
+    floorGroup.userData.floorMat.color.setHex(t.floor);
+    floorGroup.userData.ringMat.color.setHex(t.ring);
+    wallsGroup.userData.stoneMat.color.setHex(t.wallStone);
+    wallsGroup.userData.trimMat.color.setHex(t.wallTrim);
+    wallsGroup.userData.trimMat.emissive.setHex(t.wallTrim);
+    hemi.color.setHex(t.hemiSky); hemi.groundColor.setHex(t.hemiGround); hemi.intensity = t.hemiInt;
+    dir.color.setHex(t.sunColor); dir.intensity = t.sunInt;
+    rim.color.setHex(t.rimColor); rim.intensity = t.rimInt;
+  }
 
   // ---- 泛光後處理鏈 (收斂：僅高亮特效發光，場景不過曝) ----
   const composer = new EffectComposer(renderer);
@@ -128,6 +158,11 @@ export function createSceneManager(canvas) {
     introTargetZ = targetZ;
   }
 
+  // 鏡頭跟隨：以 self player 為焦點，平滑 lerp；外圍邊界 clamp 避免拍到場外
+  let focusX = 0, focusZ = 0;
+  let curFocusX = 0, curFocusZ = 0;
+  function setCameraFocus(x, z) { focusX = x; focusZ = z; }
+
   function update(dt) {
     time += dt;
     // 震動衰減
@@ -139,20 +174,32 @@ export function createSceneManager(canvas) {
     flashEl.style.background = flashColor;
     flashEl.style.opacity = (flashA * 0.85).toFixed(3);
 
-    // 鏡頭：基準位置 + 極輕微 idle 浮動 + 震動位移 (沿螢幕 right/up)
+    // 鏡頭焦點：平滑 lerp 到目標 (玩家)；clamp 在競技場縮邊內 (避免拍到場外)
+    const FOLLOW_BLEND = Math.min(1, dt * 4.0); // 反應速度 (越大越貼)
+    curFocusX += (focusX - curFocusX) * FOLLOW_BLEND;
+    curFocusZ += (focusZ - curFocusZ) * FOLLOW_BLEND;
+    const halfW = ARENA.width / 2;
+    const halfH = ARENA.height / 2;
+    const MARGIN_X = Math.max(0, halfW - 360);  // 鏡頭最遠可偏離中心 (留邊框可見)
+    const MARGIN_Z = Math.max(0, halfH - 280);
+    const cFX = Math.max(-MARGIN_X, Math.min(MARGIN_X, curFocusX));
+    const cFZ = Math.max(-MARGIN_Z, Math.min(MARGIN_Z, curFocusZ));
+
+    // 鏡頭：基準位置 + 焦點偏移 + 極輕微 idle 浮動 + 震動位移
     _v.copy(camBase);
+    _v.x += cFX; _v.z += cFZ;
     _v.y += Math.sin(time * 0.5) * 6;
     _v.z += Math.sin(time * 0.37) * 5;
-    // 登場動畫推近：向 (introTargetX, 200, introTargetZ+360) 內插，並把 lookAt 也朝 Boss
-    let lookX = camTarget.x, lookY = camTarget.y, lookZ = camTarget.z;
+    let lookX = cFX, lookY = camTarget.y, lookZ = cFZ;
+    // 登場動畫推近：覆寫焦點朝 Boss
     if (introStrength > 0) {
       const cx = introTargetX, cz = introTargetZ;
       _v.x += (cx - _v.x) * introStrength * 0.65;
       _v.y += (260 - _v.y) * introStrength * 0.55;
       _v.z += ((cz + 360) - _v.z) * introStrength * 0.65;
-      lookX = cx * introStrength;
+      lookX = cx * introStrength + lookX * (1 - introStrength);
       lookY = 60 * introStrength;
-      lookZ = cz * introStrength;
+      lookZ = cz * introStrength + lookZ * (1 - introStrength);
     }
     camera.position.copy(_v);
     camera.lookAt(lookX, lookY, lookZ);
@@ -176,8 +223,10 @@ export function createSceneManager(canvas) {
 
   return {
     scene, camera, renderer, stage,
-    resize, update, render, addShake, addFlash, setBloom, setIntroFocus, dispose,
+    resize, update, render, addShake, addFlash, setBloom, setIntroFocus, setCameraFocus, dispose,
+    applyTheme, themeGroup,
     get time() { return time; },
+    get theme() { return activeTheme; },
   };
 }
 
@@ -203,6 +252,8 @@ function buildFloor() {
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.5;
   g.add(ring);
+  g.userData.floorMat = mat;
+  g.userData.ringMat = ringMat;
   return g;
 }
 
@@ -282,5 +333,7 @@ function buildWalls() {
   mk(W + t * 2, t, 0, H / 2);
   mk(t, H, -W / 2, 0);
   mk(t, H, W / 2, 0);
+  g.userData.stoneMat = stone;
+  g.userData.trimMat = trim;
   return g;
 }

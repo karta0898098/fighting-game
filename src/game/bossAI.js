@@ -17,6 +17,7 @@ import { ARENA } from './constants.js';
 import { dist } from './entities/math.ts';
 import { addFx } from './entities/fx.ts';
 import { isEnemy } from './entities/team.ts';
+import { dangerColor } from './bosses/danger.ts';
 import { getCharacter } from './characters.js';
 import { getBoss } from './bosses.js';
 
@@ -58,14 +59,31 @@ function moveAway(input, ent, tx, ty) {
 }
 const aimAt = (ent, tx, ty) => Math.atan2(ty - ent.y, tx - ent.x);
 
-// ---- 預警特效 (節流；type 'buff' 為靜音視覺) ----
-function telegraph(state, ent, color, x, y, radius, dt) {
+// ---- 預警特效：依危險等級上色、依進度脈動加速、依招式形狀畫地面 decal ----
+function telegraph(state, ent, action, dt) {
   const s = ent.aiState;
+  const totalT = action.windup != null ? action.windup : 0.5;
+  const progress = Math.max(0, Math.min(1, 1 - s.windupT / Math.max(0.001, totalT)));
+  // 進度越高脈動越快 (0.22s → 0.08s)
+  const interval = 0.22 - 0.14 * progress;
   s._tele = (s._tele || 0) - dt;
-  if (s._tele <= 0) {
-    s._tele = 0.18;
-    addFx(state, { type: 'buff', x, y, color: color || '#ffffff', life: 0.3, radius: radius || 60 });
-  }
+  if (s._tele > 0) return;
+  s._tele = interval;
+  const color = action.telegraphColor || dangerColor(action);
+  const shape = action.telegraph || 'circle';
+  addFx(state, {
+    type: 'telegraph',
+    x: s.teleX, y: s.teleY,
+    facing: s.aimAng || 0,
+    color,
+    radius: s.teleR || (action.radius || 60),
+    range: action.range || 0,
+    arc: action.arc || 1.4,
+    shape,        // 'circle' / 'line' / 'arc' / 'self'
+    progress,     // 0-1
+    life: 0.32,
+    danger: action.dangerLevel || undefined,
+  });
 }
 
 // ---- 技能是否在當前距離可用 (依 action type 概略門檻) ----
@@ -180,25 +198,81 @@ function computeProfileInput(profile, state, ent, dt) {
     if (a && (a.type === 'melee' || a.type === 'charge' || a.type === 'leap') && d > (prof.range || 80)) {
       moveToward(input, ent, target.x, target.y, prof.range || 80);
     }
-    telegraph(state, ent, a && a.color, s.teleX, s.teleY, s.teleR, dt);
+    if (a) telegraph(state, ent, a, dt);
     s.windupT -= dt;
     if (s.windupT <= 0) {
       input[s.slot] = true;          // 按下該槽一個 tick → step 觸發 tryAction/tryUltimate
       input.aim = s.aimAng;
+      const a = ch[s.slot] || {};
+      // 設定連段：剩餘 chain 清單 + 接續延遲（短破綻接下一招）
+      if (a.chain && a.chain.length && !s.chainQueue) {
+        s.chainQueue = a.chain.slice();
+      }
+      // 破綻窗口長度：有 chain 接續 → 用 chain.delay 較短；否則依招式重量
+      const hasChainNext = s.chainQueue && s.chainQueue.length > 0;
+      const heavy = !hasChainNext && (s.slot === 'ultimate' || (a.dmg || 0) >= 70 || (a.radius || 0) >= 180);
+      const med = !hasChainNext && ((a.dmg || 0) >= 40 || (a.radius || 0) >= 120);
+      if (hasChainNext) {
+        const nextChain = s.chainQueue[0];
+        s.recoverT = nextChain.delay != null ? nextChain.delay : 0.25;
+      } else {
+        // 破綻窗口：縮短時長 (避免長時間卡住感)；recover 期間 Boss 可走路但減速
+        s.recoverT = heavy ? 0.75 + Math.random() * 0.3
+                   : med   ? 0.5  + Math.random() * 0.2
+                   :         0.25 + Math.random() * 0.2;
+      }
+      s.recoverTotal = s.recoverT;
       s.mode = 'recover';
-      s.recoverT = 0.35 + Math.random() * 0.25;
+      ent.recoverWindow = s.recoverT;
+      ent.recoverMaxWindow = s.recoverT;
+      ent.recoverHeavy = heavy;
       s.slot = null;
     }
     return input;
   }
 
-  // ---- recover：施放後短暫停頓，避免機關槍 ----
+  // ---- recover：破綻期，玩家受傷增 30%，頭頂顯示「破綻」；Boss 可走位但減速 ----
   if (s.mode === 'recover') {
     s.recoverT -= dt;
+    ent.recoverWindow = Math.max(0, s.recoverT);
     input.aim = aimAt(ent, target.x, target.y);
-    // 遠程王施放後拉開距離
+    // 允許追擊／風箏，但移動速度由 speedOf 套 0.55× (避免破綻期看起來像卡住)
     if (prof.kite && d < prof.kite) moveAway(input, ent, target.x, target.y);
-    if (s.recoverT <= 0) s.mode = 'idle';
+    else if (d > (prof.range || 80)) moveToward(input, ent, target.x, target.y, prof.range || 80);
+    if (s.recoverT <= 0) {
+      ent.recoverWindow = 0;
+      ent.recoverMaxWindow = 0;
+      ent.recoverHeavy = false;
+      // 連段下一招：強制進入下一個 windup (不檢查 CD，連段強制執行)
+      if (s.chainQueue && s.chainQueue.length) {
+        const next = s.chainQueue.shift();
+        const a2 = ch[next.slot];
+        if (a2) {
+          s.mode = 'windup';
+          s.slot = next.slot;
+          s.windupT = next.windup != null ? next.windup : (a2.windup || 0.3);
+          // 重新鎖定瞄準與預警落點 (用最新目標位置)
+          let tx2 = target.x, ty2 = target.y;
+          if (selfCentered(a2)) { tx2 = ent.x; ty2 = ent.y; }
+          s.aimAng = aimAt(ent, target.x, target.y);
+          if (a2.type === 'zone' && (a2.range || 0) > 0) {
+            const ang = s.aimAng;
+            s.teleX = ent.x + Math.cos(ang) * a2.range; s.teleY = ent.y + Math.sin(ang) * a2.range; s.teleR = a2.radius || 120;
+          } else if (selfCentered(a2)) {
+            s.teleX = ent.x; s.teleY = ent.y; s.teleR = a2.radius || a2.range || 120;
+          } else {
+            s.teleX = tx2; s.teleY = ty2; s.teleR = a2.radius || a2.hitRadius || 80;
+          }
+          // 連段強制：CD 不擋 (清掉本招 CD 讓 tryAction 通過)
+          ent.cd = ent.cd || {};
+          ent.cd[next.slot] = 0;
+          // mana 不檢查 (boss maxMana 通常很大)
+          return input;
+        }
+      }
+      s.chainQueue = null;
+      s.mode = 'idle';
+    }
     return input;
   }
 

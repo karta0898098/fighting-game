@@ -24,6 +24,18 @@ const data = {
     ],
     hazardText: '☠️ 中毒中！快離開毒沼',
     hazardColor: '#8ee03a',
+    theme: {
+      sky: 0x1f2a1a, fog: 0x2a3a20, fogNear: 700, fogFar: 2200,
+      floor: 0x4a5230, ring: 0x2c3618,
+      wallStone: 0x3a3a26, wallTrim: 0x9ad13a,
+      hemiSky: 0x9ad13a, hemiGround: 0x202810, hemiInt: 0.45,
+      sunColor: 0xddee9a, sunInt: 1.8, rimColor: 0x6abf2f, rimInt: 0.32,
+      decorations: ['tree', 'crystal'],
+      tree: { count: 18, trunk: 0x2e3a1a, leaf: 0x6abf2f },
+      crystal: { count: 16, color: 0x9ad13a, glow: 0x6abf2f, glowInt: 0.5 },
+      atmosphere: { kind: 'spores', rate: 18 },
+      floorDecal: { kind: 'cracks', color: '#6abf2f', opacity: 0.4, glow: 0.15 },
+    },
 
     phases: [
       { hpPct: 0.5, name: '劇毒沸騰', sub: '瘴氣翻湧', color: '#7fff00', dmgMult: 1.3, speedMult: 1.15, cdMult: 0.75,
