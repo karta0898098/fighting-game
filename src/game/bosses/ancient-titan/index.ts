@@ -40,6 +40,7 @@ const data = {
       pillar: { count: 14, color: 0x8a7060 },
       rock: { count: 18, color: 0x6b5e4e },
       atmosphere: { kind: 'ash', rate: 14 },
+      floorDecal: { kind: 'hex', color: '#49d0ff', opacity: 0.3, glow: 0.25 },
     },
 
     phases: [

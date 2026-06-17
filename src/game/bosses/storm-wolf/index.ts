@@ -27,6 +27,7 @@ const data = {
       rock: { count: 18, color: 0x4a5266 },
       crystal: { count: 12, color: 0xaee3ff, glow: 0x7ec8ff, glowInt: 0.7 },
       atmosphere: { kind: 'ash', color: '#a0b0c8', rate: 10 },
+      floorDecal: { kind: 'cracks', color: '#7ec8ff', opacity: 0.35, glow: 0.3 },
     },
     tags: [
       { icon: '🎯', text: '鎖定血最少的隊友' },

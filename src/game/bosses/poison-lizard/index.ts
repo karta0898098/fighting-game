@@ -34,6 +34,7 @@ const data = {
       tree: { count: 18, trunk: 0x2e3a1a, leaf: 0x6abf2f },
       crystal: { count: 16, color: 0x9ad13a, glow: 0x6abf2f, glowInt: 0.5 },
       atmosphere: { kind: 'spores', rate: 18 },
+      floorDecal: { kind: 'cracks', color: '#6abf2f', opacity: 0.4, glow: 0.15 },
     },
 
     phases: [

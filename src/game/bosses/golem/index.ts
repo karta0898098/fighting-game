@@ -33,6 +33,7 @@ const data = {
       tree: { count: 28, trunk: 0x4a2f1d, leaf: 0x4a7a2c },
       rock: { count: 16, color: 0x6b6660 },
       atmosphere: { kind: 'leaves', color: '#a6c84a', rate: 14 },
+      floorDecal: { kind: 'rings', color: '#4a7a2c', opacity: 0.35, glow: 0.1 },
     },
 
     phases: [

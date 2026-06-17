@@ -12,7 +12,7 @@ import { createParticleSystem } from './render3d/particles.js';
 import { createEntityLayer } from './render3d/entities3d.js';
 import { createFxBus } from './render3d/fxbus.js';
 import { createHud } from './render3d/hud.js';
-import { applyDecorations } from './render3d/decorations.js';
+import { applyDecorations, updateDecorationFade } from './render3d/decorations.js';
 import { createAtmosphere } from './render3d/atmosphere.js';
 import { getBossForRound } from './bosses.js';
 import { createCharacterModel, animateModel, attachSkin } from './render3d/models.js';
@@ -430,6 +430,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
     entities.syncProjectiles(state.projectiles, dt);
     entities.syncZones(state.zones, dt);
     entities.syncDestructibles(state.destructibles || [], dt, { x: fx, z: fz });
+    updateDecorationFade(sceneMgr.themeGroup, { x: fx, z: fz }, dt);
     atmosphere.update(dt);
     particles.update(dt);
     fxbus.update(dt);

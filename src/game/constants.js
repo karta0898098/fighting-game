@@ -1,6 +1,6 @@
 // 全域常數與設定
 
-export const ARENA = { width: 1800, height: 1200 };
+export const ARENA = { width: 2400, height: 1600 };
 
 export const TICK_RATE = 30;          // 房主權威模擬頻率 (Hz)
 export const DT = 1 / TICK_RATE;      // 固定時間步

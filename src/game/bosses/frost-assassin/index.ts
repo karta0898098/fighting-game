@@ -34,6 +34,7 @@ const data = {
       crystal: { count: 24, color: 0x9fe8ff, glow: 0x49d0ff, glowInt: 0.8 },
       rock: { count: 12, color: 0x8aa0b0 },
       atmosphere: { kind: 'snow', rate: 32 },
+      floorDecal: { kind: 'snowflake', color: '#cdeeff', opacity: 0.45, glow: 0.3 },
     },
 
     phases: [

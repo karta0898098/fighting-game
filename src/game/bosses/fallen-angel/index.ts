@@ -35,6 +35,7 @@ const data = {
       pillar: { count: 12, color: 0x7a6a70 },
       brazier: { count: 8, flame: 0xfff2b0, flameGlow: 0xffd166 },
       atmosphere: { kind: 'petals', color: '#fff2b0', rate: 12 },
+      floorDecal: { kind: 'rings', color: '#fff2b0', opacity: 0.5, glow: 0.45 },
     },
 
     phases: [

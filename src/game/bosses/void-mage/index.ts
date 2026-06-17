@@ -35,6 +35,7 @@ const data = {
       crystal: { count: 22, color: 0xc39bff, glow: 0x8e44ad, glowInt: 0.8 },
       pillar: { count: 8, color: 0x3a2a55 },
       atmosphere: { kind: 'stardust', color: '#c39bff', rate: 28 },
+      floorDecal: { kind: 'arcane', color: '#c39bff', opacity: 0.45, glow: 0.5 },
     },
 
     phases: [

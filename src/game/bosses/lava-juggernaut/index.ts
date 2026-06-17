@@ -36,6 +36,7 @@ const data = {
       rock: { count: 18, color: 0x3a2218 },
       brazier: { count: 10, flame: 0xff7a3d, flameGlow: 0xff3010 },
       atmosphere: { kind: 'embers', rate: 28 },
+      floorDecal: { kind: 'flame', color: '#ff7a3d', opacity: 0.5, glow: 0.6 },
     },
 
     phases: [
