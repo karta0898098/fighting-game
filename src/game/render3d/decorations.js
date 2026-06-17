@@ -258,10 +258,8 @@ function buildFloorDecal(theme) {
   const tex = makeFloorPattern(dc.kind, dc.color, dc.scale);
   const size = Math.max(ARENA.width, ARENA.height) * 0.55;
   const mat = new THREE.MeshStandardMaterial({
-    map: tex, transparent: true, opacity: dc.opacity != null ? dc.opacity : 0.5,
-    roughness: 0.95, metalness: 0.0,
-    emissive: dc.color || 0x000000, emissiveIntensity: dc.glow || 0.2,
-    emissiveMap: tex,
+    map: tex, transparent: true, opacity: dc.opacity != null ? dc.opacity : 0.45,
+    roughness: 1.0, metalness: 0.0,
   });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
   m.rotation.x = -Math.PI / 2;
