@@ -71,9 +71,39 @@ export function createSceneManager(canvas) {
   scene.add(rim);
 
   // ---- 地板 (格線材質) ----
-  scene.add(buildFloor());
+  const floorGroup = buildFloor();
+  scene.add(floorGroup);
   // ---- 邊界發光牆 (幫助景深 + bloom) ----
-  scene.add(buildWalls());
+  const wallsGroup = buildWalls();
+  scene.add(wallsGroup);
+  // ---- 主題層 (裝飾物體 / 大氣粒子)：applyTheme 時動態組裝 ----
+  const themeGroup = new THREE.Group();
+  scene.add(themeGroup);
+  // 預設主題 (沿用既有冷灰調)
+  const DEFAULT_THEME = {
+    sky: 0x0c0f14, fog: 0x0c0f14, fogNear: 1400, fogFar: 2900,
+    floor: 0x9a948c, ring: 0x6f6862,
+    wallStone: 0x5b5e66, wallTrim: 0x2f6dff,
+    hemiSky: 0xd8e2f0, hemiGround: 0x2a2622, hemiInt: 0.35,
+    sunColor: 0xffe6c4, sunInt: 2.3,
+    rimColor: 0x9fb4d6, rimInt: 0.28,
+  };
+  let activeTheme = DEFAULT_THEME;
+
+  function applyTheme(theme) {
+    const t = { ...DEFAULT_THEME, ...(theme || {}) };
+    activeTheme = t;
+    scene.background = new THREE.Color(t.sky);
+    scene.fog = new THREE.Fog(t.fog, t.fogNear, t.fogFar);
+    floorGroup.userData.floorMat.color.setHex(t.floor);
+    floorGroup.userData.ringMat.color.setHex(t.ring);
+    wallsGroup.userData.stoneMat.color.setHex(t.wallStone);
+    wallsGroup.userData.trimMat.color.setHex(t.wallTrim);
+    wallsGroup.userData.trimMat.emissive.setHex(t.wallTrim);
+    hemi.color.setHex(t.hemiSky); hemi.groundColor.setHex(t.hemiGround); hemi.intensity = t.hemiInt;
+    dir.color.setHex(t.sunColor); dir.intensity = t.sunInt;
+    rim.color.setHex(t.rimColor); rim.intensity = t.rimInt;
+  }
 
   // ---- 泛光後處理鏈 (收斂：僅高亮特效發光，場景不過曝) ----
   const composer = new EffectComposer(renderer);
@@ -177,7 +207,9 @@ export function createSceneManager(canvas) {
   return {
     scene, camera, renderer, stage,
     resize, update, render, addShake, addFlash, setBloom, setIntroFocus, dispose,
+    applyTheme, themeGroup,
     get time() { return time; },
+    get theme() { return activeTheme; },
   };
 }
 
@@ -203,6 +235,8 @@ function buildFloor() {
   ring.rotation.x = -Math.PI / 2;
   ring.position.y = 0.5;
   g.add(ring);
+  g.userData.floorMat = mat;
+  g.userData.ringMat = ringMat;
   return g;
 }
 
@@ -282,5 +316,7 @@ function buildWalls() {
   mk(W + t * 2, t, 0, H / 2);
   mk(t, H, -W / 2, 0);
   mk(t, H, W / 2, 0);
+  g.userData.stoneMat = stone;
+  g.userData.trimMat = trim;
   return g;
 }

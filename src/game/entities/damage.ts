@@ -115,6 +115,14 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
   if (hostile && attacker.effects && attacker.effects.dmg_reduce) dmg *= 1 - (attacker.effects.dmg_reduce.factor || 0);
   if (target.isBoss) dmg = applyBossDamageModifiers(state, target, attacker, dmg);
   if (target.effects && target.effects.mark) dmg *= 1 + target.effects.mark.bonus;
+  // 破綻窗口：Boss / 部位 (含 owner Boss 的破綻) 收招期間受傷 +30% (重招破綻 +45%)
+  if (hostile && target.isBoss && (target.recoverWindow || 0) > 0) {
+    dmg *= target.recoverHeavy ? 1.45 : 1.3;
+  }
+  if (hostile && target.isPart && target.ownerId) {
+    const owner = state.players[target.ownerId];
+    if (owner && (owner.recoverWindow || 0) > 0) dmg *= owner.recoverHeavy ? 1.45 : 1.3;
+  }
   if (target.effects && target.effects.weaken) dmg *= 1 + (target.effects.weaken.factor || 0);
   if (target.effects && target.effects.protect) dmg *= 1 - (target.effects.protect.factor || 0);
 

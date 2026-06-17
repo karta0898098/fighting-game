@@ -6,6 +6,7 @@ import { dealDamage } from '../entities/damage.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy } from '../entities/team.ts';
 import { applyEffectFrom, bodyR } from '../actions/combat.ts';
+import { checkProjectileHit, damageDestructible } from './destructibles.ts';
 
 function splitProjectile(state, projectile, out) {
   const s = projectile.split;
@@ -106,6 +107,17 @@ export function updateProjectiles(state, dt) {
       }
     }
 
+    if (dead) {
+      if (projectile.split) splitProjectile(state, projectile, spawned);
+      if (projectile.leaveZone) state.zones.push(makeZone(projectile.owner, projectile.x, projectile.y, projectile.leaveZone));
+      continue;
+    }
+    // 投射物撞可破壞物
+    const obj = checkProjectileHit(state, projectile);
+    if (obj) {
+      damageDestructible(state, obj, projectile.dmg || 30);
+      if (!projectile.pierce) { dead = true; }
+    }
     if (dead) {
       if (projectile.split) splitProjectile(state, projectile, spawned);
       if (projectile.leaveZone) state.zones.push(makeZone(projectile.owner, projectile.x, projectile.y, projectile.leaveZone));

@@ -11,6 +11,7 @@ export function speedOf(p) {
   if (p.effects.haste) speed *= p.effects.haste.factor;
   if (p.effects.rage) speed *= p.effects.rage.speed;
   if (p.isBoss && p.phaseSpeedMult) speed *= p.phaseSpeedMult;
+  if (p.isBoss && (p.recoverWindow || 0) > 0) speed *= 0.75; // 破綻期輕微減速 (玩家仍有窗口集火，但 Boss 不會拖步)
   return speed;
 }
 

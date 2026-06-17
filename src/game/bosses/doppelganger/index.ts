@@ -24,6 +24,17 @@ const data = {
     ],
     hazardText: '💥 站在終焉領域裡！快離開',
     hazardColor: '#c9c0ff',
+    theme: {
+      sky: 0x050510, fog: 0x101025, fogNear: 600, fogFar: 2400,
+      floor: 0x18182a, ring: 0xffffff,
+      wallStone: 0x1a1a2a, wallTrim: 0xc9c0ff,
+      hemiSky: 0xc9c0ff, hemiGround: 0x050510, hemiInt: 0.35,
+      sunColor: 0xe0e0ff, sunInt: 1.5, rimColor: 0xc9c0ff, rimInt: 0.7,
+      decorations: ['crystal', 'pillar'],
+      crystal: { count: 26, color: 0xe8e8f0, glow: 0xc9c0ff, glowInt: 1.0 },
+      pillar: { count: 10, color: 0x2a2a3a },
+      atmosphere: { kind: 'stardust', color: '#e8e8f0', rate: 32 },
+    },
 
     phases: [
       { hpPct: 0.66, name: '鏡像進化', sub: '虛空覺醒', color: '#cfcfff', dmgMult: 1.2, speedMult: 1.1, cdMult: 0.85,
@@ -42,7 +53,8 @@ const data = {
 
     basic: { name: '虛空裂斬', type: 'melee', dmg: 44, range: 150, arc: 1.3, knockback: 200, cd: 1.0, windup: 0.4, telegraph: 'arc', color: '#ffffff', vfx: 'boss_doppel_slash' },
     skill1: { name: '鏡像複製', type: 'mirror_players', cd: 22, once: true, windup: 1.0, telegraph: 'self', color: '#cfcfff', vfx: 'boss_doppel_mirror' },
-    skill2: { name: '竊取絕技', type: 'steal_ultimate', cd: 10, windup: 0.8, telegraph: 'self', color: '#b0b0ff', vfx: 'boss_doppel_steal' },
+    skill2: { name: '竊取絕技', type: 'steal_ultimate', cd: 10, windup: 0.8, telegraph: 'self', color: '#b0b0ff', vfx: 'boss_doppel_steal',
+      chain: [{ slot: 'basic', windup: 0.25, delay: 0.2 }] },
     ultimate: { name: '終焉之刻', type: 'zone', range: 0, radius: 320, dmg: 60, lifetime: 1.2, tick: 0.3, delay: 1.4, knockback: 200, effect: STUN(0.5), cd: 20, windup: 1.4, telegraph: 'circle', color: '#ffffff', vfx: 'boss_doppel_ult' },
   };
 

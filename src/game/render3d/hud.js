@@ -606,6 +606,10 @@ function stunInfo(p) {
   if (eff.frozen && eff.frozen.remaining > 0) return { icon: '🧊', label: '冰凍', color: '#9bd9ff' };
   if (eff.stun && eff.stun.remaining > 0)     return { icon: '💫', label: '暈眩', color: '#ffd166' };
   if (eff.root && eff.root.remaining > 0)     return { icon: '🌿', label: '定身', color: '#a3e635' };
+  // Boss 破綻窗口
+  if (p.isBoss && (p.recoverWindow || 0) > 0) {
+    return { icon: '💥', label: p.recoverHeavy ? '巨大破綻！' : '破綻！', color: p.recoverHeavy ? '#ff4d6d' : '#ffd166' };
+  }
   return null;
 }
 

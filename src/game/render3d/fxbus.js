@@ -14,6 +14,66 @@ export function createFxBus({ scene, particles, sceneMgr }) {
   const floats = []; // { obj, root, age, maxLife, update }
   const _v = new THREE.Vector3();
 
+  // ---- 預警地面 decal：依形狀畫圓 / 線 / 扇形；脈動透明度隨 progress 加深 ----
+  function renderTelegraph(c, f) {
+    const progress = f.progress || 0;
+    const baseOpacity = 0.32 + 0.45 * progress;       // 越接近觸發越深
+    const life = f.life || 0.32;
+    const shape = f.shape || 'circle';
+
+    if (shape === 'arc') {
+      const arc = f.arc || 1.4;
+      const range = f.range || f.radius || 100;
+      const inner = range * 0.18;
+      const geo = new THREE.RingGeometry(inner, range, 32, 1, -arc / 2, arc);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        color: f.color, transparent: true, opacity: baseOpacity, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      m.rotation.x = -Math.PI / 2;
+      const g = new THREE.Group();
+      g.position.set(c.x, 2, c.z);
+      g.rotation.y = -(f.facing || 0);
+      g.add(m);
+      addTransient(g, life, (mesh, t) => {
+        m.material.opacity = baseOpacity * (1 - t);
+      });
+      g.userData.geo = geo;
+      g.userData.mat = m.material;
+    } else if (shape === 'line') {
+      const range = f.range || 320;
+      const width = (f.radius || 40) * 1.6;
+      const geo = new THREE.PlaneGeometry(range, width);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+        color: f.color, transparent: true, opacity: baseOpacity, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.x = range / 2;
+      const g = new THREE.Group();
+      g.position.set(c.x, 2, c.z);
+      g.rotation.y = -(f.facing || 0);
+      g.add(m);
+      addTransient(g, life, () => { m.material.opacity = baseOpacity * (1 - 0); });
+      g.userData.geo = geo;
+      g.userData.mat = m.material;
+    } else {
+      // circle / self
+      const r = f.radius || 80;
+      const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({
+        color: f.color, transparent: true, opacity: baseOpacity, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(c.x, 2, c.z);
+      m.scale.setScalar(r);
+      addTransient(m, life, (mesh, t) => {
+        m.material.opacity = baseOpacity * (1 - t);
+        m.scale.setScalar(r * (1 + 0.05 * Math.sin(t * 10)));
+      });
+    }
+  }
+
   function addFloatingText(c, text, color, opts = {}) {
     const root = document.createElement('div');
     root.style.cssText = 'pointer-events:none;will-change:transform,opacity;';
@@ -229,6 +289,10 @@ export function createFxBus({ scene, particles, sceneMgr }) {
         break;
       }
 
+      case 'telegraph': {
+        renderTelegraph(c, f);
+        break;
+      }
       case 'popup': {
         const isCrit = f.kind === 'crit';
         const isHeal = f.kind === 'heal';

@@ -15,6 +15,7 @@ import {
   teamPlayers,
 } from './bosses/lifecycle.ts';
 import { reviveAndHealAll, tickBossSystems } from './bosses/systems.ts';
+import { scatterPillars } from './systems/destructibles.ts';
 import { initRunStats, ensureAllPlayerStats, recordRoundStart, recordRoundEnd, recordRetry } from './entities/stats.ts';
 
 export { BOSS_TEAM, PLAYER_TEAM, findBossEntity, teamPlayers };
@@ -40,12 +41,17 @@ export function startBossRound(state, round) {
   state.round = round;
   state.zones = []; state.projectiles = []; state.fx = [];
   state.tethers = [];
+  state.destructibles = [];
   clearBossSide(state);
   reviveAndHealAll(state);
   if (!state.stats || round === 1) initRunStats(state);
   else ensureAllPlayerStats(state);
   recordRoundStart(state);
   const boss = spawnBoss(state, round);
+  // 環境互動：每關依 boss data.environment 撒石柱 (R3 / R5 / R7 較多)
+  const bossData = getBossForRound(round);
+  const envCfg = bossData && bossData.environment;
+  if (envCfg && envCfg.pillars) scatterPillars(state, envCfg.pillars.count || 4, envCfg.pillars);
   state.bossId = boss ? boss.id : null;
   state.bossHp = boss ? boss.hp : 0;
   state.bossMaxHp = boss ? boss.maxHp : 0;

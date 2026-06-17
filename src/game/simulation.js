@@ -14,6 +14,7 @@ import { tickCharacterTimers, tickCooldowns, tickPassiveRecovery, tickSummonLife
 import { updateProjectiles } from './systems/projectiles.ts';
 import { checkWin } from './systems/win.ts';
 import { updateZones } from './systems/zones.ts';
+import { tickDestructibles } from './systems/destructibles.ts';
 
 export { applyMovement, speedOf };
 
@@ -66,6 +67,7 @@ export function step(state, inputs, dt) {
   resolveCollisions(state);
   updateProjectiles(state, dt);
   updateZones(state, dt);
+  tickDestructibles(state, dt);
   updateFx(state, dt);
   // 清除已死亡的玩家召喚物 (避免累積；一般玩家死亡保留供結算)
   for (const id of Object.keys(state.players)) {

@@ -82,6 +82,7 @@ export function createInitialState(playersArr, flags = {}, opts = {}) {
     projectiles: [],
     zones: [],
     fx: [],
+    destructibles: [],
     time: 0,
     winner: null,
     winnerTeam: 0,

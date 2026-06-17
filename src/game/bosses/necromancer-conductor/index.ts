@@ -24,6 +24,17 @@ const data = {
     ],
     hazardText: '☠️ 站在亡靈領域裡！快離開',
     hazardColor: '#46f0a0',
+    theme: {
+      sky: 0x1a1430, fog: 0x2a2050, fogNear: 700, fogFar: 2200,
+      floor: 0x2a2440, ring: 0x39ff88,
+      wallStone: 0x2a1f3a, wallTrim: 0x7d5fff,
+      hemiSky: 0xb39dff, hemiGround: 0x18102a, hemiInt: 0.4,
+      sunColor: 0x9080d0, sunInt: 1.4, rimColor: 0x39ff88, rimInt: 0.5,
+      decorations: ['pillar', 'crystal'],
+      pillar: { count: 12, color: 0x4a3a5a },
+      crystal: { count: 14, color: 0x46f0a0, glow: 0x2db870, glowInt: 0.7 },
+      atmosphere: { kind: 'stardust', color: '#7d5fff', rate: 22 },
+    },
 
     phases: [
       { hpPct: 0.5, name: '亡者大進行曲', sub: '亡魂奔流', color: '#7d5fff', dmgMult: 1.3, cdMult: 0.65,

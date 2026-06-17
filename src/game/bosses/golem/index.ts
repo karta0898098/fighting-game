@@ -23,6 +23,17 @@ const data = {
     ],
     hazardText: '⚠️ 快離開攻擊範圍！',
     hazardColor: '#e6b352',
+    theme: {
+      sky: 0x2a3d2a, fog: 0x1f2e22, fogNear: 800, fogFar: 2400,
+      floor: 0x5d6a3a, ring: 0x3a4626,
+      wallStone: 0x4a3a28, wallTrim: 0x7ac050,
+      hemiSky: 0xa6c84a, hemiGround: 0x2a3010, hemiInt: 0.5,
+      sunColor: 0xfff4c0, sunInt: 2.0, rimColor: 0x6a9d40, rimInt: 0.35,
+      decorations: ['tree', 'rock'],
+      tree: { count: 28, trunk: 0x4a2f1d, leaf: 0x4a7a2c },
+      rock: { count: 16, color: 0x6b6660 },
+      atmosphere: { kind: 'leaves', color: '#a6c84a', rate: 14 },
+    },
 
     phases: [
       { hpPct: 0.66, name: '狂亂之根', sub: '怒火覺醒', color: '#a6d749', dmgMult: 1.2, speedMult: 1.1, cdMult: 0.85,
@@ -38,7 +49,8 @@ const data = {
         ] },
     ],
 
-    basic: { name: '橫掃巨臂', type: 'melee', dmg: 45, range: 130, arc: 1.5, knockback: 240, cd: 1.6, windup: 0.8, telegraph: 'arc', color: '#8fbf3f', vfx: 'boss_golem_sweep' },
+    basic: { name: '橫掃巨臂', type: 'melee', dmg: 45, range: 130, arc: 1.5, knockback: 240, cd: 1.6, windup: 0.8, telegraph: 'arc', color: '#8fbf3f', vfx: 'boss_golem_sweep',
+      chain: [{ slot: 'skill1', windup: 0.5, delay: 0.25 }] },
     skill1: { name: '巨力砸地', type: 'zone', range: 120, radius: 130, dmg: 70, lifetime: 0.4, tick: 0.4, delay: 1.0, knockback: 200, effect: STUN(0.5), cd: 7, windup: 1.0, telegraph: 'circle', color: '#7a5a2b', vfx: 'boss_golem_slam' },
     skill2: { name: '纏根束縛', type: 'zone', range: 0, radius: 200, dmg: 24, lifetime: 1.2, tick: 0.5, pull: 200, effect: ROOT(1.2), cd: 11, windup: 0.7, telegraph: 'circle', color: '#4e7a2f', vfx: 'boss_golem_roots' },
     ultimate: { name: '森羅旋掃', type: 'zone', range: 0, radius: 200, dmg: 90, lifetime: 0.5, tick: 0.5, knockback: 360, effect: STUN(0.6), cd: 16, windup: 1.2, telegraph: 'circle', color: '#a6d749', vfx: 'boss_golem_ult' },
