@@ -31,7 +31,7 @@ export function createEntityLayer(scene, particles, opts = {}) {
   const destMap = new Map(); // id -> { group, body, geo, mat }
   const _v = new THREE.Vector3();
 
-  function syncDestructibles(list, dt) {
+  function syncDestructibles(list, dt, focus) {
     const seen = new Set();
     for (const obj of list || []) {
       seen.add(obj.id);
@@ -39,14 +39,14 @@ export function createEntityLayer(scene, particles, opts = {}) {
       if (!m) {
         const r = obj.r || 28;
         const geo = new THREE.CylinderGeometry(r * 0.85, r, 60, 12);
-        const mat = new THREE.MeshStandardMaterial({ color: obj.color, roughness: 0.85, metalness: 0.05 });
+        const mat = new THREE.MeshStandardMaterial({ color: obj.color, roughness: 0.85, metalness: 0.05, transparent: true, opacity: 1 });
         const body = new THREE.Mesh(geo, mat);
         body.castShadow = true; body.receiveShadow = true;
         body.position.y = 30;
         const g = new THREE.Group();
         g.add(body);
         scene.add(g);
-        m = { group: g, body, geo, mat, baseR: r };
+        m = { group: g, body, geo, mat, baseR: r, opacity: 1 };
         destMap.set(obj.id, m);
       }
       setVecFromWorld(_v, obj.x, obj.y, 0);
@@ -55,6 +55,21 @@ export function createEntityLayer(scene, particles, opts = {}) {
       const hpRatio = Math.max(0, obj.hp / Math.max(1, obj.maxHp));
       m.mat.color.set(obj.color).multiplyScalar(0.4 + 0.6 * hpRatio);
       m.body.rotation.z = (1 - hpRatio) * 0.2 * Math.sin(performance.now() * 0.004);
+      // 阻擋玩家視線時半透明 (focus 是 self player 的 scene 座標)
+      let targetOpacity = 1;
+      if (focus) {
+        const px = focus.x, pz = focus.z;
+        // 鏡頭視角下「介於玩家與鏡頭之間」=> 物件比玩家更靠近相機 (z 較大或 x 接近相機)
+        // 簡化判斷：物件在玩家「向相機方向」的小區域內 (xz 距離 + 相機側)
+        const dx = _v.x - px, dz = _v.z - pz;
+        const distXZ = Math.hypot(dx, dz);
+        // 相機在玩家 +z 方向 (高度高、z 略大)；物件在玩家附近且 z >= player.z (更靠相機)
+        if (distXZ < (obj.r || 28) + 60 && dz > -10) {
+          targetOpacity = 0.25;
+        }
+      }
+      m.opacity += (targetOpacity - m.opacity) * Math.min(1, dt * 8);
+      m.mat.opacity = m.opacity;
     }
     for (const [id, m] of destMap) {
       if (!seen.has(id)) {

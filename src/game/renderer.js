@@ -414,12 +414,22 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
       appliedThemeRound = -1;
     }
 
+    // 相機跟隨焦點 (給 destructibles 視線判斷與 setCameraFocus 用)
+    const meP = state.players[selfId];
+    let fx = 0, fz = 0;
+    if (meP && meP.alive) { fx = sceneX(meP.x); fz = sceneZ(meP.y); }
+    else {
+      for (const pp of Object.values(state.players)) {
+        if (pp.alive && !pp.ownerId && !pp.isBoss) { fx = sceneX(pp.x); fz = sceneZ(pp.y); break; }
+      }
+    }
+
     fxbus.process(state);
     syncPlayers(state, selfId, dt);
     updateHuntMarker(state, dt);
     entities.syncProjectiles(state.projectiles, dt);
     entities.syncZones(state.zones, dt);
-    entities.syncDestructibles(state.destructibles || [], dt);
+    entities.syncDestructibles(state.destructibles || [], dt, { x: fx, z: fz });
     atmosphere.update(dt);
     particles.update(dt);
     fxbus.update(dt);
@@ -438,6 +448,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
       }
     }
     sceneMgr.setIntroFocus(introStr, bossSx, bossSz);
+    sceneMgr.setCameraFocus(fx, fz);
     sceneMgr.update(dt);
     hud.update(state, selfId);
 

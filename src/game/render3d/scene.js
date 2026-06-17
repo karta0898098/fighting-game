@@ -158,6 +158,11 @@ export function createSceneManager(canvas) {
     introTargetZ = targetZ;
   }
 
+  // 鏡頭跟隨：以 self player 為焦點，平滑 lerp；外圍邊界 clamp 避免拍到場外
+  let focusX = 0, focusZ = 0;
+  let curFocusX = 0, curFocusZ = 0;
+  function setCameraFocus(x, z) { focusX = x; focusZ = z; }
+
   function update(dt) {
     time += dt;
     // 震動衰減
@@ -169,20 +174,32 @@ export function createSceneManager(canvas) {
     flashEl.style.background = flashColor;
     flashEl.style.opacity = (flashA * 0.85).toFixed(3);
 
-    // 鏡頭：基準位置 + 極輕微 idle 浮動 + 震動位移 (沿螢幕 right/up)
+    // 鏡頭焦點：平滑 lerp 到目標 (玩家)；clamp 在競技場縮邊內 (避免拍到場外)
+    const FOLLOW_BLEND = Math.min(1, dt * 4.0); // 反應速度 (越大越貼)
+    curFocusX += (focusX - curFocusX) * FOLLOW_BLEND;
+    curFocusZ += (focusZ - curFocusZ) * FOLLOW_BLEND;
+    const halfW = ARENA.width / 2;
+    const halfH = ARENA.height / 2;
+    const MARGIN_X = Math.max(0, halfW - 360);  // 鏡頭最遠可偏離中心 (留邊框可見)
+    const MARGIN_Z = Math.max(0, halfH - 280);
+    const cFX = Math.max(-MARGIN_X, Math.min(MARGIN_X, curFocusX));
+    const cFZ = Math.max(-MARGIN_Z, Math.min(MARGIN_Z, curFocusZ));
+
+    // 鏡頭：基準位置 + 焦點偏移 + 極輕微 idle 浮動 + 震動位移
     _v.copy(camBase);
+    _v.x += cFX; _v.z += cFZ;
     _v.y += Math.sin(time * 0.5) * 6;
     _v.z += Math.sin(time * 0.37) * 5;
-    // 登場動畫推近：向 (introTargetX, 200, introTargetZ+360) 內插，並把 lookAt 也朝 Boss
-    let lookX = camTarget.x, lookY = camTarget.y, lookZ = camTarget.z;
+    let lookX = cFX, lookY = camTarget.y, lookZ = cFZ;
+    // 登場動畫推近：覆寫焦點朝 Boss
     if (introStrength > 0) {
       const cx = introTargetX, cz = introTargetZ;
       _v.x += (cx - _v.x) * introStrength * 0.65;
       _v.y += (260 - _v.y) * introStrength * 0.55;
       _v.z += ((cz + 360) - _v.z) * introStrength * 0.65;
-      lookX = cx * introStrength;
+      lookX = cx * introStrength + lookX * (1 - introStrength);
       lookY = 60 * introStrength;
-      lookZ = cz * introStrength;
+      lookZ = cz * introStrength + lookZ * (1 - introStrength);
     }
     camera.position.copy(_v);
     camera.lookAt(lookX, lookY, lookZ);
@@ -206,7 +223,7 @@ export function createSceneManager(canvas) {
 
   return {
     scene, camera, renderer, stage,
-    resize, update, render, addShake, addFlash, setBloom, setIntroFocus, dispose,
+    resize, update, render, addShake, addFlash, setBloom, setIntroFocus, setCameraFocus, dispose,
     applyTheme, themeGroup,
     get time() { return time; },
     get theme() { return activeTheme; },
