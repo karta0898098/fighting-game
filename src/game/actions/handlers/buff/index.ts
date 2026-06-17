@@ -1,13 +1,14 @@
 // @ts-nocheck
 import { PLAYER_RADIUS } from '../../../constants.js';
 import { applyEffect } from '../../../entities/effects.ts';
+import { applyHeal } from '../../../entities/heal.ts';
 import { addFx } from '../../../entities/fx.ts';
 import { isEnemy } from '../../../entities/team.ts';
 
 export function buff(ctx) {
   const { state, caster, action, silent } = ctx;
   if (action.cleanse) applyEffect(caster, 'cleanse');
-  if (action.heal) applyEffect(caster, 'heal', { amount: action.heal });
+  if (action.heal) applyHeal(state, caster, action.heal, { burst: true });
   let shieldAmt = action.shield || 0;
   if (action.shieldPerMinion) {
     let mc = 0;

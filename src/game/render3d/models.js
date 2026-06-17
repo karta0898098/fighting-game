@@ -367,8 +367,36 @@ export function createCharacterModel(charId) {
   frozenRingHigh.visible = false;
   group.add(frozenRingHigh);
 
+  // 暈眩光環 — 地面金圈 + 頭頂環 (用 CSS plate 配合，這層做世界內可讀的能量光)
+  const stunRing = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 1.45, 1.8, 8, 36),
+    new THREE.MeshStandardMaterial({ color: 0xffd166, emissive: 0xffb340, emissiveIntensity: 3.0, transparent: true, opacity: 0.95 })
+  );
+  stunRing.rotation.x = -Math.PI / 2;
+  stunRing.position.y = 4;
+  stunRing.visible = false;
+  group.add(stunRing);
+
+  const stunHalo = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 0.75, 1.1, 6, 28),
+    new THREE.MeshStandardMaterial({ color: 0xfff2b0, emissive: 0xffd166, emissiveIntensity: 2.4, transparent: true, opacity: 0.9 })
+  );
+  stunHalo.position.y = headY + 18;
+  stunHalo.visible = false;
+  group.add(stunHalo);
+
+  // 定身根系 — 地面綠圈
+  const rootRing = new THREE.Mesh(
+    new THREE.TorusGeometry(torsoW * 1.3, 1.4, 8, 36),
+    new THREE.MeshStandardMaterial({ color: 0xa3e635, emissive: 0x84cc16, emissiveIntensity: 2.4, transparent: true, opacity: 0.9 })
+  );
+  rootRing.rotation.x = -Math.PI / 2;
+  rootRing.position.y = 2;
+  rootRing.visible = false;
+  group.add(rootRing);
+
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, handR, face, accents },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -833,6 +861,32 @@ export function animateModel(group, dt, info) {
     const glow = 2.6 + 1.4 * Math.sin(ud.breathe * 14);
     parts.frozenRingLow.material.emissiveIntensity = glow;
     parts.frozenRingHigh.material.emissiveIntensity = glow * 0.85;
+  }
+
+  // 暈眩光環：地面金圈 + 頭頂星星環旋轉
+  const stunOn = p && p.effects && p.effects.stun && p.effects.stun.remaining > 0;
+  if (parts.stunRing) {
+    parts.stunRing.visible = !!stunOn;
+    parts.stunHalo.visible = !!stunOn;
+    if (stunOn) {
+      const pulse = 0.85 + 0.15 * Math.sin(ud.breathe * 10);
+      parts.stunRing.scale.setScalar(pulse);
+      parts.stunRing.rotation.z = ud.breathe * 1.5;
+      parts.stunHalo.rotation.x = ud.breathe * 6;
+      parts.stunHalo.rotation.y = ud.breathe * 4;
+      parts.stunRing.material.emissiveIntensity = 2.6 + 1.2 * Math.sin(ud.breathe * 12);
+    }
+  }
+
+  // 定身根系：地面綠圈脈動
+  const rootOn = p && p.effects && p.effects.root && p.effects.root.remaining > 0;
+  if (parts.rootRing) {
+    parts.rootRing.visible = !!rootOn;
+    if (rootOn) {
+      const pulse = 0.9 + 0.1 * Math.sin(ud.breathe * 8);
+      parts.rootRing.scale.setScalar(pulse);
+      parts.rootRing.material.emissiveIntensity = 2.0 + 0.8 * Math.sin(ud.breathe * 10);
+    }
   }
 
   // ---- 臉部表情：中性 / 專注(出手) / 痛苦(受擊)；hurt 優先 ----

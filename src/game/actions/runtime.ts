@@ -4,6 +4,7 @@ import { clamp, dist } from '../entities/math.ts';
 import { makeZone } from '../entities/factories.ts';
 import { dealDamage } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
+import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy } from '../entities/team.ts';
 import { applyEffectFrom, bodyR, meleeHit } from './combat.ts';
@@ -103,7 +104,7 @@ export function processChannel(state, p, dt) {
     ch.tickTimer += ch.tick;
     if (target) {
       dealDamage(state, target, ch.dmg, p.id);
-      if (ch.heal) p.hp = Math.min(p.maxHp, p.hp + ch.heal);
+      if (ch.heal) applyHeal(state, p, ch.heal);
       if (ch.effect) applyEffectFrom(state, target, ch.effect, p.id);
       addFx(state, { type: 'hit', x: target.x, y: target.y, color: ch.color, life: 0.2, radius: 20, vfx: ch.vfx });
     }

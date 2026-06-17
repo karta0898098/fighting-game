@@ -4,6 +4,7 @@ import { getCharacter } from '../characters.js';
 import { applyBossDamageModifiers } from '../bosses/damage.ts';
 import { angleDiff, missingHp } from './math.ts';
 import { addFx } from './fx.ts';
+import { applyHeal } from './heal.ts';
 import { applyEffect } from './effects.ts';
 import { isAlly, isEnemy } from './team.ts';
 
@@ -119,18 +120,28 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
     }
   }
 
+  let shieldAbsorbed = 0;
   if (target.shield > 0) {
-    const absorbed = Math.min(target.shield, dmg);
-    target.shield -= absorbed;
-    dmg -= absorbed;
+    shieldAbsorbed = Math.min(target.shield, dmg);
+    target.shield -= shieldAbsorbed;
+    dmg -= shieldAbsorbed;
+  }
+  if (shieldAbsorbed > 0) {
+    addFx(state, { type: 'popup', x: target.x, y: target.y, color: '#7ad8ff', life: 0.75, text: Math.round(shieldAbsorbed), kind: 'shield' });
   }
   if (dmg <= 0) return;
   target.ult = Math.min(ULT_MAX, (target.ult || 0) + dmg * ULT_GAIN_TAKE);
   target.hp -= dmg;
 
+  const isCrit = dmg >= amount * 1.35 || dmg >= 30;
+  addFx(state, { type: 'popup', x: target.x, y: target.y, color: isCrit ? '#ffd166' : '#ff5050', life: 0.85, text: Math.round(dmg), kind: isCrit ? 'crit' : 'damage' });
+
   if (hostile && attacker.effects && attacker.effects.lifesteal) {
     const lifesteal = dmg * (attacker.effects.lifesteal.factor || 0);
-    if (lifesteal > 0) attacker.hp = Math.min(attacker.maxHp, attacker.hp + lifesteal);
+    if (lifesteal > 0) {
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + lifesteal);
+      addFx(state, { type: 'popup', x: attacker.x, y: attacker.y, color: '#5cffa6', life: 0.7, text: `+${Math.round(lifesteal)}`, kind: 'heal' });
+    }
   }
   if (!opts.noTalent && hostile) {
     const at = getCharacter(attacker.charId).talent;
@@ -138,7 +149,10 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
       if (at.id === 'arcane_flow') attacker.mana = Math.min(attacker.maxMana, attacker.mana + (at.mana || 8));
       else if (at.id === 'bloodlust') {
         const lifesteal = dmg * (at.lifesteal || 0.25) * (0.4 + missingHp(attacker));
-        if (lifesteal > 0) attacker.hp = Math.min(attacker.maxHp, attacker.hp + lifesteal);
+        if (lifesteal > 0) {
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + lifesteal);
+          addFx(state, { type: 'popup', x: attacker.x, y: attacker.y, color: '#5cffa6', life: 0.7, text: `+${Math.round(lifesteal)}`, kind: 'heal' });
+        }
       } else if (at.id === 'momentum') {
         attacker.combo = Math.min(at.maxStacks || 5, (attacker.combo || 0) + 1);
         attacker.comboTimer = at.window || 2.2;
@@ -152,7 +166,7 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
     const owner = state.players[attacker.ownerId];
     if (owner && owner.alive) {
       const ownerTalent = getCharacter(owner.charId).talent;
-      if (ownerTalent && ownerTalent.id === 'summonbond') owner.hp = Math.min(owner.maxHp, owner.hp + (ownerTalent.heal || 5));
+      if (ownerTalent && ownerTalent.id === 'summonbond') applyHeal(state, owner, ownerTalent.heal || 5);
     }
   }
 

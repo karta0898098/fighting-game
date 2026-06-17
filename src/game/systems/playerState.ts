@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { PLAYER_RADIUS, MANA_REGEN, ULT_MAX, ULT_REGEN, COOLDOWN_MULTIPLIER } from '../constants.js';
 import { missingHp } from '../entities/math.ts';
+import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
 
 const COOLDOWN_SLOTS = ['basic', 'skill1', 'skill2', 'ultimate', 'evade'];
@@ -38,7 +39,7 @@ export function tickPassiveRecovery(state, p, talent, dt) {
     p.comboTimer -= dt;
     if (p.comboTimer <= 0) p.combo = 0;
   }
-  if (talent && talent.id === 'lifebloom') p.hp = Math.min(p.maxHp, p.hp + (talent.regen || 6) * dt);
+  if (talent && talent.id === 'lifebloom') applyHeal(state, p, (talent.regen || 6) * dt);
 
   if (p.shieldTime > 0) {
     p.shieldTime -= dt;

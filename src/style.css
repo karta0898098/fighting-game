@@ -211,6 +211,27 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .hud-bar.charge.full { box-shadow: 0 0 12px 3px rgba(120, 230, 255, 0.95); border-color: rgba(160, 245, 255, 0.9); }
 .hud-bar.charge.full > i { background: linear-gradient(90deg, #ffffff, #9fe8ff); animation: chargepulse 0.45s ease-in-out infinite; }
 @keyframes chargepulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(2); } }
+.hud-buffs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+  min-height: 0;
+}
+.hud-buffs .bchip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 4px;
+  font-size: 11px; line-height: 1.2; white-space: nowrap;
+  background: rgba(10, 16, 24, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-shadow: 0 1px 1px #000;
+}
+.hud-buffs .bchip em { font-style: normal; font-size: 13px; }
+.hud-buffs .bchip b { font-weight: 600; color: #fff; }
+.hud-buffs .bchip u { text-decoration: none; color: #ffd166; font-size: 10px; }
+.hud-buffs .bchip i { font-style: normal; color: #9aaabb; font-size: 10px; }
+.hud-buffs .bchip.buff   { border-color: rgba(120, 230, 160, 0.55); box-shadow: 0 0 6px rgba(80, 230, 140, 0.25) inset; }
+.hud-buffs .bchip.buff b { color: #b6f7c8; }
+.hud-buffs .bchip.debuff { border-color: rgba(255, 110, 110, 0.55); box-shadow: 0 0 6px rgba(255, 90, 90, 0.25) inset; }
+.hud-buffs .bchip.debuff b { color: #ffc4c4; }
+
 .hud-skills-container {
   display: flex;
   align-items: flex-end;
@@ -367,6 +388,28 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .nplate .nbar > i { display: block; height: 100%; width: 100%; background: #2ecc71; }
 .nplate .nbar.mana { background: #0c1c2a; height: 4px; }
 .nplate .nbar.mana > i { background: #3aa0ff; }
+.nplate .nbuffs { display: flex; gap: 2px; justify-content: center; margin-top: 3px; min-height: 0; }
+.nplate .nbuffs em {
+  font-style: normal; font-size: 12px; line-height: 1; padding: 1px 3px; border-radius: 3px;
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15);
+}
+.nplate .nbuffs em.buff   { border-color: rgba(120, 230, 160, 0.8); box-shadow: 0 0 4px rgba(80,230,140,0.6); }
+.nplate .nbuffs em.debuff { border-color: rgba(255, 110, 110, 0.85); box-shadow: 0 0 4px rgba(255,90,90,0.6); }
+.nplate .nstatus {
+  display: flex; gap: 4px; justify-content: center; align-items: center;
+  font-weight: 900; font-size: 13px; margin-bottom: 2px;
+  text-shadow: 0 1px 2px #000, 0 0 6px currentColor;
+}
+.nplate .nstatus b { font-weight: 900; font-size: 12px; letter-spacing: 0.5px; }
+.nplate .nstatus .sw {
+  display: inline-block; font-size: 14px; animation: stunspin 0.9s linear infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes stunspin {
+  0%   { transform: translateY(0) rotate(0deg);   opacity: 0.4; }
+  50%  { transform: translateY(-4px) rotate(180deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(360deg); opacity: 0.4; }
+}
 
 /* 結算 */
 .over-actions { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }

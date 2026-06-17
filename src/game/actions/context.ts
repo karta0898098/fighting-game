@@ -2,6 +2,7 @@
 import { ARENA, PLAYER_RADIUS } from '../constants.js';
 import { clamp, dist } from '../entities/math.ts';
 import { applyEffect } from '../entities/effects.ts';
+import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
 import { isAlly } from '../entities/team.ts';
 
@@ -20,10 +21,10 @@ export function createActionContext(state, caster, action, opts, executeAction) 
   };
 }
 
-export function applySelfBuff(caster, self) {
+export function applySelfBuff(caster, self, state) {
   if (!self) return;
   if (self.cleanse) applyEffect(caster, 'cleanse');
-  if (self.heal) applyEffect(caster, 'heal', { amount: self.heal });
+  if (self.heal) { if (state) applyHeal(state, caster, self.heal, { burst: true }); else applyEffect(caster, 'heal', { amount: self.heal }); }
   if (self.shield) applyEffect(caster, 'shield', { amount: self.shield, duration: self.duration || 5 });
   if (self.effect) applyEffect(caster, self.effect.kind, self.effect, caster.id);
   if (self.effects) for (const effect of self.effects) applyEffect(caster, effect.kind, effect, caster.id);
@@ -36,7 +37,7 @@ export function applyAllyBuff(state, caster, ally) {
     if (!isAlly(state, caster.id, target)) continue;
     if (dist(caster.x, caster.y, target.x, target.y) > radius) continue;
     if (ally.cleanse) applyEffect(target, 'cleanse');
-    if (ally.heal) applyEffect(target, 'heal', { amount: ally.heal });
+    if (ally.heal) applyHeal(state, target, ally.heal, { burst: true });
     if (ally.shield) applyEffect(target, 'shield', { amount: ally.shield, duration: ally.duration || 5 });
     if (ally.effect) applyEffect(target, ally.effect.kind, ally.effect, caster.id);
     if (ally.effects) for (const effect of ally.effects) applyEffect(target, effect.kind, effect, caster.id);
@@ -69,6 +70,6 @@ export function chronoRewindSelf(state, caster, action) {
 export function runPostActionEffects(ctx) {
   const { state, caster, action } = ctx;
   if (action.rewindSelf) chronoRewindSelf(state, caster, action);
-  if (action.self) applySelfBuff(caster, action.self);
+  if (action.self) applySelfBuff(caster, action.self, state);
   if (action.ally) applyAllyBuff(state, caster, action.ally);
 }

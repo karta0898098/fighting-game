@@ -3,6 +3,7 @@ import { PLAYER_RADIUS } from '../constants.js';
 import { getCharacter } from '../characters.js';
 import { dealDamage } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
+import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
 
 function dotLifesteal(state, srcId, dmg) {
@@ -10,7 +11,7 @@ function dotLifesteal(state, srcId, dmg) {
   const src = state.players[srcId];
   if (!src || !src.alive) return;
   const talent = getCharacter(src.charId).talent;
-  if (talent && talent.id === 'undeath') src.hp = Math.min(src.maxHp, src.hp + dmg * (talent.factor || 0.15));
+  if (talent && talent.id === 'undeath') applyHeal(state, src, dmg * (talent.factor || 0.15));
 }
 
 export function tickStatusEffects(state, p, dt) {

@@ -56,11 +56,28 @@ export function createRenderer(canvas) {
         break;
       case 'hit': {
         const R = f.radius || 14;
-        if (R >= 70) { addShake(13); addFlash(0.3, f.color); particles.spawnDebris(f.x, f.y, f.color, 20); }
-        else if (R >= 34) addShake(3.5);
-        particles.spawnSparks(f.x, f.y, PROJECTILE_HEIGHT, f.color, Math.min(16, 5 + R / 11), { speed: 150 + R * 1.4 });
+        if (R >= 70) {
+          addShake(15); addFlash(0.42, f.color);
+          particles.spawnDebris(f.x, f.y, f.color, 28);
+          particles.spawnSparks(f.x, f.y, BODY_HEIGHT * 0.6, '#ffffff', 14, { speed: 320 });
+        } else if (R >= 34) {
+          addShake(6); addFlash(0.18, f.color);
+          particles.spawnSparks(f.x, f.y, BODY_HEIGHT * 0.4, '#ffffff', 6, { speed: 220 });
+        } else {
+          addShake(2);
+        }
+        particles.spawnSparks(f.x, f.y, PROJECTILE_HEIGHT, f.color, Math.min(22, 8 + R / 8), { speed: 180 + R * 1.6 });
+        spawnRing(f, R);
         break;
       }
+      case 'popup':
+      case 'skillname':
+        break;
+      case 'ultimate':
+        addShake(10); addFlash(0.35, f.color);
+        particles.spawnSparks(f.x, f.y, BODY_HEIGHT * 0.5, f.color, 30, { up: true, speed: 220 });
+        particles.spawnSparks(f.x, f.y, 4, '#ffffff', 14, { speed: 340 });
+        break;
       case 'blink':
         particles.spawnSparks(f.x, f.y, BODY_HEIGHT, f.color, 18, { speed: 200 });
         break;
@@ -78,6 +95,22 @@ export function createRenderer(canvas) {
         break;
     }
   }
+  function spawnRing(f, R) {
+    const n = 14;
+    const z = PROJECTILE_HEIGHT * 0.6;
+    const spd = 220 + R * 1.2;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2;
+      particles.add({
+        x: f.x, y: f.y, z,
+        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd * 0.75, vz: 0,
+        gravity: 0, drag: 6,
+        life: 0.18 + Math.random() * 0.1, size: 2.2 + Math.random() * 1.4,
+        color: '#ffffff', additive: true, streak: true,
+      });
+    }
+  }
+
   function spawnMeleeSparks(f, n) {
     const full = f.arc >= 6;
     for (let i = 0; i < n; i++) {
