@@ -8,6 +8,27 @@ import { sceneX, sceneZ } from './coords.js';
 
 const HEAD_Y = 90;
 
+// 狀態效果顯示元資料：icon / 顯示名 / 是否為增益
+const EFFECT_META = {
+  haste:      { icon: '⚡', name: '加速',   buff: true },
+  protect:    { icon: '🛡', name: '護體',   buff: true },
+  reflect:    { icon: '🪞', name: '反射',   buff: true },
+  lifesteal:  { icon: '🩸', name: '吸血',   buff: true },
+  rage:       { icon: '🔥', name: '狂暴',   buff: true },
+  invis:      { icon: '👻', name: '隱身',   buff: true },
+  evading:    { icon: '💨', name: '無敵',   buff: true },
+  slow:       { icon: '🐢', name: '緩速',   buff: false },
+  stun:       { icon: '💫', name: '暈眩',   buff: false },
+  root:       { icon: '🌿', name: '定身',   buff: false },
+  burn:       { icon: '🔥', name: '燃燒',   buff: false },
+  bleed:      { icon: '🩸', name: '流血',   buff: false },
+  chill:      { icon: '❄️', name: '冰寒',   buff: false },
+  frozen:     { icon: '🧊', name: '冰凍',   buff: false },
+  mark:       { icon: '🎯', name: '標記',   buff: false },
+  weaken:     { icon: '💀', name: '衰弱',   buff: false },
+  dmg_reduce: { icon: '🔻', name: '弱化',   buff: false },
+};
+
 function getSkillKeys(controlScheme) {
   if (controlScheme === 'arrows-asdf') {
     return { basic: 'A', skill1: 'S', skill2: 'D', ultimate: 'F' };
@@ -38,6 +59,7 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
   const ultWrap = el('div', 'hud-bar ult', self);
   const ultFill = el('i', '', ultWrap);
   const ultTxt = el('span', '', ultWrap);
+  const buffs = el('div', 'hud-buffs', self);
   const skillsContainer = el('div', 'hud-skills-container', self);
   const skills = el('div', 'hud-skills', skillsContainer);
   const evadeWrap = el('div', 'hud-evade-wrap', skillsContainer);
@@ -96,12 +118,14 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
     if (!pl) {
       const root = document.createElement('div');
       root.className = 'nplate';
+      const status = el('div', 'nstatus', root);
       const name = el('div', 'nname', root);
       const hpw = el('div', 'nbar', root); const hp = el('i', '', hpw);
       const mpw = el('div', 'nbar mana', root); const mp = el('i', '', mpw);
+      const buffs = el('div', 'nbuffs', root);
       const obj = new CSS2DObject(root);
       scene.add(obj);
-      pl = { obj, name, hp, mp, root };
+      pl = { obj, name, hp, mp, root, status, buffs };
       plates.set(pid, pl);
     }
     return pl;
@@ -165,6 +189,15 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
       }
       setStyle(pl.hp, 'width', pct(p.hp / p.maxHp));
       setStyle(pl.mp, 'width', pct(p.mana / p.maxMana));
+      setHtml(pl.buffs, buildPlateBuffs(p));
+      const sInfo = stunInfo(p);
+      if (sInfo) {
+        setStyle(pl.status, 'display', '');
+        setHtml(pl.status, `<span class="sw">${sInfo.icon}</span><span class="sw" style="animation-delay:.18s">${sInfo.icon}</span><span class="sw" style="animation-delay:.36s">${sInfo.icon}</span><b>${sInfo.label}</b>`);
+        setStyle(pl.status, 'color', sInfo.color);
+      } else {
+        setStyle(pl.status, 'display', 'none');
+      }
       pl.obj.visible = true;
     }
     for (const [pid, pl] of plates) if (!seen.has(pid)) pl.obj.visible = false;
@@ -187,6 +220,7 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl' }) 
       setStyle(ultFill, 'width', pct(ultR));
       ultWrap.classList.toggle('ready', ultReady);
       setText(ultTxt, ultReady ? '終極 就緒！' : `終極 ${Math.floor(ultR * 100)}%`);
+      setHtml(buffs, buildBuffHtml(me));
       setChip(chip.basic,  c.basic,  me.cd.basic,   me.mana);
       setChip(chip.skill1, c.skill1, me.cd.skill1,  me.mana);
       setChip(chip.skill2, c.skill2, me.cd.skill2,  me.mana);
@@ -403,3 +437,55 @@ function pct(r) { return `${Math.max(0, Math.min(1, r)) * 100}%`; }
 function hexA(hex, a) { const h = hex.replace('#', ''); const s = h.length === 3 ? h.split('').map((c) => c + c).join('') : h; const n = parseInt(s, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
 function lighten(hex, t) { const h = hex.replace('#', ''); const s = h.length === 3 ? h.split('').map((c) => c + c).join('') : h; const n = parseInt(s, 16); const m = (c) => Math.round(c + (255 - c) * t); return `rgb(${m((n >> 16) & 255)},${m((n >> 8) & 255)},${m(n & 255)})`; }
 function esc(s) { return String(s).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])); }
+
+function buildPlateBuffs(p) {
+  const list = [];
+  if (p.shield > 0) list.push({ buff: true, icon: '🛡' });
+  const eff = p.effects || {};
+  for (const key of Object.keys(eff)) {
+    const data = eff[key]; if (!data) continue;
+    const meta = EFFECT_META[key]; if (!meta) continue;
+    if (data.remaining != null && data.remaining <= 0) continue;
+    list.push({ buff: meta.buff, icon: meta.icon });
+  }
+  if (!list.length) return '';
+  list.sort((a, b) => (b.buff ? 1 : 0) - (a.buff ? 1 : 0));
+  return list.slice(0, 8).map((b) => `<em class="${b.buff ? 'buff' : 'debuff'}">${b.icon}</em>`).join('');
+}
+
+function stunInfo(p) {
+  const eff = p.effects || {};
+  if (eff.frozen && eff.frozen.remaining > 0) return { icon: '🧊', label: '冰凍', color: '#9bd9ff' };
+  if (eff.stun && eff.stun.remaining > 0)     return { icon: '💫', label: '暈眩', color: '#ffd166' };
+  if (eff.root && eff.root.remaining > 0)     return { icon: '🌿', label: '定身', color: '#a3e635' };
+  return null;
+}
+
+function buildBuffHtml(p) {
+  const list = [];
+  const eff = p.effects || {};
+  // 護盾以獨立欄位呈現 (非 effect map 內)
+  if (p.shield > 0) {
+    list.push({ buff: true, icon: '🛡', name: '護盾', extra: Math.ceil(p.shield), time: p.shieldTime || 0 });
+  }
+  for (const key of Object.keys(eff)) {
+    const data = eff[key];
+    if (!data) continue;
+    const meta = EFFECT_META[key];
+    if (!meta) continue;
+    const remaining = data.remaining;
+    if (remaining != null && remaining <= 0) continue;
+    let extra = null;
+    if (key === 'chill' && data.stacks) extra = `x${data.stacks}`;
+    else if ((key === 'burn' || key === 'bleed') && data.dmg) extra = `${Math.round(data.dmg)}/s`;
+    list.push({ buff: meta.buff, icon: meta.icon, name: meta.name, extra, time: remaining });
+  }
+  if (!list.length) return '';
+  list.sort((a, b) => (b.buff ? 1 : 0) - (a.buff ? 1 : 0));
+  return list.map((b) => {
+    const cls = b.buff ? 'buff' : 'debuff';
+    const t = b.time != null && isFinite(b.time) ? `<i>${b.time.toFixed(1)}s</i>` : '';
+    const ex = b.extra != null ? `<u>${esc(b.extra)}</u>` : '';
+    return `<span class="bchip ${cls}"><em>${b.icon}</em><b>${esc(b.name)}</b>${ex}${t}</span>`;
+  }).join('');
+}

@@ -2,6 +2,7 @@
 // 並產生短生命期的發光網格(揮砍弧/命中環/瞬步環…)，以本地 age 推進動畫(與 snapshot 頻率脫鉤)。
 
 import * as THREE from 'three';
+import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { setVecFromWorld, PROJECTILE_Y } from './coords.js';
 import { getVfx } from './vfx/index.ts';
 import { getSfxManager } from '../../utils/sfxManager';
@@ -10,7 +11,47 @@ export function createFxBus({ scene, particles, sceneMgr }) {
   let seen = new Set();
   const sfx = getSfxManager();
   const transients = []; // { mesh, age, maxLife, update }
+  const floats = []; // { obj, root, age, maxLife, update }
   const _v = new THREE.Vector3();
+
+  function addFloatingText(c, text, color, opts = {}) {
+    const root = document.createElement('div');
+    root.style.cssText = 'pointer-events:none;will-change:transform,opacity;';
+    const inner = document.createElement('div');
+    inner.textContent = text;
+    inner.style.cssText = `color:${color};font-weight:900;` +
+      `font-family:system-ui,"PingFang TC","Noto Sans CJK TC",sans-serif;` +
+      `font-size:${opts.size || 22}px;white-space:nowrap;` +
+      `text-shadow:0 0 10px ${color},0 2px 0 #000,0 -1px 0 #000,2px 0 0 #000,-2px 0 0 #000;` +
+      `transform-origin:50% 50%;will-change:transform;`;
+    if (opts.bg) {
+      inner.style.padding = '4px 14px';
+      inner.style.background = 'rgba(0,0,0,0.55)';
+      inner.style.borderRadius = '4px';
+      inner.style.border = `2px solid ${color}`;
+      inner.style.boxShadow = `0 0 18px ${color}`;
+    }
+    root.appendChild(inner);
+    const obj = new CSS2DObject(root);
+    const jx = opts.jitter ? (Math.random() - 0.5) * 30 : 0;
+    obj.position.set(c.x + jx, c.y + (opts.startY || 50), c.z);
+    scene.add(obj);
+    const dy = opts.riseY || 60;
+    const maxLife = opts.life || 0.85;
+    floats.push({
+      obj, root, inner, age: 0, maxLife,
+      update: (o, t) => {
+        const p = 1 - t;
+        o.position.y = c.y + (opts.startY || 50) + p * dy;
+        const fadeIn = t < 0.2 ? t / 0.2 : 1;
+        const fadeOut = p < 0.35 ? p / 0.35 : 1;
+        root.style.opacity = String(Math.min(fadeIn, fadeOut));
+        const scaleIn = Math.min(1, t * 5 + 0.5);
+        const punch = opts.punch ? (1 + Math.sin(t * Math.PI) * 0.15) : 1;
+        inner.style.transform = `scale(${scaleIn * punch})`;
+      },
+    });
+  }
 
   const ringGeo = new THREE.RingGeometry(0.7, 1, 48);
   const sphereGeo = new THREE.IcosahedronGeometry(1, 2);
@@ -119,11 +160,20 @@ export function createFxBus({ scene, particles, sceneMgr }) {
       case 'hit': {
         if (vfx && vfx.onHit) { vfx.onHit(ctx, f, c); break; }
         const R = f.radius || 14;
-        expandRing(c, f.color, R * 0.4, R * 1.3, 0.3);
-        burstFlash(c, f.color, R * 0.7, 0.18);
-        spawnSparks(c, f.color, Math.min(20, 6 + R / 8), { speed: 150 + R * 1.2, size: 2.5 });
-        if (R >= 70) { sceneMgr.addShake(14); sceneMgr.addFlash(0.3, f.color); spawnDebris(c, f.color, 18); }
-        else if (R >= 34) sceneMgr.addShake(4.5);
+        expandRing(c, f.color, R * 0.4, R * 1.45, 0.32);
+        expandRing(c, '#ffffff', R * 0.2, R * 0.9, 0.22);
+        burstFlash(c, f.color, R * 0.75, 0.2);
+        spawnSparks(c, f.color, Math.min(28, 10 + R / 6), { speed: 180 + R * 1.4, size: 3 });
+        spawnSparks(c, '#ffffff', Math.min(10, 4 + R / 14), { speed: 240 + R * 1.2, size: 2 });
+        if (R >= 70) {
+          sceneMgr.addShake(16); sceneMgr.addFlash(0.4, f.color);
+          spawnDebris(c, f.color, 24);
+          spawnSparks(c, '#ffffff', 14, { up: true, speed: 220, size: 3 });
+        } else if (R >= 34) {
+          sceneMgr.addShake(7); sceneMgr.addFlash(0.18, f.color);
+        } else {
+          sceneMgr.addShake(2.5);
+        }
         break;
       }
       case 'death':
@@ -179,6 +229,26 @@ export function createFxBus({ scene, particles, sceneMgr }) {
         break;
       }
 
+      case 'popup': {
+        const isCrit = f.kind === 'crit';
+        const isHeal = f.kind === 'heal';
+        const isShield = f.kind === 'shield';
+        const color = isCrit ? '#ffd166' : isHeal ? '#5cffa6' : isShield ? '#7ad8ff' : '#ff5050';
+        addFloatingText(c, String(f.text), color, {
+          size: isCrit ? 30 : (isHeal || isShield ? 20 : 24),
+          life: 0.85, riseY: 70, startY: 56, jitter: true, punch: isCrit,
+        });
+        break;
+      }
+      case 'skillname': {
+        const isUlt = !!f.ultimate;
+        addFloatingText(c, String(f.text), f.color || '#ffffff', {
+          size: isUlt ? 34 : 24, life: isUlt ? 1.4 : 1.0,
+          riseY: 24, startY: 116, punch: isUlt,
+        });
+        break;
+      }
+
       case 'ultimate': {
         if (vfx && vfx.onCast) { vfx.onCast(ctx, f, c); break; }
         // 通用大招華麗回饗 (無專屬 vfx 時)
@@ -223,6 +293,17 @@ export function createFxBus({ scene, particles, sceneMgr }) {
         transients.splice(i, 1);
       }
     }
+    for (let i = floats.length - 1; i >= 0; i--) {
+      const fl = floats[i];
+      fl.age += dt;
+      const t = Math.min(1, fl.age / fl.maxLife);
+      fl.update(fl.obj, t);
+      if (fl.age >= fl.maxLife) {
+        scene.remove(fl.obj);
+        if (fl.root.parentNode) fl.root.parentNode.removeChild(fl.root);
+        floats.splice(i, 1);
+      }
+    }
   }
 
   function clear() {
@@ -232,6 +313,11 @@ export function createFxBus({ scene, particles, sceneMgr }) {
       else if (tr.mesh.material) tr.mesh.material.dispose();
     }
     transients.length = 0;
+    for (const fl of floats) {
+      scene.remove(fl.obj);
+      if (fl.root.parentNode) fl.root.parentNode.removeChild(fl.root);
+    }
+    floats.length = 0;
     seen = new Set();
   }
 

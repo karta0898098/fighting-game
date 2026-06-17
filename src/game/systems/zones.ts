@@ -3,6 +3,7 @@ import { ARENA, PLAYER_RADIUS } from '../constants.js';
 import { clamp, dist } from '../entities/math.ts';
 import { dealDamage } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
+import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy, isAlly } from '../entities/team.ts';
 import { applyEffectFrom, bodyR } from '../actions/combat.ts';
@@ -67,7 +68,7 @@ export function updateZones(state, dt) {
           hits++;
         } else if (isAlly(state, zone.owner, o)) {
           if (zone.allyHeal) {
-            o.hp = Math.min(o.maxHp, o.hp + zone.allyHeal);
+            applyHeal(state, o, zone.allyHeal);
             if (zone.vfx === 'healer_aura') {
               addFx(state, {
                 type: 'hit',
@@ -85,7 +86,7 @@ export function updateZones(state, dt) {
       }
       if (zone.drainHeal && hits > 0) {
         const owner = state.players[zone.owner];
-        if (owner && owner.alive) owner.hp = Math.min(owner.maxHp, owner.hp + zone.drainHeal * hits);
+        if (owner && owner.alive) applyHeal(state, owner, zone.drainHeal * hits);
       }
     }
 

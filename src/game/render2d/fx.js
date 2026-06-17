@@ -11,8 +11,75 @@ export function drawFx(ctx, fx, renderCtx) {
     case 'buff': drawBuffFx(ctx, fx, t, p, renderCtx); break;
     case 'blink': drawBlinkFx(ctx, fx, t, p); break;
     case 'dash': drawDashFx(ctx, fx, t, p); break;
+    case 'popup': drawPopupFx(ctx, fx, t, p); break;
+    case 'skillname': drawSkillNameFx(ctx, fx, t, p); break;
     default: drawHitFx(ctx, fx, t, p);
   }
+}
+
+function drawPopupFx(ctx, fx, t, p) {
+  const jitter = (seeded(fx.id, 0) - 0.5) * 26;
+  const x = sx(fx.x) + jitter;
+  const rise = 32 + p * 36;
+  const y = sy(fx.y) - BODY_HEIGHT - 18 - rise;
+  const kind = fx.kind || 'damage';
+  const big = kind === 'crit';
+  const size = big ? 28 : kind === 'heal' || kind === 'shield' ? 18 : 22;
+  const scaleIn = Math.min(1, (1 - t) * 6 + 0.4);
+  const fade = t < 0.25 ? t / 0.25 : 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scaleIn * (big ? 1.15 : 1), scaleIn * (big ? 1.15 : 1));
+  ctx.globalAlpha = fade;
+  ctx.font = `900 ${size}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.strokeText(String(fx.text), 0, 0);
+  if (big) {
+    ctx.shadowColor = fx.color;
+    ctx.shadowBlur = 16;
+  }
+  ctx.fillStyle = fx.color;
+  ctx.fillText(String(fx.text), 0, 0);
+  if (big) {
+    ctx.shadowBlur = 0;
+    ctx.font = `bold 11px system-ui, sans-serif`;
+    ctx.fillStyle = '#fff7d0';
+    ctx.fillText('CRIT!', 0, -size * 0.85);
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawSkillNameFx(ctx, fx, t, p) {
+  const x = sx(fx.x);
+  const baseY = sy(fx.y) - BODY_HEIGHT - 56;
+  const slide = (1 - t) * 10 - p * 6;
+  const y = baseY - slide;
+  const fade = t < 0.18 ? t / 0.18 : t;
+  const isUlt = !!fx.ultimate;
+  const size = isUlt ? 30 : 22;
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.translate(x, y);
+  const scaleIn = Math.min(1.0, (1 - t) * 4 + 0.6);
+  ctx.scale(scaleIn, scaleIn);
+  ctx.font = `900 ${size}px system-ui, "PingFang TC", "Noto Sans CJK TC", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const text = String(fx.text);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+  ctx.strokeText(text, 0, 0);
+  ctx.shadowColor = fx.color;
+  ctx.shadowBlur = isUlt ? 22 : 12;
+  ctx.fillStyle = fx.color;
+  ctx.fillText(text, 0, 0);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawMeleeFx(ctx, fx, t, p) {

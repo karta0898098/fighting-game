@@ -18,6 +18,9 @@ function executeChargedAction(state, p, slot) {
   const t = p.chargeState ? p.chargeState.time : 0;
   const ratio = Math.min(1, t / action.chargeMax);
   const chargeFactor = 1 + ratio;
+  if (slot !== 'basic' && slot !== 'evade' && action.name) {
+    addFx(state, { type: 'skillname', x: p.x, y: p.y, color: action.color || '#ffffff', life: 1.0, text: action.name, owner: p.id });
+  }
   executeAction(state, p, action, { chargeFactor, chargeRatio: ratio });
   p.chargeState = null;
 }
@@ -63,6 +66,9 @@ export function tryAction(state, p, slot) {
     p.iaiReady = p.iaiTimer >= (talent.delay || 2);
     p.iaiTimer = 0;
   }
+  if (slot !== 'basic' && slot !== 'evade' && action.name) {
+    addFx(state, { type: 'skillname', x: p.x, y: p.y, color: action.color || '#ffffff', life: 1.0, text: action.name, owner: p.id });
+  }
   executeAction(state, p, action);
   p.iaiReady = false;
   if (talent && talent.id === 'timeprism' && slot !== 'basic') applyEffect(p, 'haste', { duration: talent.duration || 1.5, factor: talent.factor || 1.25 });
@@ -99,6 +105,9 @@ export function tryUltimate(state, p) {
     allyRadius: action.ally ? action.ally.radius : undefined,
     vfx: action.vfx
   });
+  if (action.name) {
+    addFx(state, { type: 'skillname', x: p.x, y: p.y, color: action.color || '#ffd166', life: 1.4, text: action.name, owner: p.id, ultimate: true });
+  }
 }
 
 export function castInputActions(state, p, input, dt) {
