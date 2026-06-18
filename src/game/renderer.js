@@ -53,7 +53,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
   const fxbus = createFxBus({ scene, particles, sceneMgr });
   const entities = createEntityLayer(scene, particles, { addTransient: fxbus.addTransient, sceneMgr });
   const hud = createHud({ stage: sceneMgr.stage, scene, camera, controlScheme, hooks });
-  const soccer = createSoccerLayer(scene);
+  const soccer = createSoccerLayer(scene, particles);
   const atmosphere = createAtmosphere(particles);
   let appliedThemeRound = -1;
   let appliedThemeMode = '';

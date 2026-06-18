@@ -15,6 +15,8 @@ const WALL_REST = 0.72;         // 撞牆反彈係數
 const BASE_KICK = 260;          // 碰球基礎推力
 const SPEED_KICK = 0.9;         // 帶入玩家速度的比例 (衝刺/位移技推更遠)
 const MAX_BALL_SPEED = 1500;
+const BALL_KB_MULT = 1.5;       // 技能擊退換算成球速的倍率 (讓大招/擊飛技把球轟得夠遠)
+const PROJ_KICK_BASE = 170;     // 投射物命中球的基礎射門力
 const GOAL_HALF = 260;          // 球門半高 (沿 y 軸)
 const GOAL_DEPTH = 70;          // 越過此深度即進球
 const RESPAWN_TIME = 4;
@@ -122,9 +124,43 @@ function tickRespawns(state, dt) {
   }
 }
 
+// 技能 / 擊退把球轟飛 (近戰揮擊、爆炸 AOE 等由 combat 呼叫)。
+// dir 為推球方向 (例:揮擊朝 facing、爆炸由爆心朝外);force 用擊退值換算球速。
+export function pushBall(state, x, y, dirx, diry, force, radius) {
+  const b = state.ball;
+  if (!b || state.soccerPhase !== 'play' || !force) return;
+  const dx = b.x - x, dy = b.y - y;
+  const d = Math.hypot(dx, dy);
+  if (d > (radius || 0) + b.r) return;
+  let nx = dirx || 0, ny = diry || 0;
+  const nl = Math.hypot(nx, ny);
+  if (nl > 0.01) { nx /= nl; ny /= nl; }
+  else if (d > 0) { nx = dx / d; ny = dy / d; }       // 無方向 → 由來源朝球外推
+  else { nx = 1; ny = 0; }
+  const kick = force * BALL_KB_MULT;
+  b.vx += nx * kick; b.vy += ny * kick;
+  addFx(state, { type: 'hit', x: b.x, y: b.y, color: '#ffffff', life: 0.22, radius: 30 });
+}
+
 function tickBall(state, dt) {
   const b = state.ball;
   const cy = ARENA.height / 2;
+
+  // 投射物射門:任何投射物碰到球 → 沿其飛行方向把球踢出 (帶入投射物速度;每顆只觸發一次)
+  if (state.projectiles) {
+    for (const pr of state.projectiles) {
+      if (pr.hitBall) continue;
+      const dx = b.x - pr.x, dy = b.y - pr.y;
+      if (Math.hypot(dx, dy) > b.r + (pr.radius || 10)) continue;
+      pr.hitBall = true;
+      const sp = Math.hypot(pr.vx, pr.vy) || 1;
+      const kick = PROJ_KICK_BASE + (pr.knockback || 0) * BALL_KB_MULT + sp * 0.22;
+      const nx = pr.vx / sp, ny = pr.vy / sp;
+      const along = b.vx * nx + b.vy * ny;
+      if (kick > along) { const add = kick - along; b.vx += add * nx; b.vy += add * ny; }
+      addFx(state, { type: 'hit', x: b.x, y: b.y, color: pr.color || '#ffffff', life: 0.24, radius: 36 });
+    }
+  }
 
   // 玩家碰撞 → 推球 (帶入玩家速度,衝刺推更遠)
   for (const p of Object.values(state.players)) {
@@ -171,6 +207,7 @@ function scoreGoal(state, team) {
   const reached = state.score[team] >= state.scoreLimit;
   addFx(state, { type: 'ultimate', x: state.ball.x, y: state.ball.y, color: TEAM_COLORS[team], life: 1.0, radius: 300 });
   addFx(state, { type: 'ultimate', x: state.ball.x, y: state.ball.y, color: '#ffffff', life: 0.6, radius: 160 });
+  state.timeFreeze = { scale: 0.4, remaining: 0.7 }; // 進球瞬間全場慢動作
   state.ball.vx = 0; state.ball.vy = 0;
   state.soccerPhase = 'goal';
   state.soccerTimer = GOAL_CELEBRATE;
