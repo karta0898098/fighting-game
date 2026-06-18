@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { sceneX, sceneZ } from './coords.js';
 import { TEAM_COLORS } from '../systems/soccer.ts';
 
-export function createSoccerLayer(scene) {
+export function createSoccerLayer(scene, particles = null) {
   const group = new THREE.Group();
   group.visible = false;
   scene.add(group);
@@ -68,12 +68,21 @@ export function createSoccerLayer(scene) {
     group.visible = true;
 
     const b = state.ball;
-    ball.node.position.set(sceneX(b.x), b.r, sceneZ(b.y));
+    const bx = sceneX(b.x), bz = sceneZ(b.y);
+    ball.node.position.set(bx, b.r, bz);
     // 依速度滾動
     const sp = Math.hypot(b.vx, b.vy);
     if (sp > 1) {
       const axis = new THREE.Vector3(-b.vy, 0, b.vx).normalize();
       ball.core.rotateOnAxis(axis, (sp / Math.max(1, b.r)) * dt);
+    }
+    // 高速拖尾 (射門感)
+    if (particles && sp > 360) {
+      particles.spawn({
+        x: bx, y: b.r, z: bz,
+        vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 20, vz: (Math.random() - 0.5) * 30,
+        life: 0.3, size: b.r * 0.7, color: '#cfe6ff', drag: 3, fade: true,
+      });
     }
     ball.core.scale.setScalar(b.r);
     for (let i = 0; i < goalNodes.length; i++) {

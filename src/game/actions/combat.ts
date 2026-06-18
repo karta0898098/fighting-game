@@ -6,6 +6,7 @@ import { dealDamage } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy } from '../entities/team.ts';
+import { pushBall } from '../systems/soccer.ts';
 
 export function bodyR(o) {
   return o.hitR || PLAYER_RADIUS;
@@ -63,4 +64,6 @@ export function meleeHit(state, p, a, silent) {
     if (a.effect) applyEffectFrom(state, o, a.effect, p.id);
   }
   if (!silent) addFx(state, { type: 'melee', x: p.x, y: p.y, facing: p.facing, range: a.range, arc: full ? 7 : a.arc, color: a.color, life: 0.18, vfx: a.vfx });
+  // 足球:近戰揮擊把球踢出 (定向揮擊沿 facing,全向揮擊由身體朝外);非足球模式自動無效
+  pushBall(state, p.x, p.y, full ? 0 : Math.cos(p.facing), full ? 0 : Math.sin(p.facing), a.knockback || 160, a.range);
 }

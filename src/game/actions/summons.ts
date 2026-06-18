@@ -6,6 +6,7 @@ import { dealDamage } from '../entities/damage.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy } from '../entities/team.ts';
 import { bodyR, applyEffectFrom } from './combat.ts';
+import { pushBall } from '../systems/soccer.ts';
 
 let summonSeq = 1;
 
@@ -18,6 +19,8 @@ function aoeAt(state, ownerId, x, y, opt) {
     if (opt.knockback && d > 0) { o.kvx += dx / d * opt.knockback; o.kvy += dy / d * opt.knockback; }
     if (opt.effect) applyEffectFrom(state, o, opt.effect, ownerId);
   }
+  // 足球:爆炸 AOE 由爆心向外把球轟飛;非足球模式自動無效
+  pushBall(state, x, y, 0, 0, opt.knockback || 140, opt.radius || 120);
 }
 
 export function summonMinions(state, summoner, action) {
