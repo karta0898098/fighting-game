@@ -4,6 +4,7 @@
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getCharacter } from '../characters.js';
 import { ULT_MAX } from '../constants.js';
+import { UPGRADE_BY_ID } from '../upgrades.js';
 import { sceneX, sceneZ } from './coords.js';
 
 const HEAD_Y = 90;
@@ -154,6 +155,24 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   wipePanel.style.display = 'none';
   wipeRetry.onclick = () => { if (hooks.onBossRetry) hooks.onBossRetry(); };
   wipeQuit.onclick = () => { if (hooks.onBossQuit) hooks.onBossQuit(); };
+
+  // 關間強化選擇 (擊破後、迎戰下一關前)：3 選 1 卡片
+  const draftPanel = el('div', 'hud-draft', layer);
+  const draftTitle = el('div', 'hud-draft-title', draftPanel);
+  draftTitle.textContent = '⭐ 選擇強化';
+  const draftSub = el('div', 'hud-draft-sub', draftPanel);
+  const draftCards = el('div', 'hud-draft-cards', draftPanel);
+  const draftWait = el('div', 'hud-draft-wait', draftPanel);
+  draftPanel.style.display = 'none';
+  const draftCard = []; // { root, icon, name, desc } ×3
+  for (let i = 0; i < 3; i++) {
+    const root = el('button', 'hud-draft-card', draftCards);
+    const icon = el('em', '', root);
+    const name = el('b', '', root);
+    const desc = el('span', '', root);
+    root.onclick = () => { if (hooks.onDraftPick && root._uid) hooks.onDraftPick(root._uid); };
+    draftCard.push({ root, icon, name, desc });
+  }
 
   // 自身狀態警示 (R7 被獵殺 / R9 被靈魂綁定…)，文字動態設定
   const huntWarn = el('div', 'hud-hunt', layer);
@@ -392,7 +411,7 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
 
     // 機制提示卡：boss 模式才顯示；intro / fighting / wiped 都顯示，cleared 時隱藏
     const isBossMode = state.mode === 'boss';
-    const showMech = isBossMode && state.roundPhase !== 'cleared' && !state.banner;
+    const showMech = isBossMode && state.roundPhase !== 'cleared' && state.roundPhase !== 'draft' && !state.banner;
     setStyle(mechCard, 'display', showMech ? '' : 'none');
     if (showMech) {
       let bossForCard = null;
@@ -418,6 +437,34 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
       setText(wipeSub, retries > 0 ? `已重打 ${retries} 次` : '想再試一次嗎？');
       setStyle(wipeActions, 'display', isHost ? '' : 'none');
       setStyle(wipeWait, 'display', isHost ? 'none' : '');
+    }
+
+    // 關間強化面板：boss 模式且 roundPhase === 'draft' 時,顯示「自己」的 3 選 1
+    const inDraft = state.mode === 'boss' && state.roundPhase === 'draft' && state.draft;
+    const myPick = inDraft ? state.draft.picks[selfId] : null;
+    setStyle(draftPanel, 'display', inDraft && myPick ? '' : 'none');
+    if (inDraft && myPick) {
+      const picks = state.draft.picks;
+      const total = Object.keys(picks).length;
+      const done = Object.values(picks).filter((x) => x.chosen).length;
+      const t = Math.max(0, Math.ceil(state.draft.timer || 0));
+      setText(draftSub, `擊破 ROUND ${state.round}！選擇一項永久強化　(${t}s)`);
+      for (let i = 0; i < 3; i++) {
+        const id = myPick.options[i];
+        const u = id && UPGRADE_BY_ID[id];
+        const c = draftCard[i];
+        c.root._uid = id;
+        setText(c.icon, u ? u.icon : '');
+        setText(c.name, u ? u.name : '');
+        setText(c.desc, u ? u.desc : '');
+        const picked = myPick.chosen === id;
+        const locked = !!myPick.chosen;
+        c.root.classList.toggle('picked', picked);
+        c.root.classList.toggle('dim', locked && !picked);
+        c.root.disabled = locked;
+      }
+      setText(draftWait, myPick.chosen ? `已選擇,等待隊友… (${done}/${total})` : '');
+      setStyle(draftWait, 'display', myPick.chosen ? '' : 'none');
     }
     if (inHazard) {
       // 文字與顏色都依當前魔王的危險屬性 (毒綠 / 火紅 / 冰藍…)，不再一律綠色

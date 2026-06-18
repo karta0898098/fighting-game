@@ -27,6 +27,7 @@ export function tickCharacterTimers(p, character, talent, dt) {
 export function tickCooldowns(state, p, talent, dt) {
   let cdRate = 1;
   if (talent && talent.id === 'bloodlust') cdRate = 1 + (talent.haste || 0.6) * missingHp(p);
+  if (p.cdMult) cdRate *= p.cdMult; // 闖關關間強化：急速 (恢復速率越高冷卻越快)
   cdRate /= COOLDOWN_MULTIPLIER;
   for (const slot of COOLDOWN_SLOTS) {
     let rate = cdRate;

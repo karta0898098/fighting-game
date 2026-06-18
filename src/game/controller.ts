@@ -10,7 +10,7 @@ import { createNetwork, makeRoomCode } from './network.js';
 import { createInput, EMPTY_INPUT } from './input.js';
 import { createInitialState } from './entities.js';
 import { CHARACTERS } from './characters.js';
-import { startBossRound, retryBossRound, quitBossRun } from './bossMode.js';
+import { startBossRound, retryBossRound, quitBossRun, applyDraftPick } from './bossMode.js';
 import { step, applyMovement } from './simulation.js';
 import { DT, SNAPSHOT_INTERVAL, INPUT_INTERVAL, MAX_PLAYERS } from './constants.js';
 import type {
@@ -110,6 +110,8 @@ function createController(): GameController {
         if (p) { p.charId = data.charId | 0; if (data.controlScheme) p.controlScheme = data.controlScheme; if (data.team != null) p.team = data.team | 0; broadcastLobby(); }
       } else if (data.t === 'input') {
         inputs[from] = data.input;
+      } else if (data.t === 'draftPick') {
+        if (gameState && gameState.roundPhase === 'draft') applyDraftPick(gameState, from, data.id);
       }
     });
     net.on('onLeave', (id: string) => {
@@ -198,6 +200,7 @@ function createController(): GameController {
       // HUD/渲染額外線索：破綻窗口、相位機制覆寫、倒地判定 (aiId)、引導光束 (channel)
       aiId: p.aiId, channel: p.channel, recoverWindow: p.recoverWindow, recoverHeavy: p.recoverHeavy,
       phaseTagsOverride: p.phaseTagsOverride,
+      upgrades: p.upgrades, // 闖關關間強化:已選清單 (HUD 顯示用)
     };
   }
 
@@ -210,6 +213,8 @@ function createController(): GameController {
       bossHp: state.bossHp, bossMaxHp: state.bossMaxHp,
       roundPhase: state.roundPhase, roundTimer: state.roundTimer, introDur: state.introDur,
       banner: state.banner, tethers: state.tethers, bossWipedRound: state.bossWipedRound,
+      draft: state.draft, // 關間強化:每位玩家的 3 選 1 選項與已選結果
+
       // 全滅面板只需要重打次數；不送整包 stats (會持續累積、且只在結算才完整用到)
       stats: state.stats ? { _retryCount: state.stats._retryCount || 0 } : null,
       players,
@@ -363,6 +368,7 @@ function createController(): GameController {
     view.roundPhase = latest.roundPhase; view.banner = latest.banner; view.tethers = latest.tethers;
     view.introDur = latest.introDur; view.roundTimer = latest.roundTimer;
     view.bossWipedRound = latest.bossWipedRound; view.stats = latest.stats;
+    view.draft = latest.draft;
     // 投射物/區域/特效/可破壞物：生命短、移動快,取最新即可 (插值意義不大)
     view.projectiles = latest.projectiles; view.zones = latest.zones;
     view.fx = latest.fx; view.destructibles = latest.destructibles || [];
@@ -604,6 +610,15 @@ function createController(): GameController {
     quitBossRun(gameState);
   }
 
+  // 關間強化選擇:房主直接套用;加入者送給房主 (權威端套用後由快照同步回來)
+  function draftPick(id: string) {
+    if (role === 'host') {
+      if (gameState && gameState.roundPhase === 'draft') applyDraftPick(gameState, selfId as string, id);
+    } else {
+      net.sendToHost({ t: 'draftPick', id });
+    }
+  }
+
   function returnToLobby() {
     if (role !== 'host') return;
     stopLoop();
@@ -626,6 +641,7 @@ function createController(): GameController {
       isHost: () => role === 'host',
       onBossRetry: bossRetry,
       onBossQuit: bossQuit,
+      onDraftPick: draftPick,
     });
     maybeStartLoop();
   }
