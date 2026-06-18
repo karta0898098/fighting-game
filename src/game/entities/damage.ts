@@ -94,7 +94,7 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
 
   const attacker = state.players[attackerId];
   const hostile = attacker && attacker.id !== target.id && attacker.alive;
-  if (hostile) attacker.ult = Math.min(ULT_MAX, (attacker.ult || 0) + amount * ULT_GAIN_DEAL);
+  if (hostile) attacker.ult = Math.min(ULT_MAX, (attacker.ult || 0) + amount * ULT_GAIN_DEAL * (attacker.ultGainMult || 1));
   if (state.flags && state.flags.noDamage) return;
 
   let dmg = amount;
@@ -107,6 +107,8 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
     if (owner && !owner.isBoss) dmg *= 0.55;
   }
   if (!opts.noTalent && hostile) dmg = talentDamageMods(state, attacker, target, dmg);
+  // 闖關關間強化：力量 (造成傷害倍率)
+  if (hostile && attacker.dmgMult) dmg *= attacker.dmgMult;
   // Boss 階段傷害倍率 (含部位攻擊歸屬 Boss 本體時)
   if (hostile && attacker && (attacker.isBoss || (attacker.isPart && attacker.ownerId)) && (attacker.phaseDmgMult || (state.players[attacker.ownerId] && state.players[attacker.ownerId].phaseDmgMult))) {
     const mult = attacker.isBoss ? (attacker.phaseDmgMult || 1) : (state.players[attacker.ownerId].phaseDmgMult || 1);
@@ -153,7 +155,7 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
     addFx(state, { type: 'popup', x: target.x, y: target.y, color: '#7ad8ff', life: 0.75, text: Math.round(shieldAbsorbed), kind: 'shield' });
   }
   if (dmg <= 0) return;
-  target.ult = Math.min(ULT_MAX, (target.ult || 0) + dmg * ULT_GAIN_TAKE);
+  target.ult = Math.min(ULT_MAX, (target.ult || 0) + dmg * ULT_GAIN_TAKE * (target.ultGainMult || 1));
   target.hp -= dmg;
 
   const isCrit = dmg >= amount * 1.35 || dmg >= 30;
@@ -165,6 +167,14 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
     if (lifesteal > 0) {
       attacker.hp = Math.min(attacker.maxHp, attacker.hp + lifesteal);
       addFx(state, { type: 'popup', x: attacker.x, y: attacker.y, color: '#5cffa6', life: 0.7, text: `+${Math.round(lifesteal)}`, kind: 'heal' });
+    }
+  }
+  // 闖關關間強化：吸血 (命中回復傷害比例)
+  if (hostile && attacker.runLifesteal && attacker.alive && attacker.hp < attacker.maxHp) {
+    const heal = dmg * attacker.runLifesteal;
+    if (heal >= 0.5) {
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
+      addFx(state, { type: 'popup', x: attacker.x, y: attacker.y, color: '#5cffa6', life: 0.7, text: `+${Math.round(heal)}`, kind: 'heal' });
     }
   }
   // 近戰命中回血：近戰角色普攻 / 近戰技命中目標回 4% 傷害

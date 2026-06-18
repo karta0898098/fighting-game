@@ -17,8 +17,53 @@ import {
 import { reviveAndHealAll, tickBossSystems } from './bosses/systems.ts';
 import { scatterPillars } from './systems/destructibles.ts';
 import { initRunStats, ensureAllPlayerStats, recordRoundStart, recordRoundEnd, recordRetry } from './entities/stats.ts';
+import { applyUpgrade, rollUpgradeOptions } from './upgrades.js';
 
 export { BOSS_TEAM, PLAYER_TEAM, findBossEntity, teamPlayers };
+
+const DRAFT_TIME = 25; // 關間強化選擇時限 (秒);逾時自動選第一張
+
+// 闖關隊伍中「可選強化」的真人玩家 (存活、team1、非召喚/部位/AI)
+function draftablePlayers(state) {
+  return teamPlayers(state).filter((p) => p.alive && !p.ownerId && !p.isPart && !p.isMinion && !p.aiId);
+}
+
+// 進入關間強化階段:為每位玩家擲 3 選 1;AI/無法操作者由逾時自動補
+export function enterDraft(state) {
+  const picks = {};
+  for (const p of draftablePlayers(state)) {
+    picks[p.id] = { options: rollUpgradeOptions(3), chosen: null };
+  }
+  // 無人可選 (理論上不會):直接進下一關
+  if (Object.keys(picks).length === 0) { startBossRound(state, state.round + 1); return; }
+  state.draft = { timer: DRAFT_TIME, picks };
+  state.roundPhase = 'draft';
+  state.banner = null;
+}
+
+// 房主套用某玩家的選擇 (由 controller 在收到本機點擊 / joiner 'draftPick' 訊息時呼叫)
+export function applyDraftPick(state, pid, id) {
+  const d = state.draft;
+  if (!d || !d.picks[pid] || d.picks[pid].chosen) return;
+  if (!d.picks[pid].options.includes(id)) return;
+  const p = state.players[pid];
+  if (!p) return;
+  d.picks[pid].chosen = id;
+  p.upgrades = [...(p.upgrades || []), id];
+  applyUpgrade(p, id);
+}
+
+// 逾時 / 全員選完 → 對未選者自動補第一張,套用後進入下一關
+function finishDraft(state) {
+  const d = state.draft;
+  if (d) {
+    for (const pid of Object.keys(d.picks)) {
+      if (!d.picks[pid].chosen) applyDraftPick(state, pid, d.picks[pid].options[0]);
+    }
+  }
+  state.draft = null;
+  startBossRound(state, state.round + 1);
+}
 
 // ---- 房主：選擇「重打本關」 ----
 export function retryBossRound(state) {
@@ -115,6 +160,16 @@ export function checkBossRound(state, dt) {
     return;
   }
 
+  if (state.roundPhase === 'draft') {
+    // 關間強化:等全員選完或逾時 → 進下一關
+    const d = state.draft;
+    if (!d) { startBossRound(state, state.round + 1); return; }
+    d.timer -= dt;
+    const allChosen = Object.values(d.picks).every((x) => x.chosen);
+    if (allChosen || d.timer <= 0) finishDraft(state);
+    return;
+  }
+
   if (state.roundPhase === 'cleared') {
     if (state.banner) state.banner.life -= dt;
     state.roundTimer -= dt;
@@ -125,7 +180,8 @@ export function checkBossRound(state, dt) {
         state.phase = 'gameover';
         state.winner = null; state.winnerTeam = PLAYER_TEAM;
       } else {
-        startBossRound(state, state.round + 1);
+        // 進入關間強化 (擊破第 N 關後、迎戰 N+1 前)
+        enterDraft(state);
       }
     }
   }
