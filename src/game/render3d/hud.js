@@ -4,6 +4,7 @@
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getCharacter } from '../characters.js';
 import { ULT_MAX } from '../constants.js';
+import { TEAM_COLORS, TEAM_NAMES } from '../systems/soccer.ts';
 import { sceneX, sceneZ } from './coords.js';
 
 const HEAD_Y = 90;
@@ -96,6 +97,13 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const bossParts = el('div', 'hud-boss-parts', bossPanel);
   const bossTags = el('div', 'hud-boss-tags', bossPanel);
   bossPanel.style.display = 'none';
+
+  // 足球模式記分板 (上方中央)
+  const soccerBoard = el('div', 'hud-soccer', layer);
+  const scoreA = el('span', 'sc-a', soccerBoard);
+  const scoreMid = el('span', 'sc-mid', soccerBoard);
+  const scoreB = el('span', 'sc-b', soccerBoard);
+  soccerBoard.style.display = 'none';
 
   // 過場橫幅 (中央)
   const banner = el('div', 'hud-banner', layer);
@@ -369,11 +377,34 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setText(bannerHint, bh);
         setStyle(bannerHint, 'display', bh ? '' : 'none');
       } else { setStyle(banner, 'display', 'none'); setStyle(introOv, 'display', 'none'); }
+    } else if (state.mode === 'soccer') {
+      setStyle(bossPanel, 'display', 'none');
+      setStyle(introOv, 'display', 'none');
+      // 記分板
+      setStyle(soccerBoard, 'display', '');
+      const s = state.score || { 1: 0, 2: 0 };
+      setHtml(scoreA, `<em>${esc(TEAM_NAMES[1])}</em> ${s[1] || 0}`);
+      setStyle(scoreA, 'color', TEAM_COLORS[1]);
+      setText(scoreMid, '–');
+      setHtml(scoreB, `${s[2] || 0} <em>${esc(TEAM_NAMES[2])}</em>`);
+      setStyle(scoreB, 'color', TEAM_COLORS[2]);
+      // 開球 / 進球橫幅 (沿用 banner 元素)
+      if (state.banner && (state.banner.life == null || state.banner.life > 0)) {
+        setStyle(banner, 'display', '');
+        setClass(banner, 'hud-banner phase');
+        setStyle(banner, 'borderColor', state.banner.color || '');
+        setStyle(bannerText, 'color', state.banner.color || '');
+        setText(bannerText, state.banner.text || '');
+        setText(bannerSub, state.banner.sub || '');
+        setStyle(bannerHint, 'display', 'none');
+      } else setStyle(banner, 'display', 'none');
     } else {
       setStyle(bossPanel, 'display', 'none');
       setStyle(banner, 'display', 'none');
       setStyle(introOv, 'display', 'none');
+      setStyle(soccerBoard, 'display', 'none');
     }
+    if (state.mode !== 'soccer') setStyle(soccerBoard, 'display', 'none');
 
     // ---- 站進敵方地面危險區 (毒沼等) → 全螢幕警示 (通用：任何敵方造成的 zone) ----
     let inHazard = false;

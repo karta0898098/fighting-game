@@ -26,7 +26,7 @@ export function GameOverScreen({ view, onToLobby, onLeave }: GameOverScreenProps
     ? (bossResult === 'victory'
         ? '🏆 全部魔王討伐完成！'
         : `💀 闖關失敗 — 止步於 ROUND ${bossRound ?? '?'}`)
-    : winnerName
+    : (winnerName || (winnerTeam && winnerTeam > 0))
       ? (winnerTeam && winnerTeam > 0 ? `🏆 隊伍 ${winnerTeam} 獲勝！` : `🏆 ${winnerName} 獲勝！`)
       : '平手 — 無人存活';
 

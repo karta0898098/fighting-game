@@ -11,6 +11,7 @@ import { createInput, EMPTY_INPUT } from './input.js';
 import { createInitialState } from './entities.js';
 import { CHARACTERS } from './characters.js';
 import { startBossRound, retryBossRound, quitBossRun } from './bossMode.js';
+import { setupSoccer } from './systems/soccer.ts';
 import { step, applyMovement } from './simulation.js';
 import { DT, SNAPSHOT_INTERVAL, INPUT_INTERVAL, MAX_PLAYERS } from './constants.js';
 import type {
@@ -160,6 +161,17 @@ function createController(): GameController {
     beginLoop();
   }
 
+  // ---------- 開始足球 / 推球派對模式 (依索引分成藍/紅兩隊) ----------
+  function startSoccerGame() {
+    if (role !== 'host') return;
+    const arr = lobby.map((p, i) => ({ id: p.id, name: p.name, charId: p.charId, team: (i % 2) + 1 }));
+    gameState = createInitialState(arr, gameFlags, { mode: 'soccer' });
+    for (const id of Object.keys(gameState.players)) inputs[id] = { ...EMPTY_INPUT };
+    setupSoccer(gameState);
+    net.broadcast({ t: 'start', state: gameState, lobby });
+    beginLoop();
+  }
+
   function startFromSnapshot(state: any) {
     lastSnapshot = state;
     view = emptyView();
@@ -271,6 +283,9 @@ function createController(): GameController {
     view.mode = snap.mode; view.round = snap.round; view.bossId = snap.bossId;
     view.bossHp = snap.bossHp; view.bossMaxHp = snap.bossMaxHp;
     view.roundPhase = snap.roundPhase; view.banner = snap.banner; view.tethers = snap.tethers;
+    // 足球模式視圖欄位 (球 / 球門 / 比分 / 階段)
+    view.ball = snap.ball; view.goals = snap.goals; view.score = snap.score;
+    view.scoreLimit = snap.scoreLimit; view.soccerPhase = snap.soccerPhase;
 
     const k = 1 - Math.exp(-14 * dt); // 遠端玩家位置平滑
     const next: Record<string, any> = {};
@@ -512,6 +527,20 @@ function createController(): GameController {
     startBossGame();
   }
 
+  // ---------- 開發者：直接進入足球模式 (?dev=true&soccer=true) — 2v2 ----------
+  function devStartSoccer(charId?: number) {
+    myName = 'Dev Player';
+    role = 'host';
+    selfId = 'dev-' + Math.random().toString(36).slice(2, 9);
+    roomCode = 'DEV';
+    const all = Array.from({ length: CHARACTERS.length }, (_, i) => i);
+    const me = (charId !== undefined && charId >= 0 && charId < CHARACTERS.length) ? charId : all[Math.floor(Math.random() * all.length)];
+    lobby = [{ id: selfId, name: myName, charId: me, controlScheme: selectedControlScheme, isHost: true, team: 0 }];
+    for (let i = 1; i <= 3; i++) lobby.push({ id: 'dev-' + i, name: '球員 ' + i, charId: all[Math.floor(Math.random() * all.length)], controlScheme: 'wasd-jkl', isHost: false, team: 0 });
+    selectedChar = me;
+    startSoccerGame();
+  }
+
   function bossRetry() {
     if (role !== 'host' || !gameState) return;
     retryBossRound(gameState);
@@ -567,8 +596,10 @@ function createController(): GameController {
     removeNpc,
     startGame,
     startBossGame,
+    startSoccerGame,
     devStartGame,
     devStartBoss,
+    devStartSoccer,
     returnToLobby,
     bossRetry,
     bossQuit,

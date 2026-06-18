@@ -398,6 +398,19 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .hud-board-list .row.me { color: #ffd166; }
 .hud-board-list .row.dead { color: #7b8a97; }
 
+/* 足球模式記分板 (上方中央) */
+.hud-soccer {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 18px; pointer-events: none;
+  padding: 8px 22px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(10,16,26,0.82), rgba(6,10,18,0.88));
+  border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+  font-weight: 900; font-size: 30px; font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 6px #000;
+}
+.hud-soccer em { font-style: normal; font-size: 14px; font-weight: 700; opacity: 0.95; vertical-align: middle; }
+.hud-soccer .sc-mid { color: #8a9bab; font-size: 22px; }
+
 /* 闖關模式 HUD：魔王血條 / 部位 / 過場橫幅 */
 .hud-boss { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: min(640px, 70%); text-align: center; pointer-events: none; }
 .hud-boss-name { color: #ffd166; font-weight: 800; font-size: 16px; letter-spacing: 0.5px; text-shadow: 0 2px 6px #000, 0 0 10px rgba(255,80,80,0.5); margin-bottom: 4px; }

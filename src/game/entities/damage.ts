@@ -89,6 +89,8 @@ export function dealDamage(state, target, amount, attackerId, opts = {}) {
   if (target.effects && target.effects.evading) return;
   // 闖關登場動畫期間：全場無敵
   if (state.mode === 'boss' && state.roundPhase !== 'fighting') return;
+  // 足球 開球倒數 / 進球慶祝：全場無敵
+  if (state.mode === 'soccer' && state.soccerPhase !== 'play') return;
   // 階段轉換 i-frame：Boss 短暫無敵
   if (target.isBoss && (target.phaseIframe || 0) > 0) return;
 

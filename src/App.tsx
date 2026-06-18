@@ -46,8 +46,10 @@ export function App() {
     const isDev = devModeParam === 'true' || envDev === 'true';
     if (isDev) {
       const bossParam = params.get('boss');
+      const soccerParam = params.get('soccer');
       const charId = roleParam ? parseInt(roleParam, 10) : undefined;
-      if (bossParam === 'true') setTimeout(() => controller.devStartBoss(charId), 100);
+      if (soccerParam === 'true') setTimeout(() => controller.devStartSoccer(charId), 100);
+      else if (bossParam === 'true') setTimeout(() => controller.devStartBoss(charId), 100);
       else setTimeout(() => controller.devStartGame(charId), 100);
     }
   }, [controller]);
@@ -114,6 +116,7 @@ export function App() {
             onRemoveNpc={() => controller.removeNpc()}
             onStart={() => controller.startGame()}
             onStartBoss={() => controller.startBossGame()}
+            onStartSoccer={() => controller.startSoccerGame()}
             onLeave={() => controller.leave()}
           />
         );

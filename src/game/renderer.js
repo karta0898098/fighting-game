@@ -12,6 +12,7 @@ import { createParticleSystem } from './render3d/particles.js';
 import { createEntityLayer } from './render3d/entities3d.js';
 import { createFxBus } from './render3d/fxbus.js';
 import { createHud } from './render3d/hud.js';
+import { createSoccerLayer } from './render3d/soccer.js';
 import { applyDecorations, updateDecorationFade } from './render3d/decorations.js';
 import { createAtmosphere } from './render3d/atmosphere.js';
 import { getBossForRound } from './bosses.js';
@@ -52,6 +53,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
   const fxbus = createFxBus({ scene, particles, sceneMgr });
   const entities = createEntityLayer(scene, particles, { addTransient: fxbus.addTransient, sceneMgr });
   const hud = createHud({ stage: sceneMgr.stage, scene, camera, controlScheme, hooks });
+  const soccer = createSoccerLayer(scene);
   const atmosphere = createAtmosphere(particles);
   let appliedThemeRound = -1;
   let appliedThemeMode = '';
@@ -430,6 +432,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
     entities.syncProjectiles(state.projectiles, dt);
     entities.syncZones(state.zones, dt);
     entities.syncDestructibles(state.destructibles || [], dt, { x: fx, z: fz });
+    soccer.sync(state, dt); // 足球模式:球 + 球門 (非足球時自動隱藏)
     updateDecorationFade(sceneMgr.themeGroup, { x: fx, z: fz }, dt);
     atmosphere.update(dt);
     particles.update(dt);

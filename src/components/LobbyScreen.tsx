@@ -35,10 +35,11 @@ interface LobbyScreenProps {
   onRemoveNpc: () => void;
   onStart: () => void;
   onStartBoss: () => void;
+  onStartSoccer: () => void;
   onLeave: () => void;
 }
 
-export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme, selectedTeam, onSelectChar, onSelectControlScheme, onSelectTeam, onSelectGameFlags, onAddNpc, onRemoveNpc, onStart, onStartBoss, onLeave }: LobbyScreenProps) {
+export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme, selectedTeam, onSelectChar, onSelectControlScheme, onSelectTeam, onSelectGameFlags, onAddNpc, onRemoveNpc, onStart, onStartBoss, onStartSoccer, onLeave }: LobbyScreenProps) {
   const { players, selfId, isHost, roomCode, gameFlags } = lobby;
   const [copied, setCopied] = useState(false);
   const skillDisplay = getSkillDisplay(selectedControlScheme);
@@ -198,6 +199,7 @@ export function LobbyScreen({ lobby, status, selectedChar, selectedControlScheme
               ? <>
                   <button className="btn primary big" onClick={onStart}>開始遊戲</button>
                   <button className="btn big boss-start" onClick={onStartBoss}>⚔️ 闖關模式（10 魔王協同）</button>
+                  <button className="btn big soccer-start" onClick={onStartSoccer}>⚽ 足球派對（藍紅推球對抗）</button>
                 </>
               : <p className="dim">等待房主開始…</p>}
             <p className="status">{status}</p>

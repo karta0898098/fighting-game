@@ -128,8 +128,10 @@ export interface GameController {
   removeNpc(): void;
   startGame(): void;
   startBossGame(): void;
+  startSoccerGame(): void;
   devStartGame(charId?: number): void;
   devStartBoss(charId?: number): void;
+  devStartSoccer(charId?: number): void;
   returnToLobby(): void;
   bossRetry(): void;
   bossQuit(): void;

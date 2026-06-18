@@ -13,6 +13,7 @@ import { applyMovement, speedOf } from './systems/movement.ts';
 import { tickCharacterTimers, tickCooldowns, tickPassiveRecovery, tickSummonLife } from './systems/playerState.ts';
 import { updateProjectiles } from './systems/projectiles.ts';
 import { checkWin } from './systems/win.ts';
+import { soccerTick } from './systems/soccer.ts';
 import { updateZones } from './systems/zones.ts';
 import { tickDestructibles } from './systems/destructibles.ts';
 
@@ -40,6 +41,9 @@ export function step(state, inputs, dt) {
       else input = computeBossInput(state, p, dt); // FFA 召喚物 AI
     } else if (state.mode === 'boss' && state.roundPhase !== 'fighting') {
       // 闖關 intro/cleared/wiped：人類玩家輸入凍結 (登場動畫期間不能動)
+      input = EMPTY_INPUT;
+    } else if (state.mode === 'soccer' && state.soccerPhase !== 'play') {
+      // 足球 開球倒數 / 進球慶祝：凍結輸入
       input = EMPTY_INPUT;
     }
     const character = getCharacter(p.charId);
@@ -75,5 +79,6 @@ export function step(state, inputs, dt) {
     if (o.isSummon && !o.alive) delete state.players[id];
   }
   if (state.mode === 'boss') { bossTick(state, dt); checkBossRound(state, dt); }
+  else if (state.mode === 'soccer') soccerTick(state, dt);
   else checkWin(state);
 }
