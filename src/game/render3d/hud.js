@@ -50,37 +50,277 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   layer.className = 'hud-layer';
   stage.appendChild(layer);
 
-  // 自身狀態 (左下)
-  const self = el('div', 'hud-self', layer);
-  const selfName = el('div', 'hud-self-name', self);
-  const selfTalent = el('div', 'hud-self-talent', self);
-  const hpWrap = el('div', 'hud-bar hp', self);
-  const hpFill = el('i', '', hpWrap);
-  const hpTxt = el('span', '', hpWrap);
-  const mpWrap = el('div', 'hud-bar mp', self);
-  const mpFill = el('i', '', mpWrap);
-  const mpTxt = el('span', '', mpWrap);
-  const ultWrap = el('div', 'hud-bar ult', self);
-  const ultFill = el('i', '', ultWrap);
-  const ultTxt = el('span', '', ultWrap);
-  const buffs = el('div', 'hud-buffs', self);
-  const skillsContainer = el('div', 'hud-skills-container', self);
-  const skills = el('div', 'hud-skills', skillsContainer);
-  const evadeWrap = el('div', 'hud-evade-wrap', skillsContainer);
+  // 自身狀態 (桌機版，左下)
+  const selfDesktop = el('div', 'hud-self-desktop', layer);
+  const selfNameD = el('div', 'hud-self-name', selfDesktop);
+  const selfTalentD = el('div', 'hud-self-talent', selfDesktop);
+  const hpWrapD = el('div', 'hud-bar hp', selfDesktop);
+  const hpFillD = el('i', '', hpWrapD);
+  const hpTxtD = el('span', '', hpWrapD);
+  const mpWrapD = el('div', 'hud-bar mp', selfDesktop);
+  const mpFillD = el('i', '', mpWrapD);
+  const mpTxtD = el('span', '', mpWrapD);
+  const ultWrapD = el('div', 'hud-bar ult', selfDesktop);
+  const ultFillD = el('i', '', ultWrapD);
+  const ultTxtD = el('span', '', ultWrapD);
+  const buffsD = el('div', 'hud-buffs', selfDesktop);
+  const skillsContainerD = el('div', 'hud-skills-container', selfDesktop);
+  const skillsD = el('div', 'hud-skills', skillsContainerD);
+  const evadeWrapD = el('div', 'hud-evade-wrap', skillsContainerD);
   const keys = getSkillKeys(controlScheme);
   const chip = {
-    basic: skillChip(keys.basic, skills),
-    skill1: skillChip(keys.skill1, skills),
-    skill2: skillChip(keys.skill2, skills),
-    ultimate: skillChip(keys.ultimate, skills),
-    evade: skillChip('Space', evadeWrap, 'evade-circle'),
+    basic: skillChip(keys.basic, skillsD),
+    skill1: skillChip(keys.skill1, skillsD),
+    skill2: skillChip(keys.skill2, skillsD),
+    ultimate: skillChip(keys.ultimate, skillsD),
+    evade: skillChip('Space', evadeWrapD, 'evade-circle'),
   };
 
+  // 自身狀態 (行動版，左上，極簡)
+  const selfMobile = el('div', 'hud-self-mobile', layer);
+  const selfNameM = el('div', 'hud-mobile-name', selfMobile);
+  const selfTalentM = el('div', 'hud-mobile-talent', selfMobile);
+  const barsWrapM = el('div', 'hud-mobile-bars', selfMobile);
+  const hpWrapM = el('div', 'hud-mobile-bar hp', barsWrapM);
+  const hpFillM = el('i', '', hpWrapM);
+  const hpTxtM = el('span', '', hpWrapM);
+  const mpWrapM = el('div', 'hud-mobile-bar mp', barsWrapM);
+  const mpFillM = el('i', '', mpWrapM);
+  const mpTxtM = el('span', '', mpWrapM);
+  const buffsM = el('div', 'hud-mobile-buffs', selfMobile);
+
+  // ---- 行動端虛擬搖桿與按鍵 ----
+  const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+  let joystickZone, joystickBase, joystickKnob, mobileButtonsZone, mBtns;
+  
+  if (isMobile) {
+    layer.classList.add('is-mobile');
+    
+    // 搖桿區
+    joystickZone = el('div', 'mobile-joystick-zone', layer);
+    joystickBase = el('div', 'mobile-joystick-base', joystickZone);
+    joystickKnob = el('div', 'mobile-joystick-knob', joystickBase);
+    
+    // 按鍵區
+    mobileButtonsZone = el('div', 'mobile-buttons-zone', layer);
+    
+    mBtns = {
+      basic: mobileButton('basic', 'J', mobileButtonsZone),
+      skill1: mobileButton('skill1', 'K', mobileButtonsZone),
+      skill2: mobileButton('skill2', 'L', mobileButtonsZone),
+      ultimate: mobileButton('ultimate', 'Ult', mobileButtonsZone),
+      evade: mobileButton('evade', '閃避', mobileButtonsZone),
+    };
+    
+    // 搖桿事件處理
+    let joystickActive = false;
+    let joystickStartX = 0;
+    let joystickStartY = 0;
+    const maxRadius = 30;
+    
+    joystickZone.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      const rect = joystickZone.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      
+      setStyle(joystickBase, 'left', `${x - 40}px`);
+      setStyle(joystickBase, 'top', `${y - 40}px`);
+      setStyle(joystickBase, 'bottom', 'auto');
+      setStyle(joystickBase, 'opacity', '1');
+      setStyle(joystickBase, 'transform', 'scale(1)');
+      
+      joystickActive = true;
+      joystickStartX = touch.clientX;
+      joystickStartY = touch.clientY;
+      
+      e.preventDefault();
+    }, { passive: false });
+
+    joystickZone.addEventListener('touchmove', (e) => {
+      if (!joystickActive) return;
+      const touch = e.touches[0];
+      
+      let dx = touch.clientX - joystickStartX;
+      let dy = touch.clientY - joystickStartY;
+      const dist = Math.hypot(dx, dy);
+      
+      if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+      }
+      
+      setStyle(joystickKnob, 'transform', `translate(${dx}px, ${dy}px)`);
+      
+      const ndx = dx / maxRadius;
+      const ndy = dy / maxRadius;
+      
+      if (hooks.input && hooks.input.setTouchDirection) {
+        hooks.input.setTouchDirection(ndx, ndy);
+      }
+      
+      e.preventDefault();
+    }, { passive: false });
+
+    const resetJoystick = (e) => {
+      if (!joystickActive) return;
+      joystickActive = false;
+      
+      setStyle(joystickKnob, 'transform', 'translate(0px, 0px)');
+      
+      setStyle(joystickBase, 'left', '35px');
+      setStyle(joystickBase, 'top', 'auto');
+      setStyle(joystickBase, 'bottom', '35px');
+      setStyle(joystickBase, 'opacity', '0.4');
+      setStyle(joystickBase, 'transform', 'scale(0.95)');
+      
+      if (hooks.input && hooks.input.setTouchDirection) {
+        hooks.input.setTouchDirection(0, 0);
+      }
+      if (e) e.preventDefault();
+    };
+
+    joystickZone.addEventListener('touchend', resetJoystick, { passive: false });
+    joystickZone.addEventListener('touchcancel', resetJoystick, { passive: false });
+    
+    // 按鍵事件處理
+    Object.values(mBtns).forEach((btn) => {
+      btn.root.addEventListener('touchstart', (e) => {
+        if (hooks.input && hooks.input.setTouchAction) {
+          hooks.input.setTouchAction(btn.id, true);
+        }
+        btn.root.classList.add('active');
+        e.preventDefault();
+      }, { passive: false });
+
+      const releaseBtn = (e) => {
+        if (hooks.input && hooks.input.setTouchAction) {
+          hooks.input.setTouchAction(btn.id, false);
+        }
+        btn.root.classList.remove('active');
+        if (e) e.preventDefault();
+      };
+
+      btn.root.addEventListener('touchend', releaseBtn, { passive: false });
+      btn.root.addEventListener('touchcancel', releaseBtn, { passive: false });
+    });
+  }
+
+  function mobileButton(id, keyLabel, parent) {
+    const root = el('div', `mbtn mbtn-${id}`, parent);
+    const cool = el('div', 'mbtn-cool', root);
+    const key = el('span', 'mbtn-key', root);
+    setText(key, keyLabel);
+    const name = el('span', 'mbtn-name', root);
+    const cdTxt = el('span', 'mbtn-cd', root);
+    return { root, cool, name, cdTxt, id };
+  }
+
+  function updateMobileButton(btn, action, cd, curMana, charId) {
+    if (!action) {
+      setStyle(btn.root, 'display', 'none');
+      return;
+    }
+    setStyle(btn.root, 'display', 'flex');
+    
+    setText(btn.name, action.name);
+    
+    const onCd = cd > 0;
+    const cdMax = action.cd || 1;
+    const manaCost = action.manaCost || 0;
+    const noMana = !onCd && manaCost > 0 && curMana < manaCost;
+    const ready = !onCd && !noMana;
+    
+    btn.root.classList.toggle('ready', ready);
+    btn.root.classList.toggle('no-mana', noMana);
+    btn.root.classList.toggle('on-cd', onCd);
+    
+    setStyle(btn.cool, 'height', onCd ? `${(cd / cdMax) * 100}%` : '0%');
+    
+    if (onCd) {
+      setText(btn.cdTxt, `${cd.toFixed(1)}s`);
+      setStyle(btn.cdTxt, 'display', 'block');
+      setStyle(btn.name, 'display', 'none');
+    } else {
+      setStyle(btn.cdTxt, 'display', 'none');
+      setStyle(btn.name, 'display', 'block');
+    }
+    
+    const char = getCharacter(charId);
+    const themeColor = action.color || char.color || '#3aa0ff';
+    
+    if (ready) {
+      setStyle(btn.root, 'borderColor', themeColor);
+      setStyle(btn.root, 'background', `radial-gradient(circle, ${hexA(themeColor, 0.45)} 0%, rgba(45, 55, 72, 0.8) 100%)`);
+      setStyle(btn.root, 'boxShadow', `0 0 10px ${hexA(themeColor, 0.4)}, 0 4px 12px rgba(0,0,0,0.5)`);
+    } else if (noMana) {
+      setStyle(btn.root, 'borderColor', '#ff3f3f');
+      setStyle(btn.root, 'background', 'rgba(110, 25, 25, 0.75)');
+      setStyle(btn.root, 'boxShadow', 'none');
+    } else {
+      setStyle(btn.root, 'borderColor', 'rgba(255,255,255,0.15)');
+      setStyle(btn.root, 'background', 'rgba(25, 30, 40, 0.75)');
+      setStyle(btn.root, 'boxShadow', 'none');
+    }
+  }
+
+  function updateMobileUltButton(btn, action, ult, cd) {
+    if (!action) {
+      setStyle(btn.root, 'display', 'none');
+      return;
+    }
+    setStyle(btn.root, 'display', 'flex');
+    setText(btn.name, action.name);
+    
+    const r = Math.min(1, ult / ULT_MAX);
+    const onCd = cd > 0;
+    const ready = r >= 1 && !onCd;
+    
+    btn.root.classList.toggle('ready', ready);
+    btn.root.classList.toggle('on-cd', onCd);
+    btn.root.classList.toggle('ult', true);
+    
+    if (onCd) {
+      setStyle(btn.cool, 'height', '100%');
+      setText(btn.cdTxt, `${cd.toFixed(1)}s`);
+      setStyle(btn.cdTxt, 'display', 'block');
+      setStyle(btn.name, 'display', 'none');
+    } else {
+      setStyle(btn.cool, 'height', `${(1 - r) * 100}%`);
+      if (ready) {
+        setStyle(btn.cdTxt, 'display', 'none');
+        setStyle(btn.name, 'display', 'block');
+      } else {
+        setText(btn.cdTxt, `${Math.floor(r * 100)}%`);
+        setStyle(btn.cdTxt, 'display', 'block');
+        setStyle(btn.name, 'display', 'none');
+      }
+    }
+    
+    const themeColor = action.color || '#ffd166';
+    if (ready) {
+      setStyle(btn.root, 'borderColor', themeColor);
+      setStyle(btn.root, 'background', `radial-gradient(circle, ${hexA(themeColor, 0.65)} 0%, rgba(45, 55, 72, 0.8) 100%)`);
+      setStyle(btn.root, 'boxShadow', `0 0 18px ${hexA(themeColor, 0.85)}, 0 4px 12px rgba(0,0,0,0.5)`);
+      btn.root.classList.add('ult-pulse');
+    } else {
+      setStyle(btn.root, 'borderColor', 'rgba(255,255,255,0.15)');
+      setStyle(btn.root, 'background', 'rgba(25, 30, 40, 0.75)');
+      setStyle(btn.root, 'boxShadow', 'none');
+      btn.root.classList.remove('ult-pulse');
+    }
+  }
+
   // 蓄力條 (蓄力技能用，平時隱藏)
-  const chargeWrap = el('div', 'hud-bar charge', self);
-  const chargeFill = el('i', '', chargeWrap);
-  const chargeTxt  = el('span', '', chargeWrap);
-  chargeWrap.style.display = 'none';
+  const chargeWrapD = el('div', 'hud-bar charge', selfDesktop);
+  const chargeFillD = el('i', '', chargeWrapD);
+  const chargeTxtD  = el('span', '', chargeWrapD);
+  chargeWrapD.style.display = 'none';
+
+  const chargeWrapM = el('div', 'hud-mobile-bar charge', selfMobile);
+  const chargeFillM = el('i', '', chargeWrapM);
+  const chargeTxtM  = el('span', '', chargeWrapM);
+  chargeWrapM.style.display = 'none';
 
   // 計分板 (右上)
   const board = el('div', 'hud-board', layer);
@@ -256,43 +496,108 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
     // 自身面板
     const me = state.players[selfId];
     if (me) {
-      setStyle(self, 'display', '');
       const c = getCharacter(me.charId);
-      setText(selfName, `${me.name}　(${c.name})${me.alive ? '' : '　— 淘汰'}`);
-      setStyle(selfName, 'color', me.alive ? '#fff' : '#ff7675');
-      setText(selfTalent, c.talent ? `天賦 ${c.talent.name}` : '');
-      setStyle(hpFill, 'width', pct(me.hp / me.maxHp));
-      setText(hpTxt, `${Math.ceil(me.hp)}/${me.maxHp}`);
-      setStyle(mpFill, 'width', pct(me.mana / me.maxMana));
-      setText(mpTxt, `${Math.ceil(me.mana)}/${me.maxMana}`);
-      const ultR = Math.min(1, (me.ult || 0) / ULT_MAX);
-      const ultReady = ultR >= 1 && me.cd.ultimate <= 0;
-      setStyle(ultFill, 'width', pct(ultR));
-      ultWrap.classList.toggle('ready', ultReady);
-      setText(ultTxt, ultReady ? '終極 就緒！' : `終極 ${Math.floor(ultR * 100)}%`);
-      setHtml(buffs, buildBuffHtml(me));
-      setChip(chip.basic,  c.basic,  me.cd.basic,   me.mana);
-      setChip(chip.skill1, c.skill1, me.cd.skill1,  me.mana);
-      setChip(chip.skill2, c.skill2, me.cd.skill2,  me.mana);
-      setUltChip(chip.ultimate, c.ultimate, me.ult || 0, me.cd.ultimate);
-      setChip(chip.evade, c.evade, me.cd.evade, me.mana);
+      
+      if (!isMobile) {
+        setStyle(selfDesktop, 'display', '');
+        setStyle(selfMobile, 'display', 'none');
+        
+        setText(selfNameD, `${me.name}　(${c.name})${me.alive ? '' : '　— 淘汰'}`);
+        setStyle(selfNameD, 'color', me.alive ? '#fff' : '#ff7675');
+        setText(selfTalentD, c.talent ? `天賦 ${c.talent.name}` : '');
+        setStyle(hpFillD, 'width', pct(me.hp / me.maxHp));
+        setText(hpTxtD, `${Math.ceil(me.hp)}/${me.maxHp}`);
+        setStyle(mpFillD, 'width', pct(me.mana / me.maxMana));
+        setText(mpTxtD, `${Math.ceil(me.mana)}/${me.maxMana}`);
+        const ultR = Math.min(1, (me.ult || 0) / ULT_MAX);
+        const ultReady = ultR >= 1 && me.cd.ultimate <= 0;
+        setStyle(ultFillD, 'width', pct(ultR));
+        ultWrapD.classList.toggle('ready', ultReady);
+        setText(ultTxtD, ultReady ? '終極 就緒！' : `終極 ${Math.floor(ultR * 100)}%`);
+        setHtml(buffsD, buildBuffHtml(me));
+        setChip(chip.basic,  c.basic,  me.cd.basic,   me.mana);
+        setChip(chip.skill1, c.skill1, me.cd.skill1,  me.mana);
+        setChip(chip.skill2, c.skill2, me.cd.skill2,  me.mana);
+        setUltChip(chip.ultimate, c.ultimate, me.ult || 0, me.cd.ultimate);
+        setChip(chip.evade, c.evade, me.cd.evade, me.mana);
+      } else {
+        setStyle(selfDesktop, 'display', 'none');
+        setStyle(selfMobile, 'display', '');
+        
+        setText(selfNameM, `${me.name} (${c.name})${me.alive ? '' : ' - 淘汰'}`);
+        setStyle(selfNameM, 'color', me.alive ? '#fff' : '#ff7675');
+        setText(selfTalentM, c.talent ? `天賦: ${c.talent.name}` : '');
+        setStyle(hpFillM, 'width', pct(me.hp / me.maxHp));
+        setText(hpTxtM, `${Math.ceil(me.hp)}/${me.maxHp}`);
+        setStyle(mpFillM, 'width', pct(me.mana / me.maxMana));
+        setText(mpTxtM, `${Math.ceil(me.mana)}/${me.maxMana}`);
+        setHtml(buffsM, buildBuffHtml(me));
+        
+        const showControls = me.alive && state.roundPhase !== 'wiped' && state.roundPhase !== 'cleared';
+        const wasShown = joystickZone.style.display !== 'none';
+        
+        setStyle(joystickZone, 'display', showControls ? '' : 'none');
+        setStyle(mobileButtonsZone, 'display', showControls ? '' : 'none');
+        
+        if (!showControls && wasShown) {
+          // Reset joystick position visually
+          setStyle(joystickKnob, 'transform', 'translate(0px, 0px)');
+          setStyle(joystickBase, 'left', '35px');
+          setStyle(joystickBase, 'top', 'auto');
+          setStyle(joystickBase, 'bottom', '35px');
+          setStyle(joystickBase, 'opacity', '0.4');
+          setStyle(joystickBase, 'transform', 'scale(0.95)');
+          
+          // Clear logical inputs to prevent stuck movement/actions
+          if (hooks.input) {
+            if (hooks.input.setTouchDirection) hooks.input.setTouchDirection(0, 0);
+            if (hooks.input.setTouchAction) {
+              hooks.input.setTouchAction('basic', false);
+              hooks.input.setTouchAction('skill1', false);
+              hooks.input.setTouchAction('skill2', false);
+              hooks.input.setTouchAction('ultimate', false);
+              hooks.input.setTouchAction('evade', false);
+            }
+          }
+        }
+        
+        if (showControls) {
+          updateMobileButton(mBtns.basic, c.basic, me.cd.basic, me.mana, me.charId);
+          updateMobileButton(mBtns.skill1, c.skill1, me.cd.skill1, me.mana, me.charId);
+          updateMobileButton(mBtns.skill2, c.skill2, me.cd.skill2, me.mana, me.charId);
+          updateMobileUltButton(mBtns.ultimate, c.ultimate, me.ult || 0, me.cd.ultimate);
+          updateMobileButton(mBtns.evade, c.evade, me.cd.evade, me.mana, me.charId);
+        }
+      }
 
       // 蓄力條
       const cs = me.chargeState;
       const chargeAction = cs && c[cs.slot];
       if (cs && chargeAction && chargeAction.chargeMax) {
-        setStyle(chargeWrap, 'display', '');
         const r = Math.min(1, cs.time / chargeAction.chargeMax);
-        setStyle(chargeFill, 'width', pct(r));
         const isFull = r >= 0.99;
-        chargeWrap.classList.toggle('full', isFull);
-        setText(chargeTxt, isFull ? '🔥 蓄力全滿！' : `蓄力中 ${Math.floor(r * 100)}%`);
+        const txt = isFull ? '🔥 蓄力全滿！' : `蓄力中 ${Math.floor(r * 100)}%`;
+        
+        if (!isMobile) {
+          setStyle(chargeWrapD, 'display', '');
+          setStyle(chargeWrapM, 'display', 'none');
+          setStyle(chargeFillD, 'width', pct(r));
+          chargeWrapD.classList.toggle('full', isFull);
+          setText(chargeTxtD, txt);
+        } else {
+          setStyle(chargeWrapD, 'display', 'none');
+          setStyle(chargeWrapM, 'display', '');
+          setStyle(chargeFillM, 'width', pct(r));
+          chargeWrapM.classList.toggle('full', isFull);
+          setText(chargeTxtM, txt);
+        }
       } else {
-        setStyle(chargeWrap, 'display', 'none');
-        chargeWrap.classList.remove('full');
+        setStyle(chargeWrapD, 'display', 'none');
+        setStyle(chargeWrapM, 'display', 'none');
       }
     } else {
-      setStyle(self, 'display', 'none');
+      setStyle(selfDesktop, 'display', 'none');
+      setStyle(selfMobile, 'display', 'none');
     }
 
     // 計分板

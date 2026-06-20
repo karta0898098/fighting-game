@@ -39,14 +39,15 @@ const KEY_MAPS = {
 };
 
 export function createInput(controlScheme = 'wasd-jkl') {
-  const keys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false, evade: false };
+  const keyboardKeys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false, evade: false };
+  const touchKeys = { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false, evade: false, aim: null };
   let enabled = false;
   let currentScheme = controlScheme;
   let keyMap = KEY_MAPS[currentScheme];
 
   function setKey(code, down) {
     const action = keyMap[code];
-    if (action) keys[action] = down;
+    if (action) keyboardKeys[action] = down;
     return !!action;
   }
 
@@ -59,22 +60,68 @@ export function createInput(controlScheme = 'wasd-jkl') {
     if (setKey(e.code, false)) e.preventDefault();
   });
   // 失焦時清空，避免卡鍵
-  window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+  window.addEventListener('blur', () => {
+    for (const k in keyboardKeys) keyboardKeys[k] = false;
+    for (const k in touchKeys) {
+      if (k === 'aim') touchKeys[k] = null;
+      else touchKeys[k] = false;
+    }
+  });
 
   return {
     enable() { enabled = true; },
-    disable() { enabled = false; for (const k in keys) keys[k] = false; },
+    disable() {
+      enabled = false;
+      for (const k in keyboardKeys) keyboardKeys[k] = false;
+      for (const k in touchKeys) {
+        if (k === 'aim') touchKeys[k] = null;
+        else touchKeys[k] = false;
+      }
+    },
     setScheme(scheme) {
       currentScheme = scheme;
       keyMap = KEY_MAPS[scheme];
-      for (const k in keys) keys[k] = false;
+      for (const k in keyboardKeys) keyboardKeys[k] = false;
+      for (const k in touchKeys) {
+        if (k === 'aim') touchKeys[k] = null;
+        else touchKeys[k] = false;
+      }
+    },
+    setTouchDirection(dx, dy) {
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0.15) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        touchKeys.aim = Math.atan2(dy, dx);
+        touchKeys.left = nx < -0.38;
+        touchKeys.right = nx > 0.38;
+        touchKeys.up = ny < -0.38;
+        touchKeys.down = ny > 0.38;
+      } else {
+        touchKeys.left = false;
+        touchKeys.right = false;
+        touchKeys.up = false;
+        touchKeys.down = false;
+        touchKeys.aim = null;
+      }
+    },
+    setTouchAction(action, pressed) {
+      if (action in touchKeys) {
+        touchKeys[action] = pressed;
+      }
     },
     get() {
       return {
-        up: keys.up, down: keys.down, left: keys.left, right: keys.right,
-        basic: keys.basic, skill1: keys.skill1, skill2: keys.skill2, ultimate: keys.ultimate,
-        evade: keys.evade,
-        aim: null, // 人類玩家以移動方向轉向；魔王 AI 則合成 aim 角度
+        up: keyboardKeys.up || touchKeys.up,
+        down: keyboardKeys.down || touchKeys.down,
+        left: keyboardKeys.left || touchKeys.left,
+        right: keyboardKeys.right || touchKeys.right,
+        basic: keyboardKeys.basic || touchKeys.basic,
+        skill1: keyboardKeys.skill1 || touchKeys.skill1,
+        skill2: keyboardKeys.skill2 || touchKeys.skill2,
+        ultimate: keyboardKeys.ultimate || touchKeys.ultimate,
+        evade: keyboardKeys.evade || touchKeys.evade,
+        aim: touchKeys.aim, // 人類玩家以移動方向轉向；魔王 AI 則合成 aim 角度
       };
     },
   };

@@ -561,6 +561,7 @@ function createController(): GameController {
       isHost: () => role === 'host',
       onBossRetry: bossRetry,
       onBossQuit: bossQuit,
+      input,
     });
     maybeStartLoop();
   }
