@@ -50,6 +50,7 @@ export function AudioSettingsButton() {
               onVolume={(v) => updateAudioSettings({ sfxVolume: v, sfxMuted: false })}
               onToggleMute={() => updateAudioSettings({ sfxMuted: !settings.sfxMuted })}
             />
+            <FullscreenRow />
           </div>
         </div>
       )}
@@ -89,6 +90,50 @@ function VolumeRow({ label, volume, muted, onVolume, onToggleMute }: VolumeRowPr
           value={volume}
           onChange={(e) => onVolume(Number(e.target.value))}
         />
+      </div>
+    </div>
+  );
+}
+
+function FullscreenRow() {
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const handleToggle = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+
+  return (
+    <div className="settings-row">
+      <div className="settings-row-top">
+        <span className="settings-label">畫面設定</span>
+        <span className="settings-pct">{isFullscreen ? '全螢幕' : '視窗'}</span>
+      </div>
+      <div className="settings-row-ctrl">
+        <button
+          className="btn primary"
+          style={{ width: '100%', padding: '8px 12px', fontSize: '13px', margin: '4px 0 0' }}
+          onClick={handleToggle}
+        >
+          {isFullscreen ? '🖥 退出全螢幕' : '🖥 進入全螢幕'}
+        </button>
       </div>
     </div>
   );
