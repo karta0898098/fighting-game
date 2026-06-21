@@ -16,7 +16,7 @@ registerBossAction('mirror_players', (state, boss, a, h) => {
       name: '鏡像',
     });
     state.players[id] = m;
-    h.addFx(state, { type: 'blink', x, y, color: a.color, life: 0.4, radius: 70 });
+    h.addFx(state, { type: 'blink', x, y, color: a.color, life: 0.4, radius: 70, vfx: a.vfx });
   }
 });
 
@@ -34,7 +34,7 @@ registerBossAction('steal_ultimate', (state, boss, a, h) => {
   const tgt = enemies.reduce((b, o) => (h.dist(boss.x, boss.y, o.x, o.y) < h.dist(boss.x, boss.y, b.x, b.y) ? o : b), enemies[0]);
   boss.facing = Math.atan2(tgt.y - boss.y, tgt.x - boss.x);
   h.executeAction(state, boss, ult, { silent: true });
-  h.addFx(state, { type: 'ultimate', x: boss.x, y: boss.y, color: a.color, life: 0.6, radius: ult.radius || 140 });
+  h.addFx(state, { type: 'ultimate', x: boss.x, y: boss.y, color: a.color, life: 0.6, radius: ult.radius || 140, vfx: a.vfx });
 
   if (boss.aiState) boss.aiState.stolenUltimate = null;
 });

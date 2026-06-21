@@ -2,12 +2,14 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 import './action.ts';
 
 const data = {
     id: 105, round: 6, name: '死靈樂章', subtitle: '幽冥引路人',
     color: '#7d5fff', shape: 'circle', maxHp: 6500, maxMana: 999, speed: 130,
     baseHp: 6500,
+    deathVfx: 'boss_necro_death',
     appearance: {
       size: '等身偏大 (約玩家 2 倍)，漂浮',
       style: '漂浮的幽靈指揮 / 巫妖，破舊暗袍隨幽風飄動，雙眼與雙手燃綠靈火，手持斷裂指揮棒兼死神鐮。身周籠罩半透明護盾泡。配色：幽紫 #7d5fff + 靈綠 #39ff88 + 屍袍灰。',
@@ -52,4 +54,4 @@ const data = {
     ultimate: { name: '安魂彌撒', type: 'zone', range: 0, radius: 240, dmg: 28, lifetime: 4, tick: 0.5, follow: true, healPerMinion: 30, effect: SLOW(0.6, 0.6), cd: 18, windup: 1.0, telegraph: 'circle', color: '#9d7dff', vfx: 'boss_necro_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

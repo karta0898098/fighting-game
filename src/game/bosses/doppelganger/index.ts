@@ -2,12 +2,14 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 import './action.ts';
 
 const data = {
     id: 109, round: 10, name: '另一個自己', subtitle: '終焉之神',
     color: '#e8e8f0', shape: 'circle', maxHp: 12000, maxMana: 999, speed: 180,
     baseHp: 12000,
+    deathVfx: 'boss_doppel_death',
     appearance: {
       size: '巨大 (約玩家 3 倍)，會隨階段變形',
       style: '一具不斷流動、變形的「另一個自己」剪影，由虛空與星光構成的軀體，表面裂開流瀉白光，頭頂懸浮王者光環，外型會模仿並扭曲玩家的姿態。配色：虛空黑 + 星光白 #e8e8f0 + 裂縫白光 + 階段染色。',
@@ -59,4 +61,4 @@ const data = {
     ultimate: { name: '終焉之刻', type: 'zone', range: 0, radius: 320, dmg: 60, lifetime: 1.2, tick: 0.3, delay: 1.4, knockback: 200, effect: STUN(0.5), cd: 20, windup: 1.4, telegraph: 'circle', color: '#ffffff', vfx: 'boss_doppel_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

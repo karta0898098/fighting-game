@@ -1,6 +1,7 @@
 import { PLAYER_RADIUS, ULT_MAX, ULT_GAIN_DEAL, ULT_GAIN_TAKE } from '../constants.js';
 import { getCharacter } from '../characters.js';
 import { applyBossDamageModifiers } from '../bosses/damage.ts';
+import { getBoss } from '../bosses.js';
 import { angleDiff, missingHp } from './math.ts';
 import { addFx } from './fx.ts';
 import { applyHeal } from './heal.ts';
@@ -330,16 +331,25 @@ export function dealDamage(
     recordKill(state, attackerId, target);
     recordDeath(state, target);
     if (target.effects && target.effects.weaken) spreadCurse(state, target);
-    addFx(state, { type: 'death', x: target.x, y: target.y, color: '#ffffff', life: 0.5, radius: PLAYER_RADIUS * 2 });
+    const bossDown = target.isBoss && state.mode === 'boss';
+    const bossDeathVfx = bossDown ? getBoss(target.charId)?.data?.deathVfx : null;
+    // 一般死亡通用爆；Boss 有專屬死亡演出時改走下方 death+vfx，不重複（避免雙重死亡音效）
+    if (!bossDeathVfx) {
+      addFx(state, { type: 'death', x: target.x, y: target.y, color: '#ffffff', life: 0.5, radius: PLAYER_RADIUS * 2 });
+    }
     if (state.mode === 'boss' && (target.isMinion || target.isSummon)) {
       spawnDropFromMinion(state, target.x, target.y);
     }
-    // 闖關 Boss 擊破：全場慢動作 + 巨型爆閃 + 「BOSS DOWN」橫幅
-    if (target.isBoss && state.mode === 'boss') {
+    // 闖關 Boss 擊破：全場慢動作 + 「BOSS DOWN」橫幅 + 專屬死亡演出（缺 deathVfx 時退回通用巨爆）
+    if (bossDown) {
       state.timeFreeze = { scale: 0.3, remaining: 0.8 };
       state.banner = { text: 'BOSS DOWN', sub: target.name || '', life: 1.0, kind: 'phase', color: '#ffd166' };
-      addFx(state, { type: 'ultimate', x: target.x, y: target.y, facing: target.facing, color: '#ffd166', life: 1.0, radius: 320 });
-      addFx(state, { type: 'ultimate', x: target.x, y: target.y, facing: target.facing, color: '#ffffff', life: 0.6, radius: 180 });
+      if (bossDeathVfx) {
+        addFx(state, { type: 'death', x: target.x, y: target.y, facing: target.facing, color: target.color || '#ffd166', life: 1.4, radius: 360, vfx: bossDeathVfx });
+      } else {
+        addFx(state, { type: 'ultimate', x: target.x, y: target.y, facing: target.facing, color: '#ffd166', life: 1.0, radius: 320 });
+        addFx(state, { type: 'ultimate', x: target.x, y: target.y, facing: target.facing, color: '#ffffff', life: 0.6, radius: 180 });
+      }
     }
   }
 }

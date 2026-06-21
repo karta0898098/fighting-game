@@ -2,11 +2,13 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 
 const data = {
     id: 106, round: 7, name: '風暴巨狼', subtitle: '狂暴之爪',
     color: '#4a6fa5', shape: 'triangle', maxHp: 7000, maxMana: 999, speed: 250,
     baseHp: 7000,
+    deathVfx: 'boss_wolf_death',
     appearance: {
       size: '等身偏大 (約玩家 2.2 倍)，低伏蓄勢',
       style: '籠罩雷暴的巨狼，深灰鬃毛間奔竄藍白電弧，雙眼發藍光，利爪帶電。奔跑時拖出殘影與雷光。配色：暴雲灰 #4a6fa5 + 雷電藍白 #aee3ff + 怒目藍。',
@@ -56,4 +58,4 @@ const data = {
     ultimate: { name: '雷霆亂舞', type: 'multiblink', count: 5, dmg: 60, knockback: 160, effect: STUN(0.3), cd: 16, windup: 0.6, telegraph: 'self', color: '#aee3ff', targetLowest: true, vfx: 'boss_wolf_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

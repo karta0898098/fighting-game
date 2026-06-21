@@ -2,12 +2,14 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 import './action.ts';
 
 const data = {
     id: 103, round: 4, name: '霜雪刺客', subtitle: '冰原幻影',
     color: '#74e0ff', shape: 'triangle', maxHp: 5000, maxMana: 999, speed: 220,
     baseHp: 5000,
+    deathVfx: 'boss_frost_death',
     appearance: {
       size: '等身 (約玩家 1.5 倍)，纖細靈巧',
       style: '半透明的淡藍冰晶刺客，身後拖曳霜霧殘影，雙手冰結匕首。配色：冰藍 #74e0ff + 霜白 #e0f8ff + 內透幽光。',
@@ -52,4 +54,4 @@ const data = {
     ultimate: { name: '絕對冰域', type: 'zone', range: 0, radius: 220, dmg: 30, lifetime: 2.0, tick: 0.5, follow: true, effect: CHILL(2), cd: 17, windup: 1.0, telegraph: 'circle', color: '#cdf6ff', vfx: 'boss_frost_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

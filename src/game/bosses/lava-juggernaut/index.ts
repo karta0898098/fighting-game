@@ -2,6 +2,7 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 import { applyEffect } from '../../entities/effects.ts';
 import { addFx } from '../../entities/fx.ts';
 import { teamPlayers } from '../lifecycle.ts';
@@ -20,6 +21,7 @@ const data = {
     id: 102, round: 3, name: '熔岩鐵衛', subtitle: '烈焰重裝兵',
     color: '#c0392b', shape: 'square', maxHp: 5500, maxMana: 999, speed: 140,
     baseHp: 5500,
+    deathVfx: 'boss_juggernaut_death',
     appearance: {
       size: '巨大 (約玩家 2.2 倍)，厚重',
       style: '黑鐵全身重甲，甲縫間透出熔岩裂縫的橘紅光，左手巨盾、右手熔岩大劍。配色：玄鐵黑 #2b2b30 + 熔岩橘 #ff5a1f + 餘燼紅。',
@@ -68,4 +70,4 @@ const data = {
     ultimate: { name: '熔岩噴發', type: 'zone', range: 130, radius: 120, dmg: 55, lifetime: 4, tick: 0.5, delay: 0.9, count: 7, scatter: 280, stagger: 0.12, effect: BURN(14, 3), cd: 16, windup: 1.0, telegraph: 'circle', color: '#ff5a1f', vfx: 'boss_juggernaut_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

@@ -2,11 +2,13 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { loadVfx } from './vfx.ts';
 
 const data = {
     id: 100, round: 1, name: '巨木傀儡', subtitle: '森林守護者',
     color: '#6b8e23', shape: 'square', maxHp: 3500, maxMana: 999, speed: 110,
     baseHp: 3500,
+    deathVfx: 'boss_golem_death',
     appearance: {
       size: '巨大 (約玩家 2.2 倍)',
       style: '木石魔像，覆滿樹皮與苔蘚的軀幹，胸口嵌一顆持續發光的綠色生命核心，雙臂是粗壯的樹幹。配色：樹皮褐 #6b4a2b + 苔綠 #6b8e23 + 核心翠光。',
@@ -57,4 +59,4 @@ const data = {
     ultimate: { name: '森羅旋掃', type: 'zone', range: 0, radius: 200, dmg: 90, lifetime: 0.5, tick: 0.5, knockback: 360, effect: STUN(0.6), cd: 16, windup: 1.2, telegraph: 'circle', color: '#a6d749', vfx: 'boss_golem_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

@@ -2,11 +2,13 @@ import { BaseBoss } from '../BaseBoss.ts';
 import { BURN, STUN, SLOW, ROOT, CHILL } from '../effects.js';
 import { aiProfile } from './ai.ts';
 import { modelConfig, buildModel } from './model.ts';
+import { loadVfx } from './vfx.ts';
 
 const data = {
     id: 104, round: 5, name: '廢墟古代巨兵', subtitle: '機關核心',
     color: '#95a5a6', shape: 'square', maxHp: 6000, maxMana: 999, speed: 90,
     baseHp: 6000,
+    deathVfx: 'boss_titan_death',
     appearance: {
       size: '極巨大 (約玩家 3 倍，全場最大)',
       style: '石與金屬構成的遠古守護巨像，覆滿苔蘚與廢墟碎石，胸口符文核心發藍光。左臂為藍光雷射砲、右臂為火星四濺的旋轉巨鋸。配色：石灰 #95a5a6 + 金屬銅 #b08d57 + 符文藍 #49d0ff。',
@@ -62,4 +64,4 @@ const data = {
     ultimate: { name: '核心過載', type: 'zone', range: 0, radius: 260, dmg: 70, lifetime: 0.6, tick: 0.6, delay: 1.2, knockback: 300, effect: STUN(0.6), requiresPartsDown: true, cd: 18, windup: 1.2, telegraph: 'circle', color: '#9fe8ff', vfx: 'boss_titan_ult' },
   };
 
-export default new BaseBoss(data, { aiProfile, modelConfig, buildModel });
+export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, loadVfx });
