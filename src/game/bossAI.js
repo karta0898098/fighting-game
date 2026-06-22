@@ -20,6 +20,7 @@ import { isEnemy } from './entities/team.ts';
 import { dangerColor } from './bosses/danger.ts';
 import { getCharacter } from './characters.js';
 import { getBoss } from './bosses.js';
+import { prepareBossAction } from './bosses/actions.ts';
 
 function mkInput() {
   return { up: false, down: false, left: false, right: false, basic: false, skill1: false, skill2: false, ultimate: false, aim: null };
@@ -66,6 +67,7 @@ function startWindup(state, ent, slot, a, target, customWindup = null) {
   s.slot = slot;
 
   let rawWindup = customWindup != null ? customWindup : (a.windup != null ? a.windup : 0.5);
+  if (ent.phaseIdx >= 2 && a.finalPhaseWindup != null) rawWindup = a.finalPhaseWindup;
   if (ent.isBoss) {
     rawWindup = Math.max(ent.desperation ? 0.4 : 1.5, rawWindup);
   }
@@ -86,6 +88,8 @@ function startWindup(state, ent, slot, a, target, customWindup = null) {
   s.preselectedSoulBindPairs = null;
   s.stolenUltimate = null;
   s.safeLeft = null;
+
+  prepareBossAction(state, ent, a, {});
 
   if (a.type === 'zone' && (a.count || 1) > 1) {
     const ang = s.aimAng;
@@ -572,7 +576,9 @@ function computeProfileInput(profile, state, ent, dt) {
       const hasChainNext = s.chainQueue && s.chainQueue.length > 0;
       const heavy = !hasChainNext && (s.slot === 'ultimate' || (a.dmg || 0) >= 70 || (a.radius || 0) >= 180);
       const med = !hasChainNext && ((a.dmg || 0) >= 40 || (a.radius || 0) >= 120);
-      if (hasChainNext) {
+      if (a.recover != null) {
+        s.recoverT = a.recover;
+      } else if (hasChainNext) {
         const nextChain = s.chainQueue[0];
         s.recoverT = nextChain.delay != null ? nextChain.delay : 0.25;
       } else if (ent.desperation) {

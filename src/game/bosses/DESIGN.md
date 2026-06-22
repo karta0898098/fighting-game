@@ -116,8 +116,10 @@ src/game/bosses/
 │   ├── action.ts             # apply_scramble, time_rewind
 ├── fallen-angel/             # R9 墮落天使
 │   ├── action.ts             # soul_bind, light_dark
-└── doppelganger/             # R10 鏡像魔人
-    ├── action.ts             # mirror_players, steal_ultimate
+├── doppelganger/             # R10 鏡像魔人
+│   ├── action.ts             # mirror_players, steal_ultimate
+└── time-devourer/            # R11 時間吞噬巨龍
+    ├── action.ts             # time_anchor_ritual
 ```
 
 ### 2.3 回合生命週期

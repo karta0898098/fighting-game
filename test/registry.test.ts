@@ -44,10 +44,10 @@ describe('action handler registry', () => {
 });
 
 describe('boss registry', () => {
-  it('provides 10 bosses, one per round 1..10', () => {
-    expect(BOSS_COUNT).toBe(10);
-    expect(BOSSES.length).toBe(10);
-    for (let round = 1; round <= 10; round++) {
+  it('provides 11 bosses, one per round 1..11', () => {
+    expect(BOSS_COUNT).toBe(11);
+    expect(BOSSES.length).toBe(11);
+    for (let round = 1; round <= 11; round++) {
       expect(getBossForRound(round), `boss for round ${round}`).toBeTruthy();
     }
   });
