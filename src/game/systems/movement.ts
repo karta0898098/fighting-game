@@ -5,7 +5,7 @@ import type { GameState, Player, Input } from '../types';
 
 // Boss 全域基底速度倍率：讓所有魔王比玩家略慢 (玩家可拉開距離 / 風箏)，
 // 但移動仍流暢不卡頓。recover 破綻期再額外減速。
-const BOSS_BASE_SPEED_MULT = 0.95;
+const BOSS_BASE_SPEED_MULT = 0.65;
 const BOSS_RECOVER_SPEED_MULT = 0.62;
 
 export function speedOf(p: Player): number {
@@ -28,7 +28,7 @@ export function speedOf(p: Player): number {
 
 // 加速度：起步 / 煞車的響應度 (越大越靈敏；玩家比 Boss 更敏捷)
 const PLAYER_ACCEL = 14;
-const BOSS_ACCEL = 9;
+const BOSS_ACCEL = 6;
 
 export function applyMovement(p: Player, input: Input, dt: number) {
   const rooted = !!p.effects.root;

@@ -68,10 +68,10 @@ const data = {
         ] },
     ],
 
-    basic: { name: '聖劍光弧', type: 'melee', dmg: 40, range: 140, arc: 1.4, knockback: 180, cd: 1.2, windup: 0.5, telegraph: 'arc', color: '#fff2b0', vfx: 'boss_angel_slash' },
-    skill1: { name: '靈魂綁定', type: 'soul_bind', count: 2, minGap: 200, dmg: 18, duration: 6, cd: 13, windup: 0.9, telegraph: 'self', color: '#d8b3ff', vfx: 'boss_angel_bind' },
-    skill2: { name: '審判光柱', type: 'zone', range: 150, radius: 110, dmg: 60, lifetime: 0.5, tick: 0.5, delay: 1.0, count: 3, scatter: 240, stagger: 0.2, cd: 10, windup: 1.0, telegraph: 'circle', color: '#fff7d6', vfx: 'boss_angel_judgment' },
-    ultimate: { name: '光暗審判', type: 'light_dark', dmg: 80, radius: 1200, cd: 19, windup: 1.4, telegraph: 'self', color: '#ffe9a8', vfx: 'boss_angel_ult' },
+    basic: { name: '聖劍光弧', type: 'melee', dmg: 40, range: 180, arc: 1.4, knockback: 180, cd: 1.6, windup: 0.5, telegraph: 'arc', color: '#fff2b0', vfx: 'boss_angel_slash' },
+    skill1: { name: '靈魂綁定', type: 'soul_bind', count: 2, minGap: 200, dmg: 18, duration: 6, cd: 15, windup: 0.9, telegraph: 'self', color: '#d8b3ff', vfx: 'boss_angel_bind' },
+    skill2: { name: '審判光柱', type: 'zone', range: 190, radius: 110, dmg: 60, lifetime: 0.5, tick: 0.5, delay: 1.0, count: 3, scatter: 240, stagger: 0.2, cd: 12, windup: 1.0, telegraph: 'circle', color: '#fff7d6', vfx: 'boss_angel_judgment' },
+    ultimate: { name: '光暗審判', type: 'light_dark', dmg: 80, radius: 1200, cd: 21, windup: 1.4, telegraph: 'self', color: '#ffe9a8', vfx: 'boss_angel_ult' },
   };
 
 export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

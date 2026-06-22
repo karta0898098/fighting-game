@@ -82,6 +82,7 @@ export interface Player {
 
   cd: CooldownBag;
   effects: EffectBag;
+  ccCooldown: Record<string, number>;
 
   // 進行中的腳本化動作狀態（由 actions/runtime.ts 接管移動）。makePlayer 一律初始化為
   // null，故為必填但可為 null/any（runtime 會塞入結構化狀態物件）。

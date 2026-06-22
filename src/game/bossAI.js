@@ -67,7 +67,7 @@ function startWindup(state, ent, slot, a, target, customWindup = null) {
 
   let rawWindup = customWindup != null ? customWindup : (a.windup != null ? a.windup : 0.5);
   if (ent.isBoss) {
-    rawWindup = Math.max(1.0, rawWindup);
+    rawWindup = Math.max(ent.desperation ? 0.4 : 1.5, rawWindup);
   }
   s.windupT = rawWindup;
   s.totalWindupT = rawWindup;
@@ -524,7 +524,7 @@ export function computeBossInput(state, ent, dt) {
   if (ent.isFake) return fakeInput(state, ent, dt, input);
 
   // 被暈：無法行動，取消起手
-  if (ent.effects && ent.effects.stun) { s.mode = 'idle'; s.slot = null; return input; }
+  if (ent.effects && ent.effects.stun) { s.mode = 'idle'; s.slot = null; s.idleDelayT = null; s.idleDelaySlot = null; return input; }
 
   const boss = ent.isBoss ? getBoss(ent.charId) : null;
   if (boss && typeof boss.computeInput === 'function') {
@@ -575,11 +575,13 @@ function computeProfileInput(profile, state, ent, dt) {
       if (hasChainNext) {
         const nextChain = s.chainQueue[0];
         s.recoverT = nextChain.delay != null ? nextChain.delay : 0.25;
+      } else if (ent.desperation) {
+        s.recoverT = 0.08 + Math.random() * 0.07;
       } else {
         // 破綻窗口：縮短時長 (避免長時間卡住感)；recover 期間 Boss 可走路但減速
-        s.recoverT = heavy ? 0.75 + Math.random() * 0.3
-                   : med   ? 0.5  + Math.random() * 0.2
-                   :         0.25 + Math.random() * 0.2;
+        s.recoverT = heavy ? 0.9 + Math.random() * 0.35
+                   : med   ? 0.6 + Math.random() * 0.25
+                   :         0.3 + Math.random() * 0.25;
       }
       s.recoverTotal = s.recoverT;
       s.mode = 'recover';
@@ -587,6 +589,7 @@ function computeProfileInput(profile, state, ent, dt) {
       ent.recoverMaxWindow = s.recoverT;
       ent.recoverHeavy = heavy;
       s.slot = null;
+      if (!hasChainNext) s.attackCount = (s.attackCount || 0) + 1;
     }
     return input;
   }
@@ -608,6 +611,13 @@ function computeProfileInput(profile, state, ent, dt) {
         ent.isCastingLockHpUlt = false;
         ent.ultLockInvincible = false;
       }
+      // 休息期：一般狀態每 2 招後強制停頓，給玩家喘息
+      if (!hasChainNext && !ent.desperation && s.attackCount >= 2) {
+        s.attackCount = 0;
+        s.pauseT = 1.5 + Math.random() * 1.0;
+        s.mode = 'pause';
+        return input;
+      }
       // 連段下一招：強制進入下一個 windup (不檢查 CD，連段強制執行)
       if (s.chainQueue && s.chainQueue.length) {
         const next = s.chainQueue.shift();
@@ -627,13 +637,47 @@ function computeProfileInput(profile, state, ent, dt) {
     return input;
   }
 
+  // ---- pause：一般狀態每 2 招後強制休息，只慢走不攻擊 ----
+  if (s.mode === 'pause') {
+    s.pauseT -= dt;
+    input.aim = aimAt(ent, target.x, target.y);
+    ent.recoverWindow = 0;
+    // 略為後退讓出空間，或原地徘徊
+    const want = prof.range || 80;
+    if (d < want * 0.6) moveAway(input, ent, target.x, target.y);
+    else if (d > want * 1.5) moveToward(input, ent, target.x, target.y, want);
+    if (s.pauseT <= 0) {
+      s.mode = 'idle';
+    }
+    return input;
+  }
+
   // ---- idle：挑一個就緒技能進入 windup，否則走位 ----
+  // 檢查是否在延遲計數中 (已有選定的技能但延遲倒數中)
+  if (s.idleDelayT != null && s.idleDelaySlot) {
+    const a2 = ch[s.idleDelaySlot];
+    if (a2 && (ent.cd[s.idleDelaySlot] || 0) <= 0) {
+      s.idleDelayT -= dt;
+      input.aim = aimAt(ent, target.x, target.y);
+      if (prof.kite && d < prof.kite) moveAway(input, ent, target.x, target.y);
+      else if (d > (prof.range || 80)) moveToward(input, ent, target.x, target.y, prof.range || 80);
+      if (s.idleDelayT <= 0) {
+        const slot = s.idleDelaySlot;
+        s.idleDelayT = null;
+        s.idleDelaySlot = null;
+        startWindup(state, ent, slot, ch[slot], target);
+      }
+      return input;
+    }
+    s.idleDelayT = null;
+    s.idleDelaySlot = null;
+  }
+
   let chosen = null;
   for (const slot of prof.slots) {
     const a = ch[slot];
     if (!a) continue;
     if ((ent.cd[slot] || 0) > 0) continue;
-    // 部位限制 (R5)：對應臂部已破壞則該技停用
     if (a.requiresPart && !partAlive(state, ent, a.requiresPart)) continue;
     if (a.requiresPartsDown && !allPartsDown(state, ent)) continue;
     if (a.once && s['_used_' + slot]) continue;
@@ -643,13 +687,35 @@ function computeProfileInput(profile, state, ent, dt) {
 
   if (chosen) {
     const a = ch[chosen];
-    startWindup(state, ent, chosen, a, target);
+    // Desperation 模式：跳過 idle 延遲，直接進入 windup
+    if (ent.desperation) {
+      startWindup(state, ent, chosen, a, target);
+      return input;
+    }
+    s.idleDelayT = 1.0 + Math.random() * 0.8;
+    s.idleDelaySlot = chosen;
+    input.aim = aimAt(ent, target.x, target.y);
+    if (prof.kite && d < prof.kite) moveAway(input, ent, target.x, target.y);
+    else if (d > (prof.range || 80)) moveToward(input, ent, target.x, target.y, prof.range || 80);
     return input;
   }
 
   // 無技能就緒 → 依理想距離走位 (近戰逼近 / 遠程風箏)
   input.aim = aimAt(ent, target.x, target.y);
   const want = prof.range || 80;
+  // 一般狀態：偶爾發呆不追擊，讓玩家有喘息空間
+  if (!ent.desperation) {
+    s._loiterT = (s._loiterT || 0) - dt;
+    if (s._loiterT <= 0) {
+      s._loiterT = 0.8 + Math.random() * 1.5;
+      s._loiter = Math.random() < 0.4;
+    }
+    if (s._loiter) {
+      // 發呆時偶爾後退讓出距離
+      if (d < want * 0.6) moveAway(input, ent, target.x, target.y);
+      return input;
+    }
+  }
   if (prof.kite && d < prof.kite) moveAway(input, ent, target.x, target.y);
   else if (d > want) moveToward(input, ent, target.x, target.y, want);
   else if (prof.kite) { /* 在理想射程內，原地 */ }

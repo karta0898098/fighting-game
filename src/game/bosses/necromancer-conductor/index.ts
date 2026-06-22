@@ -48,10 +48,10 @@ const data = {
         ] },
     ],
 
-    basic: { name: '靈魂彈', type: 'projectile', dmg: 26, speed: 480, radius: 12, lifetime: 1.6, count: 2, spread: 0.18, knockback: 40, cd: 1.0, windup: 0.4, telegraph: 'line', color: '#39ff88', vfx: 'boss_necro_bolt' },
-    skill1: { name: '亡者召集', type: 'summon_minions', count: 3, minionHp: 240, minionCharId: -2, minionName: '亡者殘影', cd: 12, windup: 0.8, telegraph: 'self', color: '#7d5fff', vfx: 'boss_necro_summon' },
-    skill2: { name: '亡靈護壁', type: 'buff', shield: 400, duration: 12, cd: 14, windup: 0.6, telegraph: 'self', color: '#b39dff', shieldPerMinion: 200, vfx: 'boss_necro_shield' },
-    ultimate: { name: '安魂彌撒', type: 'zone', range: 0, radius: 240, dmg: 28, lifetime: 4, tick: 0.5, follow: true, healPerMinion: 30, effect: SLOW(0.6, 0.6), cd: 18, windup: 1.0, telegraph: 'circle', color: '#9d7dff', vfx: 'boss_necro_ult' },
+    basic: { name: '靈魂彈', type: 'projectile', dmg: 26, speed: 480, radius: 12, lifetime: 1.6, count: 2, spread: 0.18, knockback: 40, cd: 1.4, windup: 0.4, telegraph: 'line', color: '#39ff88', vfx: 'boss_necro_bolt' },
+    skill1: { name: '亡者召集', type: 'summon_minions', count: 3, minionHp: 240, minionCharId: -2, minionName: '亡者殘影', cd: 14, windup: 0.8, telegraph: 'self', color: '#7d5fff', vfx: 'boss_necro_summon' },
+    skill2: { name: '亡靈護壁', type: 'buff', shield: 400, duration: 12, cd: 16, windup: 0.6, telegraph: 'self', color: '#b39dff', shieldPerMinion: 200, vfx: 'boss_necro_shield' },
+    ultimate: { name: '安魂彌撒', type: 'zone', range: 0, radius: 240, dmgPct: 0.03, lifetime: 4, tick: 0.5, follow: true, healPerMinion: 30, effect: SLOW(0.6, 0.6), cd: 20, windup: 1.0, telegraph: 'circle', color: '#9d7dff', vfx: 'boss_necro_ult' },
   };
 
 export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

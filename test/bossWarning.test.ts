@@ -4,33 +4,34 @@ import { computeBossInput } from '../src/game/bossAI.js';
 import { getCharacter } from '../src/game/characters.js';
 import { PLAYER_RADIUS } from '../src/game/constants.ts';
 
+function tickUntilWindup(state: any, boss: any, maxTicks = 100) {
+  for (let i = 0; i < maxTicks; i++) {
+    computeBossInput(state, boss, 0.033);
+    if (boss.aiState.mode === 'windup') {
+      computeBossInput(state, boss, 0.033);
+      return;
+    }
+  }
+}
+
 describe('boss warning indicators and windup time', () => {
   it('enforces windup time to be at least 1.0 second for any boss skill', () => {
-    // 1. Create a game state in boss mode
     const state = createInitialState([], {}, { mode: 'boss' });
-    
-    // 2. Spawn a player (target) and a boss (charId: 108, which is Fallen Angel)
     const player = makePlayer('player1', 'Hero', 0, 150, 150, 1);
     const boss = makeBoss('boss1', 108, 100, 100, 2, { isBoss: true });
-    
+
     state.players['player1'] = player;
     state.players['boss1'] = boss;
-    
-    // 3. Make the basic skill available (clear cooldown)
+
     boss.cd = { basic: 0, skill1: 99, skill2: 99, ultimate: 99, evade: 0 };
     boss.aiState = { mode: 'idle', slot: null };
-    
-    // 4. Compute boss input
-    computeBossInput(state, boss, 0.033);
-    computeBossInput(state, boss, 0.033);
-    
-    // 5. Verify the boss transitioned to windup and windupT is at least 1.0
+
+    tickUntilWindup(state, boss);
+
     expect(boss.aiState.mode).toBe('windup');
     expect(boss.aiState.slot).toBe('basic');
     expect(boss.aiState.totalWindupT).toBeGreaterThanOrEqual(1.0);
-    
-    // 6. Verify that the warning target coordinates and shape are accurate for melee
-    // For melee, center should be the boss itself, and shape should be 'arc'
+
     const fx = state.fx.find((f: any) => f.type === 'telegraph');
     expect(fx).toBeTruthy();
     expect(fx.x).toBe(boss.x);
@@ -42,29 +43,26 @@ describe('boss warning indicators and windup time', () => {
   it('calculates accurate projectile warning line', () => {
     const state = createInitialState([], {}, { mode: 'boss' });
     const player = makePlayer('player1', 'Hero', 0, 300, 100, 1);
-    // charId: 105 is Necromancer Conductor, basic is a projectile
     const boss = makeBoss('boss1', 105, 100, 100, 2, { isBoss: true });
-    
+
     state.players['player1'] = player;
     state.players['boss1'] = boss;
-    
+
     boss.cd = { basic: 0, skill1: 99, skill2: 99, ultimate: 99, evade: 0 };
     boss.aiState = { mode: 'idle', slot: null };
-    
-    computeBossInput(state, boss, 0.033);
-    computeBossInput(state, boss, 0.033);
-    
+
+    tickUntilWindup(state, boss);
+
     expect(boss.aiState.mode).toBe('windup');
     expect(boss.aiState.slot).toBe('basic');
     expect(boss.aiState.totalWindupT).toBeGreaterThanOrEqual(1.0);
-    
-    // For projectile, shape should be 'line', centered on boss
+
     const fx = state.fx.find((f: any) => f.type === 'telegraph');
     expect(fx).toBeTruthy();
     expect(fx.x).toBe(boss.x);
     expect(fx.y).toBe(boss.y);
     expect(fx.shape).toBe('line');
-    
+
     const basicDef = getCharacter(105).basic;
     const expectedRange = basicDef.range || (basicDef.speed * basicDef.lifetime);
     expect(fx.range).toBe(expectedRange + PLAYER_RADIUS);
@@ -75,27 +73,26 @@ describe('boss warning indicators and windup time', () => {
     const state = createInitialState([], {}, { mode: 'boss' });
     const player = makePlayer('player1', 'Hero', 0, 150, 150, 1);
     const boss = makeBoss('boss1', 108, 100, 100, 2, { isBoss: true });
-    
+
     state.players['player1'] = player;
     state.players['boss1'] = boss;
-    
+
     boss.cd = { basic: 0, skill1: 99, skill2: 99, ultimate: 99, evade: 0 };
     boss.aiState = { mode: 'idle', slot: null };
-    
-    // First frame initiates windup
-    computeBossInput(state, boss, 0.033);
-    
-    // Move the boss to a new position to simulate boss moving during windup
+
+    // Tick until entering windup
+    tickUntilWindup(state, boss);
+    expect(boss.aiState.mode).toBe('windup');
+
+    // Move the boss after windup started
     boss.x = 120;
     boss.y = 120;
-    
-    // Clear previous FX to isolate this frame's FX
+
     state.fx = [];
-    
-    // Second frame updates telegraph
-    computeBossInput(state, boss, 0.033);
-    
-    // Verify the warning indicator position moved with the boss
+
+    // Advance enough time for the telegraph gate to fire again
+    computeBossInput(state, boss, 0.28);
+
     const fx = state.fx.find((f: any) => f.type === 'telegraph');
     expect(fx).toBeTruthy();
     expect(fx.x).toBe(120);

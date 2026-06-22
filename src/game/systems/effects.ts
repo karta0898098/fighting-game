@@ -15,6 +15,14 @@ function dotLifesteal(state: GameState, srcId: EntityId | null | undefined, dmg:
 }
 
 export function tickStatusEffects(state: GameState, p: Player, dt: number) {
+  // 遞減 CC 冷卻
+  if (p.ccCooldown) {
+    for (const kind of Object.keys(p.ccCooldown)) {
+      p.ccCooldown[kind] -= dt;
+      if (p.ccCooldown[kind] <= 0) delete p.ccCooldown[kind];
+    }
+  }
+
   for (const kind of Object.keys(p.effects)) {
     const effect = p.effects[kind]!;
     effect.remaining -= dt;

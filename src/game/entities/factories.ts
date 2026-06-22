@@ -20,6 +20,7 @@ export function makePlayer(id: EntityId, name: string, charId: number, x: number
     cd: { basic: 0, skill1: 0, skill2: 0, ultimate: 0, evade: 0 },
     chargeState: null,
     effects: {},
+    ccCooldown: {},
     charge: null,
     leap: null,
     channel: null,
@@ -126,7 +127,7 @@ export function makeProjectile(owner: EntityId, x: number, y: number, vx: number
 export function makeZone(owner: EntityId, x: number, y: number, opt: Record<string, any>): Zone {
   return {
     id: uid(), owner, x, y,
-    radius: opt.radius, dmg: opt.dmg,
+    radius: opt.radius, dmg: opt.dmg, dmgPct: opt.dmgPct || 0,
     lifetime: opt.lifetime, tick: opt.tick, tickTimer: 0,
     delay: opt.delay || 0,
     effect: opt.effect || null, color: opt.color,

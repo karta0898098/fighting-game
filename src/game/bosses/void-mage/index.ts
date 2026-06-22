@@ -60,10 +60,10 @@ const data = {
         ] },
     ],
 
-    basic: { name: '虛空彈', type: 'projectile', dmg: 28, speed: 520, radius: 14, lifetime: 1.6, count: 3, spread: 0.4, knockback: 50, cd: 1.0, windup: 0.4, telegraph: 'line', color: '#c39bff', vfx: 'boss_void_bolt' },
-    skill1: { name: '混沌符咒', type: 'apply_scramble', radius: 320, duration: 2.4, cd: 9, windup: 0.8, telegraph: 'circle', color: '#b14fd8', vfx: 'boss_void_scramble' },
-    skill2: { name: '奇點黑洞', type: 'zone', range: 140, radius: 200, dmg: 30, lifetime: 2.4, tick: 0.4, delay: 0.6, pull: 360, effect: SLOW(1.0, 0.5), cd: 11, windup: 0.7, telegraph: 'circle', color: '#5b2c8e', swapHit: true, vfx: 'boss_void_blackhole' },
-    ultimate: { name: '時光倒流', type: 'time_rewind', rewindSeconds: 3.0, dmg: 90, radius: 150, cd: 18, windup: 1.2, telegraph: 'circle', color: '#a06cff', vfx: 'boss_void_ult' },
+    basic: { name: '虛空彈', type: 'projectile', dmg: 28, speed: 520, radius: 14, lifetime: 1.6, count: 3, spread: 0.4, knockback: 50, cd: 1.4, windup: 0.4, telegraph: 'line', color: '#c39bff', vfx: 'boss_void_bolt' },
+    skill1: { name: '混沌符咒', type: 'apply_scramble', radius: 320, duration: 2.4, cd: 11, windup: 0.8, telegraph: 'circle', color: '#b14fd8', vfx: 'boss_void_scramble' },
+    skill2: { name: '奇點黑洞', type: 'zone', range: 180, radius: 200, dmg: 30, lifetime: 2.4, tick: 0.4, delay: 0.6, pull: 360, effect: SLOW(1.0, 0.5), cd: 13, windup: 0.7, telegraph: 'circle', color: '#5b2c8e', swapHit: true, vfx: 'boss_void_blackhole' },
+    ultimate: { name: '時光倒流', type: 'time_rewind', rewindSeconds: 3.0, dmg: 90, radius: 150, cd: 20, windup: 1.2, telegraph: 'circle', color: '#a06cff', vfx: 'boss_void_ult' },
   };
 
 export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

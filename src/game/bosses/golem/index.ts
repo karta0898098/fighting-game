@@ -52,11 +52,11 @@ const data = {
         ] },
     ],
 
-    basic: { name: '橫掃巨臂', type: 'melee', dmg: 45, range: 130, arc: 1.5, knockback: 240, cd: 1.6, windup: 0.8, telegraph: 'arc', color: '#8fbf3f', vfx: 'boss_golem_sweep',
+    basic: { name: '橫掃巨臂', type: 'melee', dmg: 45, range: 170, arc: 1.5, knockback: 240, cd: 2.2, windup: 0.8, telegraph: 'arc', color: '#8fbf3f', vfx: 'boss_golem_sweep',
       chain: [{ slot: 'skill1', windup: 0.5, delay: 0.25 }] },
-    skill1: { name: '巨力砸地', type: 'zone', range: 120, radius: 130, dmg: 70, lifetime: 0.4, tick: 0.4, delay: 1.0, knockback: 200, effect: STUN(0.5), cd: 7, windup: 1.0, telegraph: 'circle', color: '#7a5a2b', vfx: 'boss_golem_slam' },
-    skill2: { name: '纏根束縛', type: 'zone', range: 0, radius: 200, dmg: 24, lifetime: 1.2, tick: 0.5, pull: 200, effect: ROOT(1.2), cd: 11, windup: 0.7, telegraph: 'circle', color: '#4e7a2f', vfx: 'boss_golem_roots' },
-    ultimate: { name: '森羅旋掃', type: 'zone', range: 0, radius: 200, dmg: 90, lifetime: 0.5, tick: 0.5, knockback: 360, effect: STUN(0.6), cd: 16, windup: 1.2, telegraph: 'circle', color: '#a6d749', vfx: 'boss_golem_ult' },
+    skill1: { name: '巨力砸地', type: 'zone', range: 160, radius: 130, dmg: 70, lifetime: 0.4, tick: 0.4, delay: 1.0, knockback: 200, effect: STUN(0.5), cd: 9, windup: 1.0, telegraph: 'circle', color: '#7a5a2b', vfx: 'boss_golem_slam' },
+    skill2: { name: '纏根束縛', type: 'zone', range: 0, radius: 200, dmgPct: 0.025, lifetime: 1.2, tick: 0.5, pull: 200, effect: ROOT(1.2), cd: 13, windup: 0.7, telegraph: 'circle', color: '#4e7a2f', vfx: 'boss_golem_roots' },
+    ultimate: { name: '森羅旋掃', type: 'zone', range: 0, radius: 200, dmg: 90, lifetime: 0.5, tick: 0.5, knockback: 360, effect: STUN(0.6), cd: 19, windup: 1.2, telegraph: 'circle', color: '#a6d749', vfx: 'boss_golem_ult' },
   };
 
 export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

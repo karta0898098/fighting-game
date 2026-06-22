@@ -1,6 +1,6 @@
 export const aiProfile = {
-  range: 360,
+  range: 400,
   slots: ['ultimate', 'skill1', 'skill2', 'basic'],
   pickTarget: 'nearestTarget',
-  kite: 280,
+  kite: 320,
 } as const;

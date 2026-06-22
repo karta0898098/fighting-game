@@ -1,5 +1,5 @@
 export const aiProfile = {
-  range: 70,
+  range: 100,
   slots: ['ultimate', 'skill1', 'skill2', 'basic'],
   pickTarget: 'aggroSwap',
 } as const;

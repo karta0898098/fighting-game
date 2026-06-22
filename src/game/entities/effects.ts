@@ -147,6 +147,14 @@ export function applyEffect(p: Player, kind: EffectKind, data?: any, srcId?: Ent
   if (p.isBoss && p.ultLockInvincible && EFFECT_DEFS[kind]?.cleanseable) {
     return;
   }
+  // CC 冷卻：被控後同類型一段時間內免疫，雙向都適用
+  const CC_TYPES = ['stun', 'root', 'scramble'];
+  const CC_CD: Record<string, number> = { stun: 4, root: 4, scramble: 6 };
+  if (CC_TYPES.includes(kind)) {
+    const cd = p.ccCooldown?.[kind] || 0;
+    if (cd > 0) return;
+    p.ccCooldown[kind] = CC_CD[kind];
+  }
   const def = EFFECT_DEFS[kind];
   (def && def.apply ? def.apply : genericApply)(p, kind, data || {}, srcId);
 }

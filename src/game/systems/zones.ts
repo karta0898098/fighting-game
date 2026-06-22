@@ -55,7 +55,10 @@ export function updateZones(state: GameState, dt: number) {
         if (!o.alive) continue;
         if (dist(zone.x, zone.y, o.x, o.y) > zone.radius + bodyR(o)) continue;
         if (isEnemy(state, zone.owner, o)) {
-          if (zone.dmg) dealDamage(state, o, zone.dmg, zone.owner);
+          if (zone.dmg || zone.dmgPct) {
+            const dmg = zone.dmgPct ? Math.max(1, Math.round(o.maxHp * zone.dmgPct)) : zone.dmg;
+            dealDamage(state, o, dmg, zone.owner);
+          }
           if (zone.effect) applyEffectFrom(state, o, zone.effect, zone.owner);
           if (zone.effects) for (const e of zone.effects) applyEffectFrom(state, o, e, zone.owner);
           if (zone.knockback) {
