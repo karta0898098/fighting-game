@@ -121,7 +121,7 @@ export function dealDamage(
   const attacker = state.players[attackerId];
   const hostile = attacker && attacker.id !== target.id && attacker.alive;
   if (hostile) attacker.ult = Math.min(ULT_MAX, (attacker.ult || 0) + amount * ULT_GAIN_DEAL);
-  if (state.flags && state.flags.noDamage) return;
+  if (state.flags && state.flags.noDamage && !target.isBoss) return;
 
   let dmg = amount;
   if (state.mode === 'boss' && (target.isMinion || target.isSummon) && target.ownerId) {
@@ -190,7 +190,9 @@ export function dealDamage(
       dmg = Math.max(0, target.hp - threshold);
       target.ultLockTriggered = true;
       target.ultLockInvincible = true;
+      target.ultLockInvincibleTimer = 5;
       target.isCastingLockHpUlt = true;
+      target.desperation = true;
 
       // Cleanse all status effects/debuffs
       applyEffect(target, 'cleanse');

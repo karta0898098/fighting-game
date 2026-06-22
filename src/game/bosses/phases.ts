@@ -36,6 +36,13 @@ export function tickBossPhases(state: any, dt: number) {
   for (const o of Object.values(state.players) as any[]) {
     if (!o.isBoss || !o.alive) continue;
     if (o.phaseIframe > 0) o.phaseIframe = Math.max(0, o.phaseIframe - dt);
+    if (o.ultLockInvincibleTimer > 0) {
+      o.ultLockInvincibleTimer -= dt;
+      if (o.ultLockInvincibleTimer <= 0) {
+        o.ultLockInvincible = false;
+        o.ultLockInvincibleTimer = 0;
+      }
+    }
     const phases = getBossPhases(o);
     if (!phases || !phases.length) continue;
     const hpRatio = o.maxHp > 0 ? o.hp / o.maxHp : 1;

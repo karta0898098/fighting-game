@@ -1,6 +1,3 @@
-// Boss 20% 鎖血奧義：一次性爆發 + 持續金紅氣焰。
-// 僅保存本地視覺狀態，不修改 simulation snapshot。
-
 import * as THREE from 'three';
 import { sceneX, sceneZ } from './coords.js';
 
@@ -8,6 +5,9 @@ const GOLD = 0xffb52e;
 const HOT = 0xff4d28;
 const PALE = 0xfff1b0;
 const CYAN = 0x83f4ff;
+const DIM = 0x442200;
+const DIM_HOT = 0x661a0a;
+const DIM_GOLD = 0x553311;
 
 function additive(color, opacity, side = THREE.DoubleSide) {
   return new THREE.MeshBasicMaterial({
@@ -41,7 +41,6 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
     const group = new THREE.Group();
     group.renderOrder = 8;
 
-    // 三層倒錐形成清楚的白熱核心與外焰輪廓，遠鏡頭下仍可辨識。
     const outerMat = additive(HOT, 0.18);
     const outer = new THREE.Mesh(new THREE.ConeGeometry(radius * 1.75, height, 20, 1, true), outerMat);
     outer.position.y = height * 0.5;
@@ -73,7 +72,6 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
       rings.push(mesh);
     }
 
-    // 地面放射線讓力量看起來影響整個場地，而不是只黏在角色身上。
     const rays = new THREE.Group();
     const rayMat = additive(GOLD, 0.28);
     for (let i = 0; i < 12; i++) {
@@ -95,34 +93,92 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
 
     return {
       group, outer, flame, core, ground, rings, rays, lightning, light,
+      outerMat, flameMat, coreMat, groundMat, rayMat,
       radius, height, scale, age: 0, emitAcc: 0, boltAcc: 0, shakeAcc: 0,
     };
   }
 
-  function rebuildLightning(e) {
+  function rebuildLightning(e, invincible) {
     disposeObject(e.lightning);
     e.lightning.clear();
-    const boltCount = 2 + Math.floor(Math.random() * 2);
+    const boltCount = invincible ? (5 + Math.floor(Math.random() * 3)) : (2 + Math.floor(Math.random() * 2));
+    const mainColor = invincible ? 0x88ddff : 0xff7722;
+    const glowColor = invincible ? 0xccf0ff : 0xff9933;
+    const baseR = e.radius * 0.4;
+    const topR = e.radius * 1.2;
+    const maxY = e.height * (invincible ? 0.8 : 0.6);
+    const thick = e.radius * (invincible ? 0.18 : 0.10);
     for (let b = 0; b < boltCount; b++) {
-      const points = [];
       const angle = Math.random() * Math.PI * 2;
-      const reach = e.radius * (1.5 + Math.random() * 1.7);
-      const segments = 6;
+      const segments = 8 + Math.floor(Math.random() * 4);
+      const curve = (Math.random() - 0.5) * 1.0;
+      const mainPoints = [];
       for (let i = 0; i <= segments; i++) {
         const t = i / segments;
-        const jitter = (Math.random() - 0.5) * e.radius * 0.75;
-        points.push(new THREE.Vector3(
-          Math.cos(angle) * reach * t + Math.cos(angle + Math.PI / 2) * jitter,
-          e.height * (0.16 + t * 0.68),
-          Math.sin(angle) * reach * t + Math.sin(angle + Math.PI / 2) * jitter,
-        ));
+        const yLerp = t * maxY;
+        const spread = baseR + (topR - baseR) * t;
+        const jitter = (Math.random() - 0.5) * e.radius * (0.8 - t * 0.3);
+        const radial = spread + Math.sin(t * Math.PI) * curve * e.radius * 0.3 + jitter;
+        const x = Math.cos(angle + t * curve) * radial;
+        const z = Math.sin(angle + t * curve) * radial;
+        mainPoints.push(new THREE.Vector3(x, yLerp, z));
       }
-      const geo = new THREE.BufferGeometry().setFromPoints(points);
-      const mat = new THREE.LineBasicMaterial({
-        color: Math.random() < 0.7 ? CYAN : PALE,
-        transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false,
-      });
-      e.lightning.add(new THREE.Line(geo, mat));
+      const offsets = [-1.5, -0.7, 0, 0.7, 1.5];
+      for (let oi = 0; oi < offsets.length; oi++) {
+        const off = offsets[oi] * thick;
+        const offsetPoints = [];
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const prev = mainPoints[Math.max(0, i - 1)];
+          const next = mainPoints[Math.min(segments, i + 1)];
+          const dx = next.x - prev.x;
+          const dz = next.z - prev.z;
+          const len = Math.hypot(dx, dz) || 1;
+          const nx = -dz / len;
+          const nz = dx / len;
+          offsetPoints.push(new THREE.Vector3(
+            mainPoints[i].x + nx * off,
+            mainPoints[i].y,
+            mainPoints[i].z + nz * off,
+          ));
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(offsetPoints);
+        const mat = new THREE.LineBasicMaterial({
+          color: oi === 2 ? 0xffffff : mainColor,
+          transparent: true,
+          opacity: oi === 2 ? (invincible ? 0.95 : 0.7) : (invincible ? 0.35 : 0.20),
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        e.lightning.add(new THREE.Line(geo, mat));
+      }
+      const branchCount = 1 + Math.floor(Math.random() * 2);
+      for (let br = 0; br < branchCount; br++) {
+        const splitIdx = 3 + Math.floor(Math.random() * (segments - 4));
+        const tSplit = splitIdx / segments;
+        const startP = mainPoints[splitIdx];
+        const outAng = angle + tSplit * curve + (Math.random() - 0.5) * 0.6;
+        const branchLen = e.radius * (0.4 + Math.random() * 0.8);
+        const branchSegs = 4 + Math.floor(Math.random() * 2);
+        const branchPoints = [new THREE.Vector3(startP.x, startP.y, startP.z)];
+        for (let i = 1; i <= branchSegs; i++) {
+          const t = i / branchSegs;
+          const yOff = t * maxY * 0.3;
+          const jitter = (Math.random() - 0.5) * e.radius * 0.25;
+          const out = branchLen * t;
+          branchPoints.push(new THREE.Vector3(
+            startP.x + Math.cos(outAng) * out + Math.cos(outAng + Math.PI / 2) * jitter,
+            startP.y + yOff,
+            startP.z + Math.sin(outAng) * out + Math.sin(outAng + Math.PI / 2) * jitter,
+          ));
+        }
+        const bGeo = new THREE.BufferGeometry().setFromPoints(branchPoints);
+        const bMat = new THREE.LineBasicMaterial({
+          color: glowColor,
+          transparent: true, opacity: 0.25 + Math.random() * 0.15,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        e.lightning.add(new THREE.Line(bGeo, bMat));
+      }
     }
   }
 
@@ -140,7 +196,6 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
     addShockwave(e.group.position.x, e.group.position.z, e.radius * 12, HOT, 0.09);
     sceneMgr.addFlash(0.72, '#fff3c4');
     sceneMgr.addShake(34);
-    // 爆發粒子有固定上限，不隨螢幕更新率增加。
     for (let i = 0; i < 100; i++) {
       const a = Math.random() * Math.PI * 2;
       const speed = 150 + Math.random() * 360;
@@ -154,7 +209,7 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
     }
   }
 
-  function spawnFlowParticle(e) {
+  function spawnFlowParticle(e, invincible) {
     const a = Math.random() * Math.PI * 2;
     const rr = e.radius * (0.25 + Math.random() * 1.35);
     particles.spawn({
@@ -165,51 +220,87 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
       vy: 115 + Math.random() * 190,
       vz: Math.sin(a) * (18 + Math.random() * 40),
       gravity: -26, drag: 1.0, life: 0.42 + Math.random() * 0.42,
-      size: 6 + Math.random() * 12,
-      color: Math.random() < 0.18 ? '#ffffff' : Math.random() < 0.36 ? '#ff5533' : '#ffc247', fade: true,
+      size: invincible ? (6 + Math.random() * 12) : (3 + Math.random() * 6),
+      color: invincible
+        ? (Math.random() < 0.18 ? '#ffffff' : Math.random() < 0.36 ? '#ff5533' : '#ffc247')
+        : '#884422',
+      fade: true,
     });
   }
 
   function updateEntry(e, p, dt) {
+    const invincible = p.ultLockInvincible;
     e.age += dt;
     e.group.position.set(sceneX(p.x), 0, sceneZ(p.y));
+
+    if (invincible) {
+      e.outerMat.color.setHex(HOT);
+      e.outerMat.opacity = 0.18;
+      e.flameMat.color.setHex(GOLD);
+      e.flameMat.opacity = 0.30;
+      e.coreMat.color.setHex(PALE);
+      e.coreMat.opacity = 0.38;
+      e.groundMat.color.setHex(HOT);
+      e.groundMat.opacity = 0.26;
+      e.rayMat.color.setHex(GOLD);
+      e.rayMat.opacity = 0.28;
+      e.light.color.setHex(GOLD);
+      e.light.intensity = 3.4 + (0.5 + 0.5 * Math.sin(e.age * 10)) * 2.2;
+    } else {
+      e.outerMat.color.setHex(DIM_HOT);
+      e.outerMat.opacity = 0.06;
+      e.flameMat.color.setHex(DIM_GOLD);
+      e.flameMat.opacity = 0.10;
+      e.coreMat.color.setHex(DIM);
+      e.coreMat.opacity = 0.10;
+      e.groundMat.color.setHex(DIM_HOT);
+      e.groundMat.opacity = 0.08;
+      e.rayMat.color.setHex(0x332200);
+      e.rayMat.opacity = 0.06;
+      e.light.color.setHex(0x553311);
+      e.light.intensity = 0.5;
+    }
+
     const pulse = 0.5 + 0.5 * Math.sin(e.age * 10);
     e.outer.scale.set(0.92 + pulse * 0.16, 0.96 + pulse * 0.08, 0.92 + pulse * 0.16);
     e.flame.scale.set(1.06 - pulse * 0.12, 0.94 + pulse * 0.14, 1.06 - pulse * 0.12);
     e.outer.rotation.y -= dt * 0.7;
     e.flame.rotation.y += dt * 1.2;
-    e.core.material.opacity = 0.27 + pulse * 0.18;
-    e.ground.material.opacity = 0.16 + pulse * 0.12;
+    e.core.material.opacity = (invincible ? 0.27 : 0.08) + pulse * (invincible ? 0.18 : 0.04);
+    e.ground.material.opacity = (invincible ? 0.16 : 0.05) + pulse * (invincible ? 0.12 : 0.03);
     e.rays.rotation.y += dt * 0.24;
-    e.rays.children[0].material.opacity = 0.18 + pulse * 0.13;
-    e.light.intensity = 3.4 + pulse * 2.2;
+    e.rays.children[0].material.opacity = (invincible ? 0.18 : 0.04) + pulse * (invincible ? 0.13 : 0.02);
+    e.light.intensity = invincible ? (3.4 + pulse * 2.2) : 0.5;
 
     for (let i = 0; i < e.rings.length; i++) {
       const phase = (e.age * 0.72 + i / e.rings.length) % 1;
       const ring = e.rings[i];
       ring.position.y = 5 + phase * e.height * 0.8;
       ring.scale.setScalar(0.45 + phase * 1.9);
-      ring.material.opacity = Math.sin(phase * Math.PI) * 0.65;
+      ring.material.opacity = Math.sin(phase * Math.PI) * (invincible ? 0.65 : 0.15);
       ring.rotation.z = e.age * (i % 2 ? -0.4 : 0.4);
     }
 
-    e.emitAcc += dt * 145;
+    e.lightning.visible = true;
+
+    const emitRate = invincible ? 145 : 35;
+    e.emitAcc += dt * emitRate;
     const available = Math.max(0, Math.floor(particles.capacity * 0.82 - particles.count));
-    const emit = Math.min(Math.floor(e.emitAcc), available, 14);
+    const emit = Math.min(Math.floor(e.emitAcc), available, invincible ? 14 : 4);
     e.emitAcc -= emit;
-    for (let i = 0; i < emit; i++) spawnFlowParticle(e);
+    for (let i = 0; i < emit; i++) spawnFlowParticle(e, invincible);
 
     e.boltAcc -= dt;
     if (e.boltAcc <= 0) {
-      rebuildLightning(e);
-      e.boltAcc = 0.08 + Math.random() * 0.12;
+      rebuildLightning(e, invincible);
+      e.boltAcc = invincible ? (0.08 + Math.random() * 0.12) : (0.25 + Math.random() * 0.2);
     }
-
-    // 低頻重拍取代逐幀累加震動，保留壓迫感也不影響走位判讀。
-    e.shakeAcc -= dt;
-    if (e.shakeAcc <= 0) {
-      sceneMgr.addShake(5.5);
-      e.shakeAcc = 0.28;
+    if (invincible) {
+      e.shakeAcc -= dt;
+      if (e.shakeAcc <= 0) {
+        sceneMgr.addShake(5.5);
+        e.shakeAcc = 0.28;
+      }
     }
   }
 
@@ -223,9 +314,11 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
 
   function sync(players, dt) {
     const active = new Set();
+    let hasInvincible = false;
     for (const p of Object.values(players || {})) {
-      if (!p.isBoss || !p.alive || !p.ultLockInvincible) continue;
+      if (!p.isBoss || !p.alive || !p.desperation) continue;
       active.add(p.id);
+      if (p.ultLockInvincible) hasInvincible = true;
       let e = entries.get(p.id);
       if (!e) {
         e = buildEntry(p);
@@ -236,6 +329,7 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
       updateEntry(e, p, dt);
     }
     for (const id of [...entries.keys()]) if (!active.has(id)) removeEntry(id);
+    overlay.style.opacity = hasInvincible ? '0.68' : '0';
 
     for (let i = transients.length - 1; i >= 0; i--) {
       const tr = transients[i];
@@ -251,8 +345,6 @@ export function createBossUltimateAura({ scene, particles, sceneMgr }) {
         transients.splice(i, 1);
       }
     }
-
-    overlay.style.opacity = entries.size ? '0.68' : '0';
   }
 
   function dispose() {

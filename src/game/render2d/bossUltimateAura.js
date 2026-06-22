@@ -1,8 +1,8 @@
 import { BODY_HEIGHT, CANVAS_H, CANVAS_W, TILT } from '../constants.js';
 
-// Canvas2D 備援版：和 3D 共用「瞬間爆發 + 持續氣焰」節奏。
 export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash }) {
   const entries = new Map();
+  let lastPlayers = null;
 
   function trigger(p) {
     const e = { age: 0, emitAcc: 0, shakeAcc: 0, boltAcc: 0, bolts: [], shockAge: 0 };
@@ -24,27 +24,60 @@ export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash })
     return e;
   }
 
-  function refreshBolts(e, r) {
+  function refreshBolts(e, r, invincible) {
     e.bolts = [];
-    for (let b = 0; b < 2 + Math.floor(Math.random() * 2); b++) {
-      const pts = [{ x: (Math.random() - 0.5) * r * 1.5, y: r * 1.5 }];
-      for (let i = 1; i <= 7; i++) {
-        pts.push({ x: (Math.random() - 0.5) * r * 5.5, y: r * 1.5 - i * r * 1.35 });
+    const boltCount = invincible ? (4 + Math.floor(Math.random() * 3)) : (2 + Math.floor(Math.random() * 2));
+    for (let b = 0; b < boltCount; b++) {
+      const pts = [];
+      const horzSpread = r * (invincible ? 3.0 : 1.8);
+      const vertHeight = r * (invincible ? 6 : 4);
+      const originX = (Math.random() - 0.5) * horzSpread * 0.5;
+      const originY = r * 1.0;
+      const totalSeg = 8 + Math.floor(Math.random() * 3);
+      const lean = (Math.random() - 0.5) * 0.4;
+      pts.push({ x: originX, y: originY });
+      for (let i = 1; i <= totalSeg; i++) {
+        const t = i / totalSeg;
+        const jitter = (Math.random() - 0.5) * horzSpread * Math.sin(t * Math.PI);
+        const flowX = originX + Math.sin(t * Math.PI * 0.8) * lean * horzSpread + jitter;
+        const flowY = originY - t * vertHeight;
+        pts.push({ x: flowX, y: flowY });
       }
-      e.bolts.push({ pts, cyan: Math.random() < 0.7 });
+      const branches = [];
+      const branchCount = 1 + Math.floor(Math.random() * 1);
+      for (let br = 0; br < branchCount; br++) {
+        const splitIdx = 3 + Math.floor(Math.random() * (totalSeg - 4));
+        const splitP = pts[splitIdx];
+        const branchPts = [{ x: splitP.x, y: splitP.y }];
+        const branchLean = lean + (Math.random() - 0.5) * 0.6;
+        const branchLen = r * (0.6 + Math.random() * 1.2);
+        for (let i = 1; i <= 4; i++) {
+          const t = i / 4;
+          const jitter = (Math.random() - 0.5) * r * 0.4;
+          branchPts.push({
+            x: splitP.x + Math.sin(branchLean) * branchLen * t + jitter,
+            y: splitP.y - t * r * 1.8 + (Math.random() - 0.5) * r * 0.2,
+          });
+        }
+        branches.push(branchPts);
+      }
+      e.bolts.push({ pts, branches, cyan: Math.random() < 0.7 });
     }
   }
 
   function sync(players, dt) {
+    lastPlayers = players;
     const active = new Set();
     for (const p of Object.values(players || {})) {
-      if (!p.isBoss || !p.alive || !p.ultLockInvincible) continue;
+      if (!p.isBoss || !p.alive || !p.desperation) continue;
       active.add(p.id);
       const e = entries.get(p.id) || trigger(p);
+      const invincible = p.ultLockInvincible;
       e.age += dt;
       e.shockAge += dt;
-      e.emitAcc += dt * 125;
-      const count = Math.min(10, Math.floor(e.emitAcc));
+      const emitRate = invincible ? 125 : 30;
+      e.emitAcc += dt * emitRate;
+      const count = Math.min(invincible ? 10 : 3, Math.floor(e.emitAcc));
       e.emitAcc -= count;
       for (let i = 0; i < count; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -55,15 +88,20 @@ export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash })
           vx: Math.cos(a) * (18 + Math.random() * 40),
           vy: Math.sin(a) * (18 + Math.random() * 40),
           vz: 115 + Math.random() * 180, gravity: -24, drag: 1.1,
-          life: 0.42 + Math.random() * 0.38, size: 4 + Math.random() * 8,
-          color: Math.random() < 0.18 ? '#ffffff' : Math.random() < 0.35 ? '#ff5533' : '#ffc247',
+          life: 0.42 + Math.random() * 0.38,
+          size: invincible ? (4 + Math.random() * 8) : (2 + Math.random() * 4),
+          color: invincible
+            ? (Math.random() < 0.18 ? '#ffffff' : Math.random() < 0.35 ? '#ff5533' : '#ffc247')
+            : '#884422',
           additive: true,
         });
       }
       e.boltAcc -= dt;
-      if (e.boltAcc <= 0) { refreshBolts(e, 20 * (p.scale || 1)); e.boltAcc = 0.09 + Math.random() * 0.1; }
-      e.shakeAcc -= dt;
-      if (e.shakeAcc <= 0) { addShake(7); e.shakeAcc = 0.3; }
+      if (e.boltAcc <= 0) { refreshBolts(e, 20 * (p.scale || 1), invincible); e.boltAcc = invincible ? (0.09 + Math.random() * 0.1) : (0.3 + Math.random() * 0.2); }
+      if (invincible) {
+        e.shakeAcc -= dt;
+        if (e.shakeAcc <= 0) { addShake(7); e.shakeAcc = 0.3; }
+      }
     }
     for (const id of [...entries.keys()]) if (!active.has(id)) entries.delete(id);
   }
@@ -71,12 +109,12 @@ export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash })
   function draw(p, bx, bodyCY, r) {
     const e = entries.get(p.id);
     if (!e) return;
+    const invincible = p.ultLockInvincible;
     const pulse = 0.5 + 0.5 * Math.sin(e.age * 10);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // 一次性雙層全場衝擊波。
-    if (e.shockAge < 0.72) {
+    if (invincible && e.shockAge < 0.72) {
       const t1 = Math.min(1, e.shockAge / 0.58);
       const t2 = Math.max(0, Math.min(1, (e.shockAge - 0.08) / 0.64));
       ctx.save(); ctx.translate(bx, bodyCY + r * 1.6); ctx.scale(1, TILT);
@@ -91,22 +129,38 @@ export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash })
       ctx.restore();
     }
 
+    const glowMult = invincible ? 1.0 : 0.3;
     const glow = ctx.createRadialGradient(bx, bodyCY, r * 0.5, bx, bodyCY, r * 11);
-    glow.addColorStop(0, 'rgba(255,255,235,.92)');
-    glow.addColorStop(0.22, 'rgba(255,194,71,.7)');
-    glow.addColorStop(0.58, 'rgba(255,69,35,.3)');
+    if (invincible) {
+      glow.addColorStop(0, 'rgba(255,255,235,.92)');
+      glow.addColorStop(0.22, 'rgba(255,194,71,.7)');
+      glow.addColorStop(0.58, 'rgba(255,69,35,.3)');
+    } else {
+      glow.addColorStop(0, `rgba(136,68,34,${0.92 * glowMult})`);
+      glow.addColorStop(0.22, `rgba(136,68,34,${0.7 * glowMult})`);
+      glow.addColorStop(0.58, `rgba(80,40,20,${0.3 * glowMult})`);
+    }
     glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glow;
     ctx.beginPath(); ctx.arc(bx, bodyCY, r * (9.5 + pulse * 1.5), 0, Math.PI * 2); ctx.fill();
 
-    // 火焰輪廓與白熱光柱，底部寬、頂部收束。
+    const colMult = invincible ? 1.0 : 0.25;
     const column = ctx.createLinearGradient(bx - r * 6, 0, bx + r * 6, 0);
-    column.addColorStop(0, 'rgba(255,65,30,0)');
-    column.addColorStop(0.22, 'rgba(255,80,30,.2)');
-    column.addColorStop(0.42, 'rgba(255,190,55,.42)');
-    column.addColorStop(0.5, 'rgba(255,255,225,.7)');
-    column.addColorStop(0.58, 'rgba(255,190,55,.42)');
-    column.addColorStop(0.78, 'rgba(255,80,30,.2)');
+    if (invincible) {
+      column.addColorStop(0, 'rgba(255,65,30,0)');
+      column.addColorStop(0.22, `rgba(255,80,30,${0.2 * colMult})`);
+      column.addColorStop(0.42, `rgba(255,190,55,${0.42 * colMult})`);
+      column.addColorStop(0.5, `rgba(255,255,225,${0.7 * colMult})`);
+      column.addColorStop(0.58, `rgba(255,190,55,${0.42 * colMult})`);
+      column.addColorStop(0.78, `rgba(255,80,30,${0.2 * colMult})`);
+    } else {
+      column.addColorStop(0, 'rgba(100,40,20,0)');
+      column.addColorStop(0.22, `rgba(100,40,20,${0.2 * colMult})`);
+      column.addColorStop(0.42, `rgba(100,50,25,${0.42 * colMult})`);
+      column.addColorStop(0.5, `rgba(160,80,40,${0.7 * colMult})`);
+      column.addColorStop(0.58, `rgba(100,50,25,${0.42 * colMult})`);
+      column.addColorStop(0.78, `rgba(100,40,20,${0.2 * colMult})`);
+    }
     column.addColorStop(1, 'rgba(255,65,30,0)');
     ctx.fillStyle = column;
     ctx.beginPath();
@@ -116,30 +170,66 @@ export function createBossUltimateAura2d({ ctx, particles, addShake, addFlash })
     ctx.lineTo(bx + r * (5.5 + pulse), bodyCY + r * 2);
     ctx.closePath(); ctx.fill();
 
-    ctx.shadowBlur = 18; ctx.shadowColor = '#ffd760'; ctx.lineWidth = 3.5;
-    for (let i = 0; i < 3; i++) {
-      const phase = (e.age * 0.72 + i / 3) % 1;
-      ctx.save();
-      ctx.translate(bx, bodyCY + r * 1.5 - phase * r * 9);
-      ctx.scale(1.7, 0.42);
-      ctx.strokeStyle = `rgba(255,245,190,${Math.sin(phase * Math.PI) * 0.7})`;
-      ctx.beginPath(); ctx.arc(0, 0, r * (0.8 + phase * 3.2), 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
+    if (invincible) {
+      ctx.shadowBlur = 18; ctx.shadowColor = '#ffd760'; ctx.lineWidth = 3.5;
+      for (let i = 0; i < 3; i++) {
+        const phase = (e.age * 0.72 + i / 3) % 1;
+        ctx.save();
+        ctx.translate(bx, bodyCY + r * 1.5 - phase * r * 9);
+        ctx.scale(1.7, 0.42);
+        ctx.strokeStyle = `rgba(255,245,190,${Math.sin(phase * Math.PI) * 0.7})`;
+        ctx.beginPath(); ctx.arc(0, 0, r * (0.8 + phase * 3.2), 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
     }
 
     for (const bolt of e.bolts) {
-      ctx.strokeStyle = bolt.cyan ? '#89f5ff' : '#fff3af';
-      ctx.shadowColor = bolt.cyan ? '#24d9ff' : '#ffb52e';
-      ctx.shadowBlur = 14; ctx.lineWidth = 3;
+      const col = invincible ? (bolt.cyan ? '#89f5ff' : '#fff3af') : '#ff6622';
+      const shd = invincible ? (bolt.cyan ? '#24d9ff' : '#ffb52e') : '#cc4400';
+      ctx.shadowBlur = invincible ? 18 : 8;
+      ctx.shadowColor = shd;
+      ctx.lineWidth = invincible ? 10 : 6;
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = invincible ? 0.4 : 0.25;
       ctx.beginPath();
       bolt.pts.forEach((pt, i) => i ? ctx.lineTo(bx + pt.x, bodyCY + pt.y) : ctx.moveTo(bx + pt.x, bodyCY + pt.y));
       ctx.stroke();
+      ctx.lineWidth = invincible ? 4 : 2.5;
+      ctx.strokeStyle = invincible ? '#ffffff' : '#ff8844';
+      ctx.shadowBlur = invincible ? 10 : 5;
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      bolt.pts.forEach((pt, i) => i ? ctx.lineTo(bx + pt.x, bodyCY + pt.y) : ctx.moveTo(bx + pt.x, bodyCY + pt.y));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      if (bolt.branches) {
+        for (const branch of bolt.branches) {
+          ctx.lineWidth = invincible ? 5 : 3;
+          ctx.strokeStyle = col;
+          ctx.shadowBlur = invincible ? 10 : 5;
+          ctx.globalAlpha = invincible ? 0.35 : 0.2;
+          ctx.beginPath();
+          branch.forEach((pt, i) => i ? ctx.lineTo(bx + pt.x, bodyCY + pt.y) : ctx.moveTo(bx + pt.x, bodyCY + pt.y));
+          ctx.stroke();
+          ctx.lineWidth = invincible ? 2 : 1.2;
+          ctx.strokeStyle = invincible ? '#ffffff' : '#ff8844';
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          branch.forEach((pt, i) => i ? ctx.lineTo(bx + pt.x, bodyCY + pt.y) : ctx.moveTo(bx + pt.x, bodyCY + pt.y));
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
     }
     ctx.restore();
   }
 
   function drawOverlay() {
-    if (!entries.size) return;
+    let hasInvincible = false;
+    for (const p of Object.values(lastPlayers || {})) {
+      if (p?.isBoss && p?.ultLockInvincible) { hasInvincible = true; break; }
+    }
+    if (!hasInvincible) return;
     const g = ctx.createRadialGradient(CANVAS_W * 0.5, CANVAS_H * 0.48, CANVAS_H * 0.12, CANVAS_W * 0.5, CANVAS_H * 0.48, CANVAS_W * 0.68);
     g.addColorStop(0, 'rgba(255,90,25,.04)');
     g.addColorStop(0.58, 'rgba(32,5,0,.10)');

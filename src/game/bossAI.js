@@ -609,7 +609,6 @@ function computeProfileInput(profile, state, ent, dt) {
       const hasChainNext = s.chainQueue && s.chainQueue.length > 0;
       if (!hasChainNext && ent.isCastingLockHpUlt) {
         ent.isCastingLockHpUlt = false;
-        ent.ultLockInvincible = false;
       }
       // 休息期：一般狀態每 2 招後強制停頓，給玩家喘息
       if (!hasChainNext && !ent.desperation && s.attackCount >= 2) {
