@@ -167,6 +167,12 @@ function telegraph(state, ent, action, dt) {
   const s = ent.aiState;
   const totalT = s.totalWindupT || Math.max(1.0, action.windup != null ? action.windup : 0.5);
   const progress = Math.max(0, Math.min(1, 1 - s.windupT / Math.max(0.001, totalT)));
+  // Some actions spawn delayed persistent zones that already render their own
+  // warning circles. Avoid duplicating them with short-lived telegraph meshes.
+  if (action.suppressWindupTelegraph) return;
+  // Time anchors have their own persistent renderer. A generic self circle at
+  // the boss is not safe and was easily mistaken for a valid standing point.
+  if (action.type === 'time_anchor_ritual') return;
   // 進度越高脈動越快 (0.22s → 0.08s)
   const interval = 0.22 - 0.14 * progress;
   s._tele = (s._tele || 0) - dt;

@@ -1,4 +1,4 @@
-import { ARENA } from '../constants.js';
+import { ARENA, PLAYER_RADIUS } from '../constants.js';
 import { addFx } from '../entities/fx.ts';
 
 const TEAM_PLAYER = 1;
@@ -7,20 +7,34 @@ function livingPlayers(state: any) {
   return Object.values(state.players).filter((p: any) => p.team === TEAM_PLAYER && p.alive) as any[];
 }
 
-function assignOccupants(state: any) {
+const OCCUPANCY_GRACE = 0.25;
+
+function assignOccupants(state: any, dt = 0) {
   const anchors = state.timeAnchors || [];
   const players = livingPlayers(state);
+  const byId = new Map(players.map((p: any) => [p.id, p]));
   const used = new Set<any>();
   for (const anchor of anchors) {
-    anchor.occupiedBy = null;
+    const previous = anchor.occupiedBy;
     let best = null;
     let bestDist = Infinity;
     for (const player of players) {
       if (used.has(player.id)) continue;
       const d = Math.hypot(player.x - anchor.x, player.y - anchor.y);
-      if (d <= anchor.radius && d < bestDist) { best = player; bestDist = d; }
+      if (d <= anchor.captureRadius && d < bestDist) { best = player; bestDist = d; }
     }
-    if (best) { anchor.occupiedBy = best.id; used.add(best.id); }
+    if (best) {
+      anchor.occupiedBy = best.id;
+      anchor.occupancyGrace = OCCUPANCY_GRACE;
+      used.add(best.id);
+    } else if (previous != null && byId.has(previous) && !used.has(previous) && (anchor.occupancyGrace || 0) > 0) {
+      anchor.occupiedBy = previous;
+      anchor.occupancyGrace = Math.max(0, anchor.occupancyGrace - dt);
+      used.add(previous);
+    } else {
+      anchor.occupiedBy = null;
+      anchor.occupancyGrace = 0;
+    }
   }
   return used.size;
 }
@@ -31,29 +45,40 @@ export function prepareTimeAnchorRitual(state: any, boss: any, action: any) {
   const cx = ARENA.width / 2;
   const cy = ARENA.height / 2;
   const orbit = Math.min(360, ARENA.height * 0.27);
-  const offset = -Math.PI / 2;
+  // Keep every anchor on the players' half of the arena. The old single-player
+  // position was directly beside the boss spawn, whose collision body pushed
+  // the player outside the capture radius just before resolution.
+  const angles = count === 1
+    ? [Math.PI / 2]
+    : Array.from({ length: count }, (_, i) => Math.PI * (0.1 + (0.8 * i) / (count - 1)));
   state.timeAnchors = Array.from({ length: count }, (_, i) => {
-    const angle = offset + (i / count) * Math.PI * 2;
+    const angle = angles[i];
     return {
       id: `time-anchor-${boss.id}-${i}`,
       ownerId: boss.id,
       x: cx + Math.cos(angle) * orbit,
       y: cy + Math.sin(angle) * orbit,
       radius: action.anchorRadius || 95,
-      color: i % 2 ? '#d06cff' : '#70e6ff',
+      captureRadius: (action.anchorRadius || 95) + PLAYER_RADIUS + 10,
+      color: '#70e6ff',
       occupiedBy: null,
+      occupancyGrace: 0,
+      progress: 0,
     };
   });
   state.timeAnchorRitual = {
     ownerId: boss.id,
     total: boss.phaseIdx >= 2 && action.finalPhaseWindup != null ? action.finalPhaseWindup : action.windup,
-    fxT: 0,
+    remaining: boss.phaseIdx >= 2 && action.finalPhaseWindup != null ? action.finalPhaseWindup : action.windup,
+    progress: 0,
+    occupied: 0,
+    required: count,
   };
 }
 
 export function resolveTimeAnchorRitual(state: any, boss: any) {
   const alive = livingPlayers(state);
-  const occupied = assignOccupants(state);
+  const occupied = assignOccupants(state, 0);
   const success = alive.length > 0 && occupied >= alive.length;
   if (success) {
     boss.ultLockInvincible = false;
@@ -83,25 +108,17 @@ export function tickTimeAnchors(state: any, dt: number) {
     state.timeAnchorRitual = null;
     return;
   }
-  const occupied = assignOccupants(state);
+  const occupied = assignOccupants(state, dt);
   const alive = livingPlayers(state).length;
-  ritual.fxT -= dt;
-  if (ritual.fxT <= 0) {
-    ritual.fxT = 0.12;
-    const remaining = Math.max(0, boss.aiState?.windupT || 0);
-    const progress = 1 - remaining / Math.max(0.001, ritual.total || 5);
-    for (const anchor of state.timeAnchors) {
-      addFx(state, {
-        type: 'telegraph', x: anchor.x, y: anchor.y,
-        color: anchor.occupiedBy ? '#7CFCB2' : anchor.color,
-        radius: anchor.radius, shape: 'circle', progress,
-        life: 0.2, danger: anchor.occupiedBy ? 'low' : 'lethal',
-      });
-    }
-    state.banner = {
-      text: `紀元終結 ${remaining.toFixed(1)}s`,
-      sub: `時間錨點 ${occupied}/${alive} — 每人各站一座`,
-      life: 0.25, kind: 'phase', color: occupied >= alive ? '#7CFCB2' : '#ff6b9f',
-    };
-  }
+  const remaining = Math.max(0, boss.aiState?.windupT || 0);
+  ritual.remaining = remaining;
+  ritual.progress = 1 - remaining / Math.max(0.001, ritual.total || 5);
+  ritual.occupied = occupied;
+  ritual.required = alive;
+  for (const anchor of state.timeAnchors) anchor.progress = ritual.progress;
+  state.banner = {
+    text: `紀元終結 ${remaining.toFixed(1)}s`,
+    sub: `時間錨點 ${occupied}/${alive} — 青色圈可站，變綠打勾才算成功`,
+    life: 0.25, kind: 'phase', color: occupied >= alive ? '#7CFCB2' : '#70e6ff',
+  };
 }

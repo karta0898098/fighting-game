@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 
-export const modelConfig = { bulk: 6.2, weapon: 'none', scale: 3.5, head: 'dragon', emissiveCore: '#d6b45f' };
+export const modelConfig = { bulk: 6.2, weapon: 'none', scale: 2.8, head: 'dragon', emissiveCore: '#d6b45f' };
 
 export function buildModel(ctx) {
   const { bulk, reg, mat, torsoW, torsoH, shoulderX, hipX, frontX, face, faceGroup, mkLimb } = ctx;

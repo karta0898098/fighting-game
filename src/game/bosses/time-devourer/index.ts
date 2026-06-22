@@ -10,7 +10,7 @@ const data = {
   color: '#d6b45f', shape: 'triangle', maxHp: 15000, baseHp: 15000, maxMana: 999, speed: 165,
   deathVfx: 'boss_time_dragon_death',
   appearance: {
-    size: '極巨大（約玩家 3.5 倍）',
+    size: '巨大（約玩家 2.8 倍）',
     style: '黑曜石龍軀包覆金色鐘盤胸腔，左翼流動時間青光、右翼燃燒終焉紫紅，尾端如巨大時針。',
     weapon: '時間龍息、時針尾刃與斷秒利爪',
     telegraph: '吐息前喉部鐘盤亮起；墜擊前地面浮現刻度；紀元終結時全場褪色並響起倒數鐘聲。',
@@ -34,8 +34,8 @@ const data = {
     decorations: ['crystal', 'pillar'],
     crystal: { count: 24, color: 0x70e6ff, glow: 0xd06cff, glowInt: 1.0 },
     pillar: { count: 12, color: 0x30263f },
-    atmosphere: { kind: 'stardust', color: '#d6b45f', rate: 36 },
-    floorDecal: { kind: 'arcane', color: '#d6b45f', opacity: 0.48, glow: 0.6 },
+    atmosphere: { kind: 'stardust', color: '#8d78b8', rate: 18 },
+    floorDecal: { kind: 'rings', color: '#34264d', opacity: 0.16, glow: 0.12 },
   },
   phases: [
     { hpPct: 0.7, name: '歷史重演', sub: '過去追上了現在', color: '#70e6ff', dmgMult: 1.2, speedMult: 1.05, cdMult: 0.85,
@@ -52,7 +52,7 @@ const data = {
   ],
   basic: { name: '斷秒爪', type: 'melee', dmg: 48, range: 210, arc: 1.4, knockback: 180, cd: 1.3, windup: 0.7, telegraph: 'arc', color: '#d6b45f', vfx: 'boss_time_claw' },
   skill1: { name: '歲蝕吐息', type: 'projectile', dmg: 24, speed: 560, radius: 16, lifetime: 1.7, count: 5, spread: 0.65, knockback: 70, effect: SLOW(1.5, 0.75), cd: 7, windup: 1.1, telegraph: 'line', color: '#70e6ff', vfx: 'boss_time_breath' },
-  skill2: { name: '時針墜落', type: 'zone', range: 260, radius: 100, dmg: 55, lifetime: 0.45, tick: 0.45, delay: 1.2, count: 4, scatter: 330, effect: ROOT(0.5), cd: 10, windup: 1.2, telegraph: 'circle', color: '#d06cff', vfx: 'boss_time_fall' },
+  skill2: { name: '時針墜落', type: 'zone', range: 260, radius: 100, dmg: 55, lifetime: 0.45, tick: 0.45, delay: 1.2, count: 4, scatter: 330, effect: ROOT(0.5), cd: 10, windup: 1.2, telegraph: 'circle', suppressWindupTelegraph: true, color: '#d06cff' },
   ultimate: { name: '紀元終結', type: 'time_anchor_ritual', cd: 26, windup: 5, finalPhaseWindup: 3.8, recover: 3, anchorRadius: 95, telegraph: 'self', color: '#ff6b9f', vfx: 'boss_time_ult' },
 };
 
