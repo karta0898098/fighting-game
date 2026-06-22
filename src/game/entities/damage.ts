@@ -331,17 +331,14 @@ export function dealDamage(
     recordKill(state, attackerId, target);
     recordDeath(state, target);
     if (target.effects && target.effects.weaken) spreadCurse(state, target);
-    const bossDown = target.isBoss && state.mode === 'boss';
-    const bossDeathVfx = bossDown ? getBoss(target.charId)?.data?.deathVfx : null;
-    // 一般死亡通用爆；Boss 有專屬死亡演出時改走下方 death+vfx，不重複（避免雙重死亡音效）
+    const bossDeathVfx = target.isBoss && state.mode === 'boss' ? getBoss(target.charId)?.data?.deathVfx : null;
     if (!bossDeathVfx) {
       addFx(state, { type: 'death', x: target.x, y: target.y, color: '#ffffff', life: 0.5, radius: PLAYER_RADIUS * 2 });
     }
     if (state.mode === 'boss' && (target.isMinion || target.isSummon)) {
       spawnDropFromMinion(state, target.x, target.y);
     }
-    // 闖關 Boss 擊破：全場慢動作 + 「BOSS DOWN」橫幅 + 專屬死亡演出（缺 deathVfx 時退回通用巨爆）
-    if (bossDown) {
+    if (target.isBoss && state.mode === 'boss') {
       state.timeFreeze = { scale: 0.3, remaining: 0.8 };
       state.banner = { text: 'BOSS DOWN', sub: target.name || '', life: 1.0, kind: 'phase', color: '#ffd166' };
       if (bossDeathVfx) {

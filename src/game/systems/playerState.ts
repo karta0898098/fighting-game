@@ -35,7 +35,7 @@ export function tickCooldowns(state: GameState, p: Player, talent: any, dt: numb
     }
     p.cd[slot] = Math.max(0, p.cd[slot] - dt * rate);
   }
-  if (state.flags && state.flags.noCooldown) {
+  if (state.flags && state.flags.noCooldown && !p.isBoss) {
     for (const slot of COOLDOWN_SLOTS) p.cd[slot] = 0;
   }
 }
