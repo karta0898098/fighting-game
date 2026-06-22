@@ -53,7 +53,7 @@ const data = {
   basic: { name: '斷秒爪', type: 'melee', dmg: 48, range: 210, arc: 1.4, knockback: 180, cd: 1.3, windup: 0.7, telegraph: 'arc', color: '#d6b45f', vfx: 'boss_time_claw' },
   skill1: { name: '歲蝕吐息', type: 'projectile', dmg: 24, speed: 560, radius: 16, lifetime: 1.7, count: 5, spread: 0.65, knockback: 70, effect: SLOW(1.5, 0.75), cd: 7, windup: 1.1, telegraph: 'line', color: '#70e6ff', vfx: 'boss_time_breath' },
   skill2: { name: '時針墜落', type: 'zone', range: 260, radius: 100, dmg: 55, lifetime: 0.45, tick: 0.45, delay: 1.2, count: 4, scatter: 330, effect: ROOT(0.5), cd: 10, windup: 1.2, telegraph: 'circle', suppressWindupTelegraph: true, color: '#d06cff' },
-  ultimate: { name: '紀元終結', type: 'time_anchor_ritual', cd: 26, windup: 5, finalPhaseWindup: 3.8, recover: 3, anchorRadius: 95, telegraph: 'self', color: '#ff6b9f', vfx: 'boss_time_ult' },
+  ultimate: { name: '紀元終結', type: 'time_anchor_ritual', cd: 26, windup: 5, finalPhaseWindup: 3.8, recover: 3, anchorRadius: 95, barrageDelay: 0.8, barrageInterval: 1.1, barrageCount: 3, barrageDmg: 20, telegraph: 'self', color: '#ff6b9f', vfx: 'boss_time_ult' },
 };
 
 export default new BaseBoss(data, { aiProfile, modelConfig, buildModel, buildWeapon, loadVfx });

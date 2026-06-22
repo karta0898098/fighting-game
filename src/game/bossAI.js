@@ -91,13 +91,16 @@ function startWindup(state, ent, slot, a, target, customWindup = null) {
 
   prepareBossAction(state, ent, a, {});
 
-  if (a.type === 'zone' && (a.count || 1) > 1) {
+  const phaseCount = Array.isArray(a.phaseCount)
+    ? (a.phaseCount[Math.min(ent.phaseIdx || 0, a.phaseCount.length - 1)] || a.count || 1)
+    : (a.count || 1);
+  if (a.type === 'zone' && phaseCount > 1) {
     const ang = s.aimAng;
     const cos = Math.cos(ang);
     const sin = Math.sin(ang);
     const baseX = clamp(ent.x + cos * (a.range || 0), PLAYER_RADIUS, ARENA.width - PLAYER_RADIUS);
     const baseY = clamp(ent.y + sin * (a.range || 0), PLAYER_RADIUS, ARENA.height - PLAYER_RADIUS);
-    const n = a.count;
+    const n = phaseCount;
     const scatter = a.scatter || 120;
     const zones = [];
     for (let i = 0; i < n; i++) {
@@ -193,7 +196,9 @@ function telegraph(state, ent, action, dt) {
   // 2. 如果是分裂畫面大招 (light_dark)
   if (action.type === 'light_dark') {
     const safeLeft = s.safeLeft !== null && s.safeLeft !== undefined ? s.safeLeft : true;
-    const tx = safeLeft ? ARENA.width / 2 : 0;
+    // Line telegraphs extend from x toward +X, so the left half starts at 0
+    // and the right half starts at the arena midpoint.
+    const tx = safeLeft ? 0 : ARENA.width / 2;
     const ty = ARENA.height / 2;
     const tr = ARENA.height / 2; // radius is half-width (800)
     const trange = ARENA.width / 2; // range is half-length (1200)

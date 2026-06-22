@@ -83,6 +83,40 @@ describe('Round 11 time anchors', () => {
     expect(state.timeAnchors.every((a: any) => typeof a.progress === 'number')).toBe(true);
   });
 
+  it('keeps attacking with lightweight projectiles during the ritual', () => {
+    const { state, boss } = setup(1);
+    boss.aiState = { slot: 'ultimate', windupT: 4 };
+    prepareTimeAnchorRitual(state, boss, {
+      windup: 5, anchorRadius: 95,
+      barrageDelay: 0.2, barrageInterval: 1.1, barrageCount: 3, barrageDmg: 20,
+    });
+    tickTimeAnchors(state, 0.21);
+    expect(state.projectiles).toHaveLength(3);
+    expect(state.projectiles.every((p: any) => p.owner === boss.id && p.dmg === 20)).toBe(true);
+    expect(state.fx).toHaveLength(0);
+  });
+
+  it('cancels all boss-owned attacks when the ritual starts', () => {
+    const { state, boss } = setup(1);
+    boss.chargeState = { slot: 'basic' };
+    boss.charge = { dist: 100 };
+    boss.leap = { t: 0 };
+    boss.channel = { remaining: 2 };
+    boss.kvx = 120; boss.kvy = -40;
+    state.projectiles = [{ id: 1, owner: boss.id }, { id: 2, owner: 'p0' }];
+    state.zones = [{ id: 3, owner: boss.id }, { id: 4, owner: 'p0' }];
+    state.temporalEchoes = [{ bossId: boss.id }, { bossId: 'other' }];
+    prepareTimeAnchorRitual(state, boss, { windup: 5, anchorRadius: 95 });
+    expect(boss.chargeState).toBeNull();
+    expect(boss.charge).toBeNull();
+    expect(boss.leap).toBeNull();
+    expect(boss.channel).toBeNull();
+    expect([boss.kvx, boss.kvy]).toEqual([0, 0]);
+    expect(state.projectiles.map((p: any) => p.owner)).toEqual(['p0']);
+    expect(state.zones.map((z: any) => z.owner)).toEqual(['p0']);
+    expect(state.temporalEchoes.map((e: any) => e.bossId)).toEqual(['other']);
+  });
+
   it('kills the living team when any required anchor is empty', () => {
     const { state, boss } = setup(2);
     prepareTimeAnchorRitual(state, boss, { windup: 5, anchorRadius: 95 });

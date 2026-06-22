@@ -118,8 +118,10 @@ src/game/bosses/
 │   ├── action.ts             # soul_bind, light_dark
 ├── doppelganger/             # R10 鏡像魔人
 │   ├── action.ts             # mirror_players, steal_ultimate
-└── time-devourer/            # R11 時間吞噬巨龍
-    ├── action.ts             # time_anchor_ritual
+├── time-devourer/            # R11 時間吞噬巨龍
+│   ├── action.ts             # time_anchor_ritual
+└── star-forge/               # R12 星爐鑄神
+    ├── index.ts, ai.ts, model.ts, vfx.ts
 ```
 
 ### 2.3 回合生命週期
@@ -557,8 +559,8 @@ mkdir src/game/bosses/<slug>
 
 | 欄位 | 慣例 | 說明 |
 |---|---|---|
-| `id` | 110+（依序遞增） | 唯一識別碼，>= 100 視為 Boss |
-| `round` | 11+（依序遞增） | 關卡數，決定出場順序 |
+| `id` | 111+（依序遞增） | 唯一識別碼，>= 100 視為 Boss |
+| `round` | 12+（依序遞增） | 關卡數，決定出場順序 |
 | `name` | 中文名稱 | UI 顯示名稱 |
 | `subtitle` | 四字稱號 | 副標題 |
 | `color` | Hex 主色 | UI/預警顏色 |

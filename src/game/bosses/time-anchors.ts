@@ -1,5 +1,6 @@
 import { ARENA, PLAYER_RADIUS } from '../constants.js';
 import { addFx } from '../entities/fx.ts';
+import { makeProjectile } from '../entities/factories.ts';
 
 const TEAM_PLAYER = 1;
 
@@ -40,6 +41,19 @@ function assignOccupants(state: any, dt = 0) {
 }
 
 export function prepareTimeAnchorRitual(state: any, boss: any, action: any) {
+  // The anchor ritual is a dedicated movement check. Cancel every offensive
+  // remnant owned by the boss so old projectiles, delayed zones, scripted
+  // movement, or temporal echoes cannot keep attacking during the countdown.
+  boss.chargeState = null;
+  boss.charge = null;
+  boss.leap = null;
+  boss.channel = null;
+  boss.trail = null;
+  boss.vx = 0; boss.vy = 0; boss.kvx = 0; boss.kvy = 0;
+  state.projectiles = (state.projectiles || []).filter((p: any) => p.owner !== boss.id);
+  state.zones = (state.zones || []).filter((z: any) => z.owner !== boss.id);
+  state.temporalEchoes = (state.temporalEchoes || []).filter((e: any) => e.bossId !== boss.id);
+
   const players = livingPlayers(state);
   const count = Math.max(1, Math.min(4, players.length));
   const cx = ARENA.width / 2;
@@ -73,7 +87,43 @@ export function prepareTimeAnchorRitual(state: any, boss: any, action: any) {
     progress: 0,
     occupied: 0,
     required: count,
+    attackTimer: action.barrageDelay || 0.8,
+    barrageInterval: action.barrageInterval || 1.1,
+    barrageCount: action.barrageCount || 3,
+    barrageDmg: action.barrageDmg || 20,
   };
+}
+
+function fireTimeBarrage(state: any, boss: any, ritual: any) {
+  const targets = livingPlayers(state);
+  if (!targets.length) return;
+  let target = targets[0];
+  let best = Infinity;
+  for (const player of targets) {
+    const d = Math.hypot(player.x - boss.x, player.y - boss.y);
+    if (d < best) { best = d; target = player; }
+  }
+  const base = Math.atan2(target.y - boss.y, target.x - boss.x);
+  const count = ritual.barrageCount || 3;
+  const spread = 0.18;
+  const speed = 500;
+  for (let i = 0; i < count; i++) {
+    const angle = base + (i - (count - 1) / 2) * spread;
+    state.projectiles.push(makeProjectile(
+      boss.id, boss.x, boss.y,
+      Math.cos(angle) * speed, Math.sin(angle) * speed,
+      {
+        dmg: ritual.barrageDmg || 20,
+        radius: 12,
+        lifetime: 2.1,
+        color: '#70e6ff',
+        knockback: 0,
+        pierce: false,
+        effect: { kind: 'slow', duration: 0.6, factor: 0.85 },
+        vfx: 'boss_time_breath',
+      },
+    ));
+  }
 }
 
 export function resolveTimeAnchorRitual(state: any, boss: any) {
@@ -115,6 +165,12 @@ export function tickTimeAnchors(state: any, dt: number) {
   ritual.progress = 1 - remaining / Math.max(0.001, ritual.total || 5);
   ritual.occupied = occupied;
   ritual.required = alive;
+  ritual.attackTimer -= dt;
+  if (ritual.attackTimer <= 0) {
+    fireTimeBarrage(state, boss, ritual);
+    const phaseInterval = boss.phaseIdx >= 2 ? 0.75 : ritual.barrageInterval;
+    ritual.attackTimer += boss.desperation ? 0.6 : phaseInterval;
+  }
   for (const anchor of state.timeAnchors) anchor.progress = ritual.progress;
   state.banner = {
     text: `紀元終結 ${remaining.toFixed(1)}s`,
