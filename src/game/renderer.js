@@ -67,6 +67,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
   const prev = new Map();    // pid -> { x, y } 上一幀世界座標 (算速度)
   const beams = new Map();   // pid -> { group, geo, core, glow, coreMat, glowMat, colorHex, targetId, used }
   const rangeCircles = new Map(); // pid -> { mesh, geo, mat, colorHex, range, used }
+  const tetherLines = new Map(); // id -> { group, geo, core, glow, coreMat, glowMat, used }
 
   // 被獵殺頭頂箭頭：單一可重用物件，每幀定位到目標頭頂 (R7 等)
   let huntPhase = 0;
@@ -376,6 +377,93 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
     }
   }
 
+  function syncTethers(state, dt) {
+    for (const line of tetherLines.values()) line.used = false;
+    const now = performance.now() / 1000;
+    for (const t of state.tethers || []) {
+      const a = state.players[t.a];
+      const b = state.players[t.b];
+      if (!a || !b || !a.alive || !b.alive) continue;
+      const id = `${t.a}:${t.b}`;
+      let line = tetherLines.get(id);
+      if (!line) {
+        const group = new THREE.Group();
+        const geo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+        const coreMat = new THREE.MeshBasicMaterial({
+          color: 0xfff0ff,
+          transparent: true,
+          opacity: 0.88,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: 0xd8b3ff,
+          transparent: true,
+          opacity: 0.34,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const core = new THREE.Mesh(geo, coreMat);
+        const glow = new THREE.Mesh(geo, glowMat);
+        group.add(core);
+        group.add(glow);
+        scene.add(group);
+        line = { group, geo, core, glow, coreMat, glowMat, used: false };
+        tetherLines.set(id, line);
+      }
+
+      const dWorld = Math.hypot(a.x - b.x, a.y - b.y);
+      const danger = dWorld < (t.minGap || 200);
+      const color = danger ? 0xff4d6d : 0xd8b3ff;
+      const pulse = 0.82 + 0.18 * Math.sin(now * (danger ? 15 : 7));
+      line.coreMat.color.setHex(danger ? 0xffffff : 0xfff0ff);
+      line.glowMat.color.setHex(color);
+      line.coreMat.opacity = danger ? 0.95 : 0.72;
+      line.glowMat.opacity = danger ? 0.58 : 0.3;
+      line.core.scale.set(danger ? 2.2 * pulse : 1.25 * pulse, 1, danger ? 2.2 * pulse : 1.25 * pulse);
+      line.glow.scale.set(danger ? 8.5 * pulse : 5.5 * pulse, 1, danger ? 8.5 * pulse : 5.5 * pulse);
+
+      const A = new THREE.Vector3(sceneX(a.x), 34, sceneZ(a.y));
+      const B = new THREE.Vector3(sceneX(b.x), 34, sceneZ(b.y));
+      const direction = new THREE.Vector3().subVectors(B, A);
+      const length = direction.length();
+      if (length <= 0.001) continue;
+      const dir = direction.clone().normalize();
+      const alignQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      line.group.position.copy(A).add(B).multiplyScalar(0.5);
+      line.group.scale.set(1, length, 1);
+      line.group.setRotationFromQuaternion(alignQuat);
+      line.used = true;
+
+      if (danger && Math.random() < dt * 18) {
+        const k = Math.random();
+        particles.spawn({
+          x: A.x + (B.x - A.x) * k,
+          y: 34,
+          z: A.z + (B.z - A.z) * k,
+          vx: (Math.random() - 0.5) * 25,
+          vy: 40 + Math.random() * 50,
+          vz: (Math.random() - 0.5) * 25,
+          drag: 1.2,
+          life: 0.35,
+          size: 3,
+          color: '#ff4d6d',
+          fade: true,
+        });
+      }
+    }
+    for (const [id, line] of tetherLines) {
+      if (line.used) continue;
+      scene.remove(line.group);
+      line.geo.dispose();
+      line.coreMat.dispose();
+      line.glowMat.dispose();
+      tetherLines.delete(id);
+    }
+  }
+
   // 每幀把箭頭定位到「被獵殺者」(血最少的存活我方) 頭頂；無則隱藏
   function updateHuntMarker(state, dt) {
     huntPhase += dt;
@@ -437,6 +525,7 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
 
     fxbus.process(state);
     syncPlayers(state, selfId, dt);
+    syncTethers(state, dt);
     bossUltimateAura.sync(state.players, dt);
     timeAnchorLayer.sync(state.timeAnchors || [], state.timeAnchorRitual, dt);
 
@@ -472,5 +561,5 @@ export function createRenderer(canvas, controlScheme = 'wasd-jkl', hooks = {}) {
     hud.render();
   }
 
-  return { render, dispose: () => { bossUltimateAura.dispose(); timeAnchorLayer.dispose(); } };
+  return { render, dispose: () => { bossUltimateAura.dispose(); timeAnchorLayer.dispose(); for (const line of tetherLines.values()) { scene.remove(line.group); line.geo.dispose(); line.coreMat.dispose(); line.glowMat.dispose(); } } };
 }

@@ -52,7 +52,9 @@ function tetherTick(state: any, dt: number) {
         a.hp = Math.max(0, a.hp - t.dmg); b.hp = Math.max(0, b.hp - t.dmg);
         if (a.hp <= 0) a.alive = false; if (b.hp <= 0) b.alive = false;
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-        addFx(state, { type: 'hit', x: mx, y: my, color: '#ff4d6d', life: 0.25, radius: 50 });
+        addFx(state, { type: 'hit', x: mx, y: my, color: '#ff4d6d', life: 0.35, radius: Math.max(70, t.minGap * 0.35) });
+        addFx(state, { type: 'popup', x: a.x, y: a.y, color: '#ff4d6d', life: 0.85, text: Math.round(t.dmg), kind: 'damage' });
+        addFx(state, { type: 'popup', x: b.x, y: b.y, color: '#ff4d6d', life: 0.85, text: Math.round(t.dmg), kind: 'damage' });
       }
     }
     t._vis = (t._vis || 0) - dt;

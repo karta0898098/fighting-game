@@ -478,8 +478,10 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
     }
     // 自身狀態警示：R7 被獵殺 / R9 被靈魂綁定 (鎖鏈連線本身由 bossMode 畫，這裡提醒被綁的人拉開)
     let selfAlert = '';
+    const meForAlert = state.players[selfId];
     if (huntedId && huntedId === selfId) selfAlert = '🐺 你被盯上了！快拉開距離';
     else if (state.tethers && state.tethers.some((t) => t.a === selfId || t.b === selfId)) selfAlert = '🔗 你被靈魂綁定 — 與隊友拉開距離';
+    else if (isLavaBurning(state, meForAlert)) selfAlert = '🔥 熔岩灼燒中 — 先拉開恢復空間';
     setStyle(huntWarn, 'display', selfAlert ? '' : 'none');
     if (selfAlert) setText(huntWarn, selfAlert);
     for (const p of players) {
@@ -1029,4 +1031,12 @@ function buildBuffHtml(p) {
     const ex = b.extra != null ? `<u>${esc(b.extra)}</u>` : '';
     return `<span class="bchip ${cls}"><em>${b.icon}</em><b>${esc(b.name)}</b>${ex}${t}</span>`;
   }).join('');
+}
+
+function isLavaBurning(state, me) {
+  const burn = me && me.effects && me.effects.burn;
+  if (!burn || burn.remaining <= 0) return false;
+  if (state.mode !== 'boss') return false;
+  const boss = Object.values(state.players || {}).find((p) => p && p.isBoss && p.charId === 102);
+  return !!boss && (burn.srcId == null || burn.srcId === boss.id);
 }
