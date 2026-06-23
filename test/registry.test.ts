@@ -10,8 +10,8 @@ import { ACTION_HANDLERS } from '../src/game/actions/handlers/index.ts';
 const SLOTS = ['basic', 'skill1', 'skill2', 'ultimate', 'evade'] as const;
 
 describe('character registry', () => {
-  it('exposes 18 player characters with sequential ids 0..17', () => {
-    expect(CHARACTERS.length).toBe(18);
+  it('exposes 19 player characters with sequential ids 0..18', () => {
+    expect(CHARACTERS.length).toBe(19);
     CHARACTERS.forEach((c: any, i: number) => expect(c.id).toBe(i));
   });
 
@@ -25,6 +25,7 @@ describe('character registry', () => {
   });
 
   it('resolves bosses (>=100) and minions (<0) through getCharacter', () => {
+    expect(getCharacter(18)?.name).toBe('星環使');
     expect(getCharacter(100)?.id).toBe(100);
     expect(getCharacter(-1)).toBeTruthy();
     expect(getCharacter(-2)).toBeTruthy();
@@ -50,5 +51,6 @@ describe('boss registry', () => {
     for (let round = 1; round <= 12; round++) {
       expect(getBossForRound(round), `boss for round ${round}`).toBeTruthy();
     }
+    expect(getBossForRound(13)).toBeNull();
   });
 });

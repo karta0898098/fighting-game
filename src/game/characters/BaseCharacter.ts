@@ -7,6 +7,7 @@ export type CharacterLoaders = {
   attachSkinGear?: (ctx: any) => void;
   paintTexture?: TexturePainter;
   loadVfx?: () => void;
+  tick?: (state: any, player: any, dt: number) => void;
 };
 
 export class BaseCharacter {
@@ -43,5 +44,9 @@ export class BaseCharacter {
 
   loadVfx() {
     if (this.loaders.loadVfx) this.loaders.loadVfx();
+  }
+
+  tick(state: any, player: any, dt: number) {
+    if (this.loaders.tick) this.loaders.tick(state, player, dt);
   }
 }

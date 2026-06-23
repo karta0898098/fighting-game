@@ -348,7 +348,7 @@ export function createCharacterModel(charId) {
   group.add(rootRing);
 
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents, starOrbitShards: parts.starOrbitShards },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -733,6 +733,25 @@ export function animateModel(group, dt, info) {
     }
   }
 
+  const p = info.p;
+  if (parts.starOrbitShards) {
+    const orbit = p && p.starOrbit;
+    const count = Math.max(0, Math.min(3, orbit?.shards ?? 0));
+    const baseAngle = orbit?.angle ?? ud.breathe * 1.9;
+    for (let i = 0; i < parts.starOrbitShards.length; i++) {
+      const shard = parts.starOrbitShards[i];
+      shard.visible = i < count;
+      if (!shard.visible) continue;
+      const a = baseAngle + i * (Math.PI * 2 / Math.max(1, count));
+      const r = 56 + count * 10;
+      shard.position.set(Math.cos(a) * r, 31 + Math.sin(a * 2) * 4, Math.sin(a) * r);
+      shard.rotation.x += dt * 1.2;
+      shard.rotation.y += dt * 2.8;
+      shard.rotation.z += dt * 0.8;
+      shard.scale.setScalar(1 + Math.sin(ud.breathe * 2 + i) * 0.035);
+    }
+  }
+
   // 法師浮空法術書懸浮與旋轉動畫
   if (ud.skin && ud.skin.floatingItem) {
     const book = ud.skin.floatingItem;
@@ -746,7 +765,6 @@ export function animateModel(group, dt, info) {
   }
 
   // ---- 狀態環 / 隱身淡出 ----
-  const p = info.p;
   const shieldOn = p && p.shield > 0;
   parts.shieldRing.visible = shieldOn;
   if (shieldOn) {

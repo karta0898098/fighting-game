@@ -3,19 +3,20 @@ import { BaseCharacter } from '../../BaseCharacter.ts';
 import { characterSprite } from '../../textureSprite.ts';
 import { drawSamuraiTexture } from './texture.ts';
 import { modelConfig, buildModel, buildWeapon } from './model.ts';
+import { tickSamuraiIaijutsu } from './iaijutsu.ts';
 import './vfx.ts';
 
 const data = {
-    id: 13, name: '武士', color: '#c0392b', shape: 'triangle', sprite: characterSprite('samurai', '#c0392b', false, drawSamuraiTexture), meleeRole: true,
-    maxHp: 240, maxMana: 60, speed: 192,
-    desc: '蓄勢一擊的精準近戰。居合之道讓蓄力後的出刀致命、居合·閃高速突斬、刀背擋格擋反擊，大招一閃·千刀流連斬群敵。講究的是一擊斃命，與格鬥家的連段、狂戰士的狂暴截然不同。',
-    role: '近戰 · 蓄力一擊',
-    synergy: '高爆發決鬥者，配控場隊友(忍者/坦克)定住目標，居合一刀致命。',
+    id: 13, name: '武士', color: '#151515', shape: 'triangle', sprite: characterSprite('samurai', '#151515', false, drawSamuraiTexture), meleeRole: true,
+    maxHp: 240, maxMana: 60, speed: 196,
+    desc: '可玩版無明劍聖。以窄角一文字、縮地斬與納刀架勢掌控距離，奧義斬業一閃會排出三條延遲死線，逼敵人連續側閃。',
+    role: '近戰 · 居合死線',
+    synergy: '高爆發決鬥者，適合配合定身、減速或隊友壓位，讓斬業一閃的三段死線完整命中。',
     talent: { id: 'iaido', name: '居合之道', desc: '持續 2 秒未攻擊後，下一次攻擊 +80% 傷害並短暫提升移速。', delay: 2, bonus: 0.8 },
-    basic: { name: '拔刀斬', type: 'melee', dmg: 30, range: 150, arc: 1.0, knockback: 160, cd: 0.7, color: '#ff6b5b', vfx: 'samurai_draw' },
-    skill1: { name: '居合·閃', type: 'dash', impulse: 880, dmg: 70, range: 180, arc: 1.1, knockback: 180, effect: { kind: 'bleed', duration: 3, tick: 0.5, dmg: 8, moveMult: 1.5 }, manaCost: 20, cd: 6, color: '#ff8a5b', vfx: 'samurai_iai' },
-    skill2: { name: '刀背擋', type: 'buff', shield: 200, cleanse: true, effect: { kind: 'reflect', duration: 1.5, factor: 0.7 }, duration: 1.5, manaCost: 25, cd: 9, color: '#e74c3c', vfx: 'samurai_guard', noIaiReset: true },
-    ultimate: { name: '一閃·千刀流', type: 'multiblink', count: 3, dmg: 95, knockback: 160, effect: { kind: 'bleed', duration: 4, tick: 0.5, dmg: 11, moveMult: 1.5 }, cd: 11, color: '#ff3b2f', vfx: 'samurai_ultimate', self: { shield: 80, duration: 3 } },
+    basic: { name: '一文字', type: 'melee', dmg: 30, range: 165, arc: 0.9, knockback: 150, cd: 0.65, color: '#f2f0dc', vfx: 'samurai_draw' },
+    skill1: { name: '縮地斬', type: 'dash', impulse: 940, dmg: 72, range: 190, arc: 0.95, knockback: 180, effect: { kind: 'bleed', duration: 3, tick: 0.5, dmg: 8, moveMult: 1.5 }, manaCost: 20, cd: 6.5, color: '#f2f0dc', vfx: 'samurai_iai' },
+    skill2: { name: '納刀架勢', type: 'buff', shield: 200, cleanse: true, effect: { kind: 'reflect', duration: 1.4, factor: 0.65 }, duration: 1.4, manaCost: 25, cd: 9, color: '#d94343', vfx: 'samurai_guard', noIaiReset: true },
+    ultimate: { name: '斬業一閃', type: 'samurai_iaijutsu', count: 3, dmg: 80, finalDmg: 125, range: 760, radius: 34, strikeDelay: 0.32, knockback: 220, effect: { kind: 'bleed', duration: 4, tick: 0.5, dmg: 11, moveMult: 1.5 }, cd: 12, color: '#d94343', telegraphColor: '#f2f0dc', vfx: 'samurai_ultimate', self: { shield: 80, duration: 3 } },
   };
 
 export class SamuraiCharacter extends BaseCharacter {
@@ -26,6 +27,7 @@ export class SamuraiCharacter extends BaseCharacter {
       buildWeapon,
       paintTexture: drawSamuraiTexture,
       loadVfx: () => undefined,
+      tick: tickSamuraiIaijutsu,
     });
   }
 }

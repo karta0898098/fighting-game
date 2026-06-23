@@ -41,6 +41,26 @@ function getSkillDisplay(scheme: ControlScheme) {
 
 const SKILL_SLOTS: SkillSlot[] = ['basic', 'skill1', 'skill2', 'ultimate'];
 
+function actionTypeLabel(type?: string) {
+  switch (type) {
+    case 'projectile': return '投射物';
+    case 'melee': return '近戰';
+    case 'dash': return '衝刺';
+    case 'blink': return '瞬移';
+    case 'zone': return '區域';
+    case 'buff': return '增益';
+    case 'star_orbit_cannon': return '星砲';
+    case 'star_orbit_guard': return '增益';
+    case 'star_orbit_burst': return '大絕';
+    case 'samurai_iaijutsu': return '奧義';
+    default: return type;
+  }
+}
+
+function secondsLabel(value?: number) {
+  return typeof value === 'number' ? `${value}s` : undefined;
+}
+
 // 選角詳情面板：技能說明以「角色圖鑑.md」為單一來源 (getCodexEntry)，
 // 解析不到時 fallback 至程式內既有欄位；數值 (HP/MP/移速) 一律取自程式碼以保證與實際一致。
 function CharacterDetail({ char, skillDisplay }: { char: CharacterMeta; skillDisplay: ReturnType<typeof getSkillDisplay> }) {
@@ -76,6 +96,10 @@ function CharacterDetail({ char, skillDisplay }: { char: CharacterMeta; skillDis
           const fallback = char[slot] as SkillMeta | undefined;
           const name = cs?.name ?? fallback?.name;
           if (!name) return null;
+          const type = cs?.type ?? actionTypeLabel(fallback?.type);
+          const cooldown = cs?.cooldown ?? secondsLabel(fallback?.cd);
+          const mana = cs?.mana ?? (typeof fallback?.manaCost === 'number' ? String(fallback.manaCost) : undefined);
+          const explain = cs?.explain ?? fallback?.desc;
           return (
             <div className="skill-row" key={slot}>
               <span className="skill-key">{skillDisplay[slot]}</span>
@@ -83,11 +107,11 @@ function CharacterDetail({ char, skillDisplay }: { char: CharacterMeta; skillDis
                 <div className="skill-head">
                   <span className="skill-name">{name}</span>
                   {slot === 'ultimate' && <span className="skill-tag ult">大絕</span>}
-                  {cs?.type && <span className="skill-tag">{cs.type}</span>}
-                  {cs?.cooldown && cs.cooldown !== '—' && <span className="skill-tag">冷卻 {cs.cooldown}</span>}
-                  {cs?.mana && cs.mana !== '—' && <span className="skill-tag">魔力 {cs.mana}</span>}
+                  {type && <span className="skill-tag">{type}</span>}
+                  {cooldown && cooldown !== '—' && <span className="skill-tag">冷卻 {cooldown}</span>}
+                  {mana && mana !== '—' && <span className="skill-tag">魔力 {mana}</span>}
                 </div>
-                {cs?.explain && <div className="skill-explain">{cs.explain}</div>}
+                {explain && <div className="skill-explain">{explain}</div>}
               </div>
             </div>
           );

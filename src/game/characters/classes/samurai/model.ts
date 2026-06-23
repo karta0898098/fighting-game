@@ -2,64 +2,66 @@
 import * as THREE from 'three';
 import { buildSamuraiWeapon } from './weapon.ts';
 
-export const modelConfig = { bulk: 2.04, weapon: 'katana', skinKind: 'metal', headgear: 'helm', pauldron: true };
+export const modelConfig = { bulk: 2.04, weapon: 'katana', skinKind: 'metal', headgear: 'none', pauldron: false };
 
-// 武士：緋紅大鎧 (do-maru) + 肩甲 + 兜盔月牙前立 + 面頬 (menpo)。
+// 武士：可玩版無明劍聖，複製自斬業 Boss 的黑袍、蒙眼、白髮與斷裂劍輪語彙。
 export function buildModel(ctx) {
   const {
-    base, bulk, reg, mat, shade,
+    bulk, reg, mat, shade,
     torsoW, torsoD, torsoH, shoulderY, frontX,
-    defaultBodyMat, defaultHeadMat, defaultArmMat, defaultBootMat,
-    darkMat, goldMat, helmMat, faceGroup, helmAddons, mkLimb, addAccent,
+    faceGroup, mkLimb, addAccent,
   } = ctx;
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(torsoW, torsoH, torsoD), defaultBodyMat);
+  const BLACK = '#151515', CLOTH = '#262020', WHITE = '#f2f0dc', RED = '#d94343';
+  const black = reg(mat(BLACK, { rough: 0.82, metal: 0.15 }));
+  const cloth = reg(mat(CLOTH, { rough: 0.9, metal: 0.08 }));
+  const white = reg(mat(WHITE, { emissive: new THREE.Color('#8f886f'), ei: 0.75, rough: 0.45, metal: 0.2 }));
+  const red = reg(mat(RED, { emissive: new THREE.Color(RED), ei: 1.25, rough: 0.35, metal: 0.3 }));
+  const dark = reg(mat(shade(BLACK, -0.28), { rough: 0.75, metal: 0.18 }));
 
-  // 層疊草摺 (胴甲下襬) — 三段橫板
-  const lamMat = reg(mat(shade(base, -0.12), { rough: 0.55, metal: 0.35 }));
-  for (let i = 0; i < 3; i++) {
-    const lam = new THREE.Mesh(new THREE.BoxGeometry(torsoW * (1.02 - i * 0.04), 3.2, torsoD * 1.06), lamMat);
-    lam.position.set(0, -torsoH * 0.18 - i * 4, 0); torso.add(lam);
-  }
-  // 胸口家紋 (發光緋紅)
-  const crest = new THREE.Mesh(new THREE.CircleGeometry(torsoW * 0.18, 18), reg(mat(0xff5b46, { emissive: 0xff3b2f, ei: 1.8 })));
-  crest.position.set(0, torsoH * 0.12, torsoD * 0.5 + 0.6); torso.add(crest);
-  // 腰帶
-  const obi = new THREE.Mesh(new THREE.BoxGeometry(torsoW * 1.04, 4.5, torsoD * 1.08), darkMat);
-  obi.position.set(0, -torsoH * 0.06, 0); torso.add(obi);
-
-  // 頭：兜盔
-  const head = new THREE.Mesh(new THREE.BoxGeometry(12.5 * bulk, 13 * bulk, 12 * bulk), defaultHeadMat);
-  // 面頬 (menpo) + 發光赤目
-  const menpo = new THREE.Mesh(new THREE.BoxGeometry(3.2, 6 * bulk, 10.5 * bulk), reg(mat(0x2b2b2b, { metal: 0.5, rough: 0.5 })));
-  menpo.position.set(frontX * 0.78, -3.2, 0); faceGroup.add(menpo);
-  const eyeMat = reg(mat(0xff4530, { emissive: 0xff4530, ei: 2.8 }));
-  for (const sz of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 2.6), eyeMat);
-    eye.position.set(frontX * 0.82, 2.0, sz * 3.2 * bulk); faceGroup.add(eye);
-  }
-  // 鉢 (盔頂) + 月牙前立 (maedate)
-  const bowl = new THREE.Mesh(new THREE.SphereGeometry(7.8 * bulk, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), helmMat);
-  bowl.position.set(-0.5, 2.5 * bulk, 0); helmAddons.add(bowl);
-  const crescent = new THREE.Mesh(new THREE.TorusGeometry(4.5 * bulk, 1.0, 6, 18, Math.PI), goldMat);
-  crescent.position.set(2 * bulk, 8.5 * bulk, 0); crescent.rotation.set(0, Math.PI / 2, Math.PI); helmAddons.add(crescent);
-  // 吹返 (盔側翼)
-  for (const sz of [-1, 1]) {
-    const fubi = new THREE.Mesh(new THREE.BoxGeometry(5 * bulk, 5 * bulk, 1.4), reg(mat(shade(base, 0.05), { metal: 0.6 })));
-    fubi.position.set(-2 * bulk, 1.5 * bulk, sz * (6.5 * bulk)); fubi.rotation.x = sz * 0.3; helmAddons.add(fubi);
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(torsoW * 0.42, torsoW * 0.58, torsoH * 1.18, 8), cloth);
+  torso.castShadow = true;
+  const lapelL = new THREE.Mesh(new THREE.BoxGeometry(torsoD * 0.28, torsoH * 1.0, 1.8), black);
+  lapelL.position.set(frontX * 0.36, 2, -torsoW * 0.16); lapelL.rotation.x = 0.35; torso.add(lapelL);
+  const lapelR = lapelL.clone(); lapelR.position.z = torsoW * 0.16; lapelR.rotation.x = -0.35; torso.add(lapelR);
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(torsoD * 1.05, 4.2, torsoW * 0.78), red);
+  sash.position.y = -torsoH * 0.42; torso.add(sash);
+  for (let i = 0; i < 4; i++) {
+    const stitch = new THREE.Mesh(new THREE.BoxGeometry(1.1, torsoH * 0.75, 1.1), red);
+    stitch.position.set(frontX * 0.42, -2, (i - 1.5) * torsoW * 0.15);
+    stitch.rotation.x = i % 2 ? 0.18 : -0.18;
+    torso.add(stitch);
   }
 
-  const armL = mkLimb(0, -ctx.shoulderX, true, defaultArmMat, defaultBootMat, base);
-  const armR = mkLimb(0, ctx.shoulderX, true, defaultArmMat, defaultBootMat, base);
-  const legL = mkLimb(0, -ctx.hipX, false, defaultBodyMat, defaultBootMat, base);
-  const legR = mkLimb(0, ctx.hipX, false, defaultBodyMat, defaultBootMat, base);
-
-  // 大袖 (寬肩甲)
-  const sodeMat = reg(mat(shade(base, 0.08), { metal: 0.55, rough: 0.35 }));
-  for (const sz of [-1, 1]) {
-    const sode = new THREE.Mesh(new THREE.BoxGeometry(2.2, 9 * bulk, 9 * bulk), sodeMat);
-    sode.position.set(0, shoulderY - 2, sz * (torsoW * 0.5 + 3)); sode.rotation.x = sz * 0.12; addAccent(sode);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(6.2 * bulk, 14, 10), dark);
+  head.scale.set(0.9, 1.05, 0.9); head.castShadow = true;
+  const band = new THREE.Mesh(new THREE.BoxGeometry(1.7, 3.0 * bulk, 12 * bulk), white);
+  band.position.set(frontX * 0.86, 0.5, 0); faceGroup.add(band);
+  for (let i = 0; i < 7; i++) {
+    const hair = new THREE.Mesh(new THREE.ConeGeometry(1.15 * bulk, 9.5 * bulk, 5), white);
+    hair.position.set(-1.7 * bulk, 1.8 * bulk - i * 0.45, (i - 3) * 1.9 * bulk);
+    hair.rotation.z = 0.62 + i * 0.025;
+    head.add(hair);
   }
+
+  const armL = mkLimb(0, -ctx.shoulderX, true, cloth, black, RED, 5.2 * bulk, 14);
+  const armR = mkLimb(0, ctx.shoulderX, true, cloth, black, RED, 5.4 * bulk, 14);
+  const legL = mkLimb(0, -ctx.hipX, false, black, dark, WHITE, 5.8 * bulk, 14);
+  const legR = mkLimb(0, ctx.hipX, false, black, dark, WHITE, 5.8 * bulk, 14);
+
+  const wheel = new THREE.Group();
+  wheel.position.set(-13, shoulderY + 6, 0);
+  for (let i = 0; i < 9; i++) {
+    if (i === 2 || i === 6) continue;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(1.5, 22, 2.8), i % 3 === 0 ? red : white);
+    const a = (i / 9) * Math.PI * 2;
+    blade.position.set(0, Math.sin(a) * 18, Math.cos(a) * 18);
+    blade.rotation.x = a;
+    wheel.add(blade);
+  }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(19, 1.0, 6, 36), white);
+  ring.rotation.y = Math.PI / 2; wheel.add(ring);
+  addAccent(wheel);
 
   return { torso, head, armL, armR, legL, legR };
 }
