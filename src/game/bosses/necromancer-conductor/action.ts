@@ -1,4 +1,5 @@
 import { registerBossAction } from '../actions.ts';
+import { applyShield } from '../../entities/shield.ts';
 
 registerBossAction('summon_minions', (state: any, boss: any, a: any, h: any) => {
   let alive = 0;
@@ -49,6 +50,6 @@ registerBossAction('necro_burst', (state: any, boss: any, a: any, h: any) => {
     }
     shieldAmt += a.shieldPerMinion * mc;
   }
-  h.applyEffect(boss, 'shield', { amount: shieldAmt, duration: a.duration || 8 });
+  applyShield(state, boss, shieldAmt, a.duration || 8);
   h.addFx(state, { type: 'hit', x: boss.x, y: boss.y, color: a.color, life: 0.5, radius, vfx: a.vfx });
 });

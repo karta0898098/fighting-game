@@ -2,10 +2,14 @@
 import { createWeaponKit } from '../../../render3d/weaponKit.js';
 
 export function buildSamuraiWeapon(hand, ctx) {
-  const { THREE, hand: weaponHand, base, reg, mat, shade, steel, dark, gold, accent, add } = createWeaponKit(hand, ctx);
-  // 武士：緋紅太刀
-        add(new THREE.Mesh(new THREE.BoxGeometry(1.4, 50, 3.6), accent), 3, 18, 0);   // 刀身(發光刃)
-        add(new THREE.Mesh(new THREE.BoxGeometry(2.2, 50, 1.2), steel), 3, 18, 0);    // 刀脊
-        add(new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.2, 1.2, 4), gold), 3, -6, 0, 0, Math.PI / 4, 0); // 鍔(方形護手)
-        add(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 12, 8), dark), 3, -12, 0); // 柄
+  const { THREE, reg, mat, add } = createWeaponKit(hand, ctx);
+  hand.rotation.set(0, 0, -1.22);
+  hand.position.x += 2.5;
+  const steel = reg(mat('#f2f0dc', { emissive: new THREE.Color('#766f58'), ei: 0.7, rough: 0.22, metal: 0.92 }));
+  const red = reg(mat('#d94343', { emissive: new THREE.Color('#d94343'), ei: 1.2, rough: 0.35, metal: 0.45 }));
+  const wrap = reg(mat('#171111', { rough: 0.82, metal: 0.25 }));
+  add(new THREE.Mesh(new THREE.BoxGeometry(3.4, 58, 1.8), steel), 3.5, 20, 0);
+  add(new THREE.Mesh(new THREE.ConeGeometry(2.5, 9, 4), steel), 3.5, 53, 0);
+  add(new THREE.Mesh(new THREE.BoxGeometry(15, 2.6, 4.5), red), 3.5, -9, 0);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 17, 8), wrap), 3.5, -20, 0);
 }

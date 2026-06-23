@@ -40,6 +40,43 @@ import type {
   LobbyView,
 } from '../types';
 
+export function serializeNetworkPlayer(p: any) {
+  return {
+    id: p.id, name: p.name, charId: p.charId,
+    x: p.x, y: p.y, facing: p.facing, kvx: p.kvx, kvy: p.kvy,
+    hp: p.hp, maxHp: p.maxHp, mana: p.mana, maxMana: p.maxMana,
+    alive: p.alive, shield: p.shield, shieldTime: p.shieldTime, kills: p.kills,
+    effects: p.effects, cd: p.cd, ult: p.ult, team: p.team, chargeState: p.chargeState,
+    // 魔王/召喚物/部位渲染旗標
+    isBoss: p.isBoss, isPart: p.isPart, isMinion: p.isMinion, isFake: p.isFake, isMirror: p.isMirror,
+    ownerId: p.ownerId, partId: p.partId, partColor: p.partColor, scale: p.scale, reviveProg: p.reviveProg,
+    // HUD/渲染額外線索：破綻窗口、相位機制覆寫、倒地判定 (aiId)、引導光束 (channel)
+    aiId: p.aiId, channel: p.channel, recoverWindow: p.recoverWindow, recoverHeavy: p.recoverHeavy,
+    phaseTagsOverride: p.phaseTagsOverride,
+  };
+}
+
+export function serializeNetworkSnapshot(state: any) {
+  const players: Record<string, any> = {};
+  for (const id of Object.keys(state.players)) players[id] = serializeNetworkPlayer(state.players[id]);
+  return {
+    phase: state.phase, winner: state.winner, winnerTeam: state.winnerTeam, time: state.time,
+    mode: state.mode, round: state.round, bossId: state.bossId,
+    bossHp: state.bossHp, bossMaxHp: state.bossMaxHp,
+    roundPhase: state.roundPhase, roundTimer: state.roundTimer, introDur: state.introDur,
+    banner: state.banner, tethers: state.tethers, bossWipedRound: state.bossWipedRound,
+    // 全滅面板只需要重打次數；不送整包 stats (會持續累積、且只在結算才完整用到)
+    stats: state.stats ? { _retryCount: state.stats._retryCount || 0 } : null,
+    players,
+    // 投射物/區域/特效/可破壞物仍是渲染必需，原樣帶上 (數量少、生命短)
+    projectiles: state.projectiles, zones: state.zones, fx: state.fx,
+    destructibles: state.destructibles || [],
+    items: state.items || [],
+    timeAnchors: state.timeAnchors || [],
+    timeAnchorRitual: state.timeAnchorRitual || null,
+  };
+}
+
 // ---------- 加入者效能量測 (?perf=1) ----------
 // 量化加入者卡頓來源：每包大小 (含 fx / projectiles 佔比)、反序列化處理、buildView 插值耗時、
 // 掉幀、插值緩衝枯竭 (holds)。每秒 console 印一行；未開啟時所有量測碼皆跳過、正常路徑零成本。
@@ -219,40 +256,6 @@ function createController(): GameController {
   // charge/leap/trail/suppress 計時器、不斷累積的 stats…)。這些加入者完全用不到，卻要在
   // 主執行緒以 30Hz 反序列化，造成 GC / 解析尖峰 → 加入者畫面卡頓 (房主擁有物件故不受影響)。
   // 改送精簡快照後，封包小很多、加入者每幀分配的垃圾大幅下降，卡頓即緩解。
-  function serializePlayer(p: any) {
-    return {
-      id: p.id, name: p.name, charId: p.charId,
-      x: p.x, y: p.y, facing: p.facing, kvx: p.kvx, kvy: p.kvy,
-      hp: p.hp, maxHp: p.maxHp, mana: p.mana, maxMana: p.maxMana,
-      alive: p.alive, shield: p.shield, shieldTime: p.shieldTime, kills: p.kills,
-      effects: p.effects, cd: p.cd, ult: p.ult, team: p.team, chargeState: p.chargeState,
-      // 魔王/召喚物/部位渲染旗標
-      isBoss: p.isBoss, isPart: p.isPart, isMinion: p.isMinion, isFake: p.isFake, isMirror: p.isMirror,
-      ownerId: p.ownerId, partId: p.partId, partColor: p.partColor, scale: p.scale, reviveProg: p.reviveProg,
-      // HUD/渲染額外線索：破綻窗口、相位機制覆寫、倒地判定 (aiId)、引導光束 (channel)
-      aiId: p.aiId, channel: p.channel, recoverWindow: p.recoverWindow, recoverHeavy: p.recoverHeavy,
-      phaseTagsOverride: p.phaseTagsOverride,
-    };
-  }
-
-  function serializeSnapshot(state: any) {
-    const players: Record<string, any> = {};
-    for (const id of Object.keys(state.players)) players[id] = serializePlayer(state.players[id]);
-    return {
-      phase: state.phase, winner: state.winner, winnerTeam: state.winnerTeam, time: state.time,
-      mode: state.mode, round: state.round, bossId: state.bossId,
-      bossHp: state.bossHp, bossMaxHp: state.bossMaxHp,
-      roundPhase: state.roundPhase, roundTimer: state.roundTimer, introDur: state.introDur,
-      banner: state.banner, tethers: state.tethers, bossWipedRound: state.bossWipedRound,
-      // 全滅面板只需要重打次數；不送整包 stats (會持續累積、且只在結算才完整用到)
-      stats: state.stats ? { _retryCount: state.stats._retryCount || 0 } : null,
-      players,
-      // 投射物/區域/特效/可破壞物仍是渲染必需，原樣帶上 (數量少、生命短)
-      projectiles: state.projectiles, zones: state.zones, fx: state.fx,
-      destructibles: state.destructibles || [],
-    };
-  }
-
   // ---------- 迴圈生命週期 ----------
   // beginLoop 只切換到遊戲畫面並標記想啟動；實際啟動等 canvas 掛上 (attachCanvas)。
   function beginLoop() {
@@ -311,7 +314,7 @@ function createController(): GameController {
       if (snapAcc >= SNAPSHOT_INTERVAL) {
         snapAcc -= SNAPSHOT_INTERVAL;
         if (snapAcc > SNAPSHOT_INTERVAL) snapAcc = SNAPSHOT_INTERVAL; // 長時間背景後限制追趕，避免連續爆送
-        net.broadcastSnapshot({ t: 'state', seq: snapSeq++, snapshot: serializeSnapshot(gameState) });
+        net.broadcastSnapshot({ t: 'state', seq: snapSeq++, snapshot: serializeNetworkSnapshot(gameState) });
         if (perf) perf.snapsOut++;
       }
 

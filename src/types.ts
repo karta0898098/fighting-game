@@ -83,6 +83,10 @@ export interface BossRunStats {
 // 角色資料：characters.js 為 .js，這裡描述 UI 會用到的欄位。
 export interface SkillMeta {
   name: string;
+  desc?: string;
+  type?: string;
+  cd?: number;
+  manaCost?: number;
 }
 
 export interface TalentMeta {

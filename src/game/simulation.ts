@@ -52,7 +52,7 @@ export function step(state: GameState, inputs: Record<string, Input>, dt: number
     }
     const character = getCharacter(p.charId);
     const talent = character.talent;
-    tickCharacterTimers(p, character, talent, dt);
+    tickCharacterTimers(state, p, character, talent, dt);
     tickCooldowns(state, p, talent, dt);
 
     tickStatusEffects(state, p, dt);

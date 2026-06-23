@@ -23,6 +23,8 @@ export interface Input {
 export type ActionType =
   | 'projectile' | 'melee' | 'dash' | 'blink' | 'charge' | 'leap'
   | 'grapple' | 'multiblink' | 'channel' | 'zone' | 'buff' | 'summon'
+  | 'samurai_iaijutsu'
+  | 'star_orbit_guard' | 'star_orbit_cannon' | 'star_orbit_burst'
   // 闖關魔王專屬
   | 'summon_clones' | 'summon_minions' | 'apply_scramble' | 'time_rewind'
   | 'soul_bind' | 'light_dark' | 'mirror_players' | 'steal_ultimate'

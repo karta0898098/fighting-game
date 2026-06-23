@@ -66,7 +66,7 @@ registerVfx('bard_discord', {
         // Sonic vibration: oscillate scale and add a subtle wobble
         const freq = performance.now() * 0.035;
         g.scale.set(1.0, 1.0 + 0.12 * Math.sin(freq), 1.0 + 0.12 * Math.cos(freq));
-        
+
         if (Math.random() < 0.45) {
           ctx.particles.spawn({
             x: g.position.x + (Math.random() - 0.5) * pr.radius * 0.4,
@@ -278,4 +278,3 @@ registerVfx('bard_heal_hit', {
     burst(ctx, c, { color: ['#5cffa6', '#ff8fb8', '#ffffff'], count: 8, speed: 120, life: 0.35, size: 2.8 });
   }
 });
-

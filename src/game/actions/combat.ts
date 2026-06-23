@@ -3,6 +3,7 @@ import { getCharacter } from '../characters.js';
 import { angleDiff, dist } from '../entities/math.ts';
 import { dealDamage } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
+import { applyShield } from '../entities/shield.ts';
 import { addFx } from '../entities/fx.ts';
 import { isEnemy } from '../entities/team.ts';
 import type { GameState, Player, EntityId } from '../types';
@@ -37,6 +38,10 @@ export function applyEffectFrom(state: GameState, target: Player, effect: any, s
   if (effect.kind === 'chill' && (effect.stacks || 1) >= (effect.max || 4)) {
     const tt = getCharacter(target.charId).talent;
     if (tt && tt.id === 'pyromancy') e = { ...e, stacks: 1 };
+  }
+  if (e.kind === 'shield') {
+    applyShield(state, target, e.amount, e.duration || 5);
+    return;
   }
   applyEffect(target, e.kind, e, srcId);
 }

@@ -15,13 +15,14 @@ export function tickSummonLife(state: GameState, p: Player, dt: number): boolean
   return true;
 }
 
-export function tickCharacterTimers(p: Player, character: any, talent: any, dt: number) {
+export function tickCharacterTimers(state: GameState, p: Player, character: any, talent: any, dt: number) {
   if (character.ultimate && character.ultimate.rewindSelf) {
     if (!p._chronoHist) p._chronoHist = [];
     p._chronoHist.push({ x: p.x, y: p.y, hp: p.hp });
     if (p._chronoHist.length > 130) p._chronoHist.shift();
   }
   if (talent && talent.id === 'iaido') p.iaiTimer = (p.iaiTimer || 0) + dt;
+  if (typeof character.tick === 'function') character.tick(state, p, dt);
 }
 
 export function tickCooldowns(state: GameState, p: Player, talent: any, dt: number) {

@@ -180,7 +180,7 @@ export function dealDamage(
     dmg -= shieldAbsorbed;
   }
   if (shieldAbsorbed > 0) {
-    addFx(state, { type: 'popup', x: target.x, y: target.y, color: '#7ad8ff', life: 0.75, text: Math.round(shieldAbsorbed), kind: 'shield' });
+    addFx(state, { type: 'popup', x: target.x, y: target.y, color: '#f7fbff', life: 0.75, text: Math.round(shieldAbsorbed), kind: 'shield' });
   }
   if (dmg <= 0) return;
   target.ult = Math.min(ULT_MAX, (target.ult || 0) + dmg * ULT_GAIN_TAKE);

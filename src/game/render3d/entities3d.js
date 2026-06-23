@@ -7,6 +7,16 @@
 import * as THREE from 'three';
 import { setVecFromWorld, PROJECTILE_Y } from './coords.js';
 import { getVfx } from './vfx/index.ts';
+import { PLAYER_RADIUS } from '../constants.js';
+
+export function zoneVisualRadius(z) {
+  return (z.radius || 0) + PLAYER_RADIUS;
+}
+
+export function getZoneRenderKind(z, vdef) {
+  if (z.delay > 0) return 'std-warning';
+  return vdef && vdef.zone ? 'custom:' + z.vfx : 'std';
+}
 
 export function createEntityLayer(scene, particles, opts = {}) {
   const group = new THREE.Group();
@@ -272,8 +282,7 @@ export function createEntityLayer(scene, particles, opts = {}) {
       seen.add(z.id);
       let e = zoneMap.get(z.id);
       const vdef = getVfx(z.vfx);
-      const wantCustom = !!(vdef && vdef.zone);
-      const kind = wantCustom ? 'custom:' + z.vfx : 'std';
+      const kind = getZoneRenderKind(z, vdef);
       if (!e || e.kind !== kind) { if (e) disposeZone(e); e = makeZone(z, kind, vdef); zoneMap.set(z.id, e); }
       setVecFromWorld(_v, z.x, z.y, 1.2);
       e.group.position.copy(_v);
@@ -282,21 +291,22 @@ export function createEntityLayer(scene, particles, opts = {}) {
         continue;
       }
       const t = performance.now() / 1000;
+      const vr = zoneVisualRadius(z);
       if (z.delay > 0) {
         // 預警：外環依倒數填充 + 警示脈動，圓盤隱藏
         const fill = 1 - z.delay / e.totalDelay;
         e.disc.visible = true;
-        e.disc.scale.setScalar(z.radius * (0.4 + 0.6 * fill));
+        e.disc.scale.setScalar(vr * (0.4 + 0.6 * fill));
         e.disc.material.opacity = 0.12 + 0.12 * Math.sin(t * 14);
         e.ring.visible = true;
-        e.ring.scale.setScalar(z.radius);
+        e.ring.scale.setScalar(vr);
         e.ring.material.opacity = 0.5 + 0.4 * Math.sin(t * 14);
       } else {
         e.disc.visible = true;
-        e.disc.scale.setScalar(z.radius);
+        e.disc.scale.setScalar(vr);
         e.disc.material.opacity = 0.28 + 0.12 * Math.sin(t * 8 + z.id);
         e.ring.visible = true;
-        e.ring.scale.setScalar(z.radius * (0.96 + 0.04 * Math.sin(t * 6)));
+        e.ring.scale.setScalar(vr * (0.96 + 0.04 * Math.sin(t * 6)));
         e.ring.material.opacity = 0.7;
       }
     }
@@ -305,7 +315,7 @@ export function createEntityLayer(scene, particles, opts = {}) {
 
   function makeZone(z, kind, vdef) {
     if (kind && kind.startsWith('custom:')) {
-      const obj = vdef.zone(hookCtx(z.color), z);
+      const obj = vdef.zone(hookCtx(z.color), { ...z, radius: zoneVisualRadius(z) });
       const node = obj.object3D || obj;
       group.add(node);
       return { group: node, kind, custom: true, update: obj.update || node.userData?.update || null, totalDelay: Math.max(0.0001, z.delay || 0) };

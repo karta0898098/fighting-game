@@ -1,6 +1,6 @@
 import { CANVAS_H, CANVAS_W, ULT_MAX } from '../constants.js';
 import { getCharacter } from '../characters.js';
-import { drawBar } from './utils.js';
+import { drawBar, drawShieldedBar } from './utils.js';
 
 export function drawHUD(ctx, state, selfId) {
   const me = state.players[selfId];
@@ -11,9 +11,9 @@ export function drawHUD(ctx, state, selfId) {
     ctx.textAlign = 'left';
     ctx.fillStyle = me.alive ? '#fff' : '#ff7675';
     ctx.fillText(`${me.name}  (${c.name})${me.alive ? '' : ' — 淘汰'}`, x, y - 8);
-    drawBar(ctx, x, y, w, 14, me.hp / me.maxHp, '#2ecc71', '#0c2a18');
+    drawShieldedBar(ctx, x, y, w, 14, me.hp / me.maxHp, (me.shield || 0) / me.maxHp);
     ctx.fillStyle = '#fff'; ctx.font = '11px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(`${Math.ceil(me.hp)}/${me.maxHp}`, x + w / 2, y + 11);
+    ctx.fillText(`${Math.ceil(me.hp)}/${me.maxHp}${me.shield > 0 ? ` +${Math.ceil(me.shield)}` : ''}`, x + w / 2, y + 11);
     drawBar(ctx, x, y + 18, w, 12, me.mana / me.maxMana, '#3aa0ff', '#0c1c2a');
     ctx.fillStyle = '#fff'; ctx.fillText(`${Math.ceil(me.mana)}/${me.maxMana}`, x + w / 2, y + 28);
     drawSkillIcons(ctx, me, x, y + 36, c);

@@ -4,6 +4,7 @@
 // cleanseable 標記是否會被「淨化」清除。→ 新增效果只要加一筆；**淨化清單自動由 cleanseable 推導**，
 // 不必再手動維護一長串 delete（過去的踩雷點）。data 為該效果的參數袋（依 kind 而異），故保留 any。
 import type { Player, EffectKind, EntityId } from '../types';
+import { applyShield } from './shield.ts';
 
 type EffectApply = (p: Player, kind: string, data: any, srcId?: EntityId) => void;
 interface EffectDef {
@@ -27,8 +28,7 @@ const EFFECT_DEFS: Record<string, EffectDef> = {
   heal: { apply: (p, _k, data) => { p.hp = Math.min(p.maxHp, p.hp + data.amount); } },
   shield: {
     apply: (p, _k, data) => {
-      p.shield = Math.max(p.shield, data.amount);
-      p.shieldTime = Math.max(p.shieldTime, data.duration);
+      applyShield(data.state, p, data.amount, data.duration, { popup: data.popup });
     },
   },
 

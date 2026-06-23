@@ -13,6 +13,8 @@ const burnNearby = (radius = 360, dmg = 8, duration = 4) => (state: any, boss: a
     const dx = p.x - boss.x, dy = p.y - boss.y;
     if (dx * dx + dy * dy > radius * radius) continue;
     applyEffect(p, 'burn', { duration, dmg, tick: 0.5, color: '#ff5a1f' }, boss.id);
+    addFx(state, { type: 'hit', x: p.x, y: p.y, color: '#ff5a1f', life: 0.45, radius: 70, vfx: 'boss_juggernaut_quake' });
+    addFx(state, { type: 'popup', x: p.x, y: p.y, color: '#ffcf6b', life: 0.9, text: '灼燒', kind: 'damage' });
   }
   addFx(state, { type: 'ultimate', x: boss.x, y: boss.y, facing: boss.facing, color: '#ff5a1f', life: 0.6, radius: radius });
 };
