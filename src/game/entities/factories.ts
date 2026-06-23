@@ -71,7 +71,7 @@ export function spawnPoints(n: number): Array<{ x: number; y: number }> {
 }
 
 export function createInitialState(
-  playersArr: Array<{ id: EntityId; name: string; charId: number; team?: number }>,
+  playersArr: Array<{ id: EntityId; name: string; charId: number; team?: number; isNpc?: boolean }>,
   flags: { freeMana?: boolean; noCooldown?: boolean; noDamage?: boolean; difficulty?: number } = {},
   opts: { mode?: GameMode; round?: number } = {},
 ): GameState {
@@ -81,6 +81,7 @@ export function createInitialState(
   playersArr.forEach((p, i) => {
     const pl = makePlayer(p.id, p.name, p.charId, pts[i].x, pts[i].y, p.team || 0);
     pl.facing = Math.atan2(cy - pts[i].y, cx - pts[i].x);
+    if (p.isNpc) pl.isNpc = true;
     players[p.id] = pl;
   });
   return {
@@ -123,6 +124,7 @@ export function makeProjectile(owner: EntityId, x: number, y: number, vx: number
     leaveZone: opt.leaveZone || null,
     freezeBonus: opt.freezeBonus || 0,
     vfx: opt.vfx || null,
+    heal: opt.heal || 0,
     hit: {},
   };
 }
