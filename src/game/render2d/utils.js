@@ -13,6 +13,21 @@ export function drawBar(ctx, x, y, w, h, ratio, fg, bg) {
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 }
 
+export function drawShieldedBar(ctx, x, y, w, h, hpRatio, shieldRatio, fg = '#2ecc71', bg = '#0c2a18') {
+  drawBar(ctx, x, y, w, h, hpRatio, fg, bg);
+  shieldRatio = Math.max(0, Math.min(1, shieldRatio || 0));
+  if (shieldRatio <= 0) return;
+
+  const shieldW = Math.max(2, w * shieldRatio);
+  ctx.fillStyle = 'rgba(255,255,255,0.88)';
+  ctx.fillRect(x, y, shieldW, h);
+  ctx.fillStyle = 'rgba(226,248,255,0.55)';
+  ctx.fillRect(x, y, shieldW, Math.max(2, Math.ceil(h * 0.42)));
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+
 // Stable pseudo-random value from an effect/projectile id.
 export function seeded(seed, i = 0) {
   let t = (Math.imul(seed | 0, 73856093) ^ Math.imul(i | 0, 19349663)) >>> 0;

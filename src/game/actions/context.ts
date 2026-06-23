@@ -2,6 +2,7 @@ import { ARENA, PLAYER_RADIUS } from '../constants.js';
 import { clamp, dist } from '../entities/math.ts';
 import { applyEffect } from '../entities/effects.ts';
 import { applyHeal } from '../entities/heal.ts';
+import { applyShield } from '../entities/shield.ts';
 import { addFx } from '../entities/fx.ts';
 import { isAlly } from '../entities/team.ts';
 import type { GameState, Player, ActionDef, ActionOpts, ActionContext, ExecuteAction } from '../types';
@@ -31,7 +32,10 @@ export function applySelfBuff(caster: Player, self: any, state?: GameState) {
   if (!self) return;
   if (self.cleanse) applyEffect(caster, 'cleanse');
   if (self.heal) { if (state) applyHeal(state, caster, self.heal, { burst: true }); else applyEffect(caster, 'heal', { amount: self.heal }); }
-  if (self.shield) applyEffect(caster, 'shield', { amount: self.shield, duration: self.duration || 5 });
+  if (self.shield) {
+    if (state) applyShield(state, caster, self.shield, self.duration || 5);
+    else applyEffect(caster, 'shield', { amount: self.shield, duration: self.duration || 5 });
+  }
   if (self.effect) applyEffect(caster, self.effect.kind, self.effect, caster.id);
   if (self.effects) for (const effect of self.effects) applyEffect(caster, effect.kind, effect, caster.id);
 }
@@ -44,7 +48,7 @@ export function applyAllyBuff(state: GameState, caster: Player, ally: any) {
     if (dist(caster.x, caster.y, target.x, target.y) > radius) continue;
     if (ally.cleanse) applyEffect(target, 'cleanse');
     if (ally.heal) applyHeal(state, target, ally.heal, { burst: true });
-    if (ally.shield) applyEffect(target, 'shield', { amount: ally.shield, duration: ally.duration || 5 });
+    if (ally.shield) applyShield(state, target, ally.shield, ally.duration || 5);
     if (ally.effect) applyEffect(target, ally.effect.kind, ally.effect, caster.id);
     if (ally.effects) for (const effect of ally.effects) applyEffect(target, effect.kind, effect, caster.id);
     

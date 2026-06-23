@@ -55,7 +55,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const selfNameD = el('div', 'hud-self-name', selfDesktop);
   const selfTalentD = el('div', 'hud-self-talent', selfDesktop);
   const hpWrapD = el('div', 'hud-bar hp', selfDesktop);
-  const hpFillD = el('i', '', hpWrapD);
+  const hpFillD = el('i', 'hp-fill', hpWrapD);
+  const hpShieldD = el('i', 'shield-fill', hpWrapD);
   const hpTxtD = el('span', '', hpWrapD);
   const mpWrapD = el('div', 'hud-bar mp', selfDesktop);
   const mpFillD = el('i', '', mpWrapD);
@@ -88,7 +89,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const selfTalentM = el('div', 'hud-mobile-talent', selfMobile);
   const barsWrapM = el('div', 'hud-mobile-bars', selfMobile);
   const hpWrapM = el('div', 'hud-mobile-bar hp', barsWrapM);
-  const hpFillM = el('i', '', hpWrapM);
+  const hpFillM = el('i', 'hp-fill', hpWrapM);
+  const hpShieldM = el('i', 'shield-fill', hpWrapM);
   const hpTxtM = el('span', '', hpWrapM);
   const mpWrapM = el('div', 'hud-mobile-bar mp', barsWrapM);
   const mpFillM = el('i', '', mpWrapM);
@@ -363,7 +365,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const bossPanel = el('div', 'hud-boss', layer);
   const bossName = el('div', 'hud-boss-name', bossPanel);
   const bossBarWrap = el('div', 'hud-boss-bar', bossPanel);
-  const bossFill = el('i', '', bossBarWrap);
+  const bossFill = el('i', 'hp-fill', bossBarWrap);
+  const bossShield = el('i', 'shield-fill', bossBarWrap);
   const bossTxt = el('span', '', bossBarWrap);
   const bossParts = el('div', 'hud-boss-parts', bossPanel);
   const bossTags = el('div', 'hud-boss-tags', bossPanel);
@@ -442,12 +445,12 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
       root.className = 'nplate';
       const status = el('div', 'nstatus', root);
       const name = el('div', 'nname', root);
-      const hpw = el('div', 'nbar', root); const hp = el('i', '', hpw);
+      const hpw = el('div', 'nbar', root); const hp = el('i', 'hp-fill', hpw); const shield = el('i', 'shield-fill', hpw);
       const mpw = el('div', 'nbar mana', root); const mp = el('i', '', mpw);
       const buffs = el('div', 'nbuffs', root);
       const obj = new CSS2DObject(root);
       scene.add(obj);
-      pl = { obj, name, hp, mp, root, status, buffs };
+      pl = { obj, name, hp, shield, mp, root, status, buffs };
       plates.set(pid, pl);
     }
     return pl;
@@ -512,6 +515,7 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setStyle(pl.name, 'color', hunted ? '#ff5a5a' : r === 'self' ? '#ffd54a' : r === 'ally' ? '#6ee7a8' : (selfTeam > 0 ? '#ff8a80' : '#ffffff'));
       }
       setStyle(pl.hp, 'width', pct(p.hp / p.maxHp));
+      setStyle(pl.shield, 'width', pct((p.shield || 0) / p.maxHp));
       setStyle(pl.mp, 'width', pct(p.mana / p.maxMana));
       setHtml(pl.buffs, buildPlateBuffs(p));
       const sInfo = stunInfo(p);
@@ -540,7 +544,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setStyle(selfNameD, 'color', me.alive ? '#fff' : '#ff7675');
         setText(selfTalentD, c.talent ? `天賦 ${c.talent.name}` : '');
         setStyle(hpFillD, 'width', pct(me.hp / me.maxHp));
-        setText(hpTxtD, `${Math.ceil(me.hp)}/${me.maxHp}`);
+        setStyle(hpShieldD, 'width', pct((me.shield || 0) / me.maxHp));
+        setText(hpTxtD, `${Math.ceil(me.hp)}/${me.maxHp}${me.shield > 0 ? ` +${Math.ceil(me.shield)}` : ''}`);
         setStyle(mpFillD, 'width', pct(me.mana / me.maxMana));
         setText(mpTxtD, `${Math.ceil(me.mana)}/${me.maxMana}`);
         const ultR = Math.min(1, (me.ult || 0) / ULT_MAX);
@@ -564,7 +569,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setStyle(selfNameM, 'color', me.alive ? '#fff' : '#ff7675');
         setText(selfTalentM, c.talent ? `天賦: ${c.talent.name}` : '');
         setStyle(hpFillM, 'width', pct(me.hp / me.maxHp));
-        setText(hpTxtM, `${Math.ceil(me.hp)}/${me.maxHp}`);
+        setStyle(hpShieldM, 'width', pct((me.shield || 0) / me.maxHp));
+        setText(hpTxtM, `${Math.ceil(me.hp)}/${me.maxHp}${me.shield > 0 ? ` +${Math.ceil(me.shield)}` : ''}`);
         setStyle(mpFillM, 'width', pct(me.mana / me.maxMana));
         setText(mpTxtM, `${Math.ceil(me.mana)}/${me.maxMana}`);
         setHtml(buffsM, buildBuffHtml(me));
@@ -668,7 +674,8 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         const hp = state.bossHp != null ? state.bossHp : boss.hp;
         const mhp = state.bossMaxHp || boss.maxHp;
         setStyle(bossFill, 'width', pct(hp / mhp));
-        setText(bossTxt, `${Math.ceil(hp)} / ${mhp}`);
+        setStyle(bossShield, 'width', pct((boss.shield || 0) / mhp));
+        setText(bossTxt, `${Math.ceil(hp)} / ${mhp}${boss.shield > 0 ? ` +${Math.ceil(boss.shield)}` : ''}`);
         const parts = players.filter((p) => p.isPart && p.ownerId === boss.id);
         if (parts.length) {
           let ph = '';

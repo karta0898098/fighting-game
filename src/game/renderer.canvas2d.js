@@ -11,7 +11,7 @@ import { drawFx } from './render2d/fx.js';
 import { drawHUD } from './render2d/hud.js';
 import { createParticleSystem } from './render2d/particles.js';
 import { createBossUltimateAura2d } from './render2d/bossUltimateAura.js';
-import { drawBar, seeded, shade, sx, sy } from './render2d/utils.js';
+import { drawBar, drawShieldedBar, seeded, shade, sx, sy } from './render2d/utils.js';
 import { drawFloor, drawTimeAnchors, drawZone } from './render2d/world.js';
 
 export function createRenderer(canvas) {
@@ -271,9 +271,19 @@ export function createRenderer(canvas) {
       const pulse = 0.7 + 0.3 * Math.sin(performance.now() / 120);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(120,220,255,${0.7 * pulse})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(bx, bodyCY, r + (sprite ? 20 : 6), 0, Math.PI * 2); ctx.stroke();
+      const sr = r + (sprite ? 22 : 8);
+      const g = ctx.createRadialGradient(bx, bodyCY, Math.max(2, sr * 0.55), bx, bodyCY, sr * (1.18 + 0.04 * pulse));
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(0.72, `rgba(235,250,255,${0.22 * pulse})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(bx, bodyCY, sr * 1.18, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(255,255,255,${0.88 * pulse})`;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(bx, bodyCY, sr, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(190,235,255,${0.48 * pulse})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(bx, bodyCY, sr + 5, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
     // 狂暴光環
@@ -310,7 +320,7 @@ export function createRenderer(canvas) {
     ctx.fillStyle = '#fff';
     ctx.fillText(p.name, cx, top - 7);
     // 血條
-    drawBar(ctx, x, top, w, h, p.hp / p.maxHp, '#2ecc71', '#0c2a18');
+    drawShieldedBar(ctx, x, top, w, h, p.hp / p.maxHp, (p.shield || 0) / p.maxHp);
     // 魔力條
     drawBar(ctx, x, top + h + 2, w, h - 1, p.mana / p.maxMana, '#3aa0ff', '#0c1c2a');
   }

@@ -276,12 +276,27 @@ export function createCharacterModel(charId) {
   // 狀態效果環
   const shieldRing = new THREE.Mesh(
     new THREE.TorusGeometry(torsoW * 0.95, 1.6, 8, 36),
-    new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: 0x49d0ff, emissiveIntensity: 2.2, transparent: true, opacity: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xdff7ff, emissiveIntensity: 2.2, transparent: true, opacity: 0.9 })
   );
   shieldRing.rotation.x = -Math.PI / 2;
   shieldRing.position.y = 2;
   shieldRing.visible = false;
   group.add(shieldRing);
+
+  const shieldShell = new THREE.Mesh(
+    new THREE.SphereGeometry(torsoW * 1.05, 32, 16),
+    new THREE.MeshBasicMaterial({
+      color: 0xf7fbff,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  shieldShell.position.y = shoulderY - 4;
+  shieldShell.scale.y = 1.42;
+  shieldShell.visible = false;
+  group.add(shieldShell);
 
   const rageRing = new THREE.Mesh(
     new THREE.TorusGeometry(torsoW * 1.05, 2.2, 8, 36),
@@ -348,7 +363,7 @@ export function createCharacterModel(charId) {
   group.add(rootRing);
 
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents, starOrbitShards: parts.starOrbitShards },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, shieldShell, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents, starOrbitShards: parts.starOrbitShards },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -767,10 +782,15 @@ export function animateModel(group, dt, info) {
   // ---- 狀態環 / 隱身淡出 ----
   const shieldOn = p && p.shield > 0;
   parts.shieldRing.visible = shieldOn;
+  parts.shieldShell.visible = shieldOn;
   if (shieldOn) {
     const pulse = 0.8 + 0.2 * Math.sin(ud.breathe * 4);
-    parts.shieldRing.scale.setScalar(pulse);
-    parts.shieldRing.material.emissiveIntensity = 1.6 + 0.8 * pulse;
+    const strength = Math.min(1, (p.shield || 0) / Math.max(1, p.maxHp || 1));
+    parts.shieldRing.scale.setScalar(0.96 + 0.1 * pulse);
+    parts.shieldRing.material.emissiveIntensity = 1.9 + 1.0 * pulse;
+    parts.shieldRing.material.opacity = 0.72 + 0.2 * pulse;
+    parts.shieldShell.scale.set(1 + 0.04 * pulse, 1.42 + 0.05 * pulse, 1 + 0.04 * pulse);
+    parts.shieldShell.material.opacity = 0.12 + 0.12 * pulse + 0.08 * strength;
   }
   const rageOn = p && p.effects && (p.effects.rage || p.effects.overdrive);
   parts.rageRing.visible = !!rageOn;

@@ -1,6 +1,7 @@
 import { PLAYER_RADIUS } from '../../../constants.js';
 import { applyEffect } from '../../../entities/effects.ts';
 import { applyHeal } from '../../../entities/heal.ts';
+import { applyShield } from '../../../entities/shield.ts';
 import { addFx } from '../../../entities/fx.ts';
 import { isEnemy } from '../../../entities/team.ts';
 import type { ActionContext } from '../../../types';
@@ -15,7 +16,7 @@ export function buff(ctx: ActionContext) {
     for (const o of Object.values(state.players)) if (o.isMinion && o.ownerId === caster.id && o.alive) mc++;
     shieldAmt += action.shieldPerMinion * mc;
   }
-  if (shieldAmt) applyEffect(caster, 'shield', { amount: shieldAmt, duration: action.duration });
+  if (shieldAmt) applyShield(state, caster, shieldAmt, action.duration || 5);
   if (action.knockbackAura) {
     for (const o of Object.values(state.players)) {
       if (!isEnemy(state, caster.id, o)) continue;

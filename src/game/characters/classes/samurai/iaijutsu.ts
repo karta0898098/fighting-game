@@ -1,5 +1,6 @@
 import { angleDiff } from '../../../entities/math.ts';
 import { addFx } from '../../../entities/fx.ts';
+import { applyShield } from '../../../entities/shield.ts';
 import { dealDamage } from '../../../entities/damage.ts';
 import { isEnemy } from '../../../entities/team.ts';
 import { applyEffectFrom, bodyR } from '../../../actions/combat.ts';
@@ -34,8 +35,7 @@ export function startSamuraiIaijutsu(ctx: ActionContext) {
   };
 
   if (action.self?.shield) {
-    caster.shield = Math.max(caster.shield || 0, action.self.shield);
-    caster.shieldTime = Math.max(caster.shieldTime || 0, action.self.duration || 1);
+    applyShield(state, caster, action.self.shield, action.self.duration || 1);
   }
   if (!silent) {
     addFx(state, {
