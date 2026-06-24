@@ -31,7 +31,8 @@ import type { GameState, Player, EntityId } from '../types';
 //                          summonbond 召喚物命中回主（owner 經召喚物，非攻擊方天賦）
 //   • systems/effects.ts      undeath(DoT 汲取回血，見 dotLifesteal)
 //   • actions/combat.ts       pyromancy(強化 burn) ；actions/casting.ts iaido 居合就緒判定
-// 註：unbreakable / bulwark 目前僅有資料定義，未見對應減傷邏輯（疑為待補；本次純重構不更動行為）。
+// 註：bulwark（坦克 鋼鐵壁壘）已實作於 classes/tank/talent.ts（modifyIncoming 減傷＋怒氣引擎）。
+//     unbreakable 目前仍僅有資料定義，未見對應減傷邏輯（疑為待補）。
 // ──────────────────────────────────────────────────────────────────
 
 // 建立傳給天賦 hook 的情境（注入副作用 helper，避免 talent.ts 反向匯入 entities/* 造成循環）。
@@ -77,6 +78,35 @@ function spreadCurse(state: GameState, corpse: Player) {
   addFx(state, { type: 'buff', x: corpse.x, y: corpse.y, color: '#bb6bd9', life: 0.4, radius, vfx: 'hexer_field' });
 }
 
+// 孵化寄生引爆：對宿主與半徑內敵人造成累積爆傷，並把弱化寄生擴散到附近敵人。
+// 由「時間到 (systems/effects) / 再補一箭 (combat.applyEffectFrom) / 宿主死亡 (本檔死亡區)」呼叫。
+// 進入時先移除寄生，避免「爆傷致死 → 死亡引爆 → 再次引爆」的遞迴。
+export function hatchParasite(state: GameState, host: Player) {
+  const par = host.effects && host.effects.parasite;
+  if (!par) return;
+  delete host.effects.parasite;
+  const burst = Math.min(par.burstCap || 250, (par.stored || 0) * (par.burstMult || 1));
+  const radius = par.burstRadius || 150;
+  const srcId = par.srcId;
+  addFx(state, { type: 'hit', x: host.x, y: host.y, color: '#1abc9c', life: 0.4, radius, vfx: 'archer_parasite' });
+  for (const o of Object.values(state.players)) {
+    if (!o.alive) continue;
+    if (srcId != null && o.id === srcId) continue; // 不打施法者
+    const isHost = o.id === host.id;
+    if (!isHost && (!isEnemy(state, srcId, o) || Math.hypot(o.x - host.x, o.y - host.y) > radius)) continue;
+    if (burst > 0) dealDamage(state, o, burst, srcId, { dot: true });
+    // 擴散弱化寄生（只由主寄生 store>0 觸發；擴散出的 store=0 不再二次擴散）。
+    if (!isHost && par.store > 0 && o.alive) {
+      applyEffect(o, 'parasite', {
+        duration: par.spreadDur || 3, tick: par.tick, dmg: par.dmg,
+        vuln: par.vuln, vulnStep: 0, vulnMax: par.vulnMax,
+        store: 0, burstMult: par.burstMult, burstCap: par.burstCap,
+        burstRadius: radius, spreadDur: 0,
+      }, srcId);
+    }
+  }
+}
+
 function talentDamageMods(state: GameState, attacker: Player, target: Player, amount: number): number {
   let dmg = amount;
   if (target && target.alive) {
@@ -100,7 +130,7 @@ export function dealDamage(
   target: Player,
   amount: number,
   attackerId: EntityId,
-  opts: { noTalent?: boolean; noReflect?: boolean; meleeHit?: boolean } = {},
+  opts: { noTalent?: boolean; noReflect?: boolean; meleeHit?: boolean; dot?: boolean } = {},
 ) {
   if (!target.alive || amount <= 0) return;
   if (target.effects && target.effects.evading) return;
@@ -137,6 +167,7 @@ export function dealDamage(
   if (hostile && attacker.effects && attacker.effects.dmg_reduce) dmg *= 1 - (attacker.effects.dmg_reduce.factor || 0);
   if (target.isBoss) dmg = applyBossDamageModifiers(state, target, attacker, dmg);
   if (target.effects && target.effects.mark) dmg *= 1 + target.effects.mark.bonus;
+  if (target.effects && target.effects.parasite) dmg *= 1 + (target.effects.parasite.vuln || 0);
   // 破綻窗口：Boss / 部位 (含 owner Boss 的破綻) 收招期間受傷 +30% (重招破綻 +45%)
   if (hostile && target.isBoss && (target.recoverWindow || 0) > 0) {
     dmg *= target.recoverHeavy ? 1.45 : 1.3;
@@ -273,6 +304,13 @@ export function dealDamage(
 
   target.hp -= dmg;
 
+  // 孵化寄生：弓箭手命中被寄生目標 → 餵食（累積待引爆傷害）+ 疊加易傷。排除 DoT/引爆自身觸發。
+  if (hostile && !opts.dot && target.effects && target.effects.parasite && target.effects.parasite.srcId === attacker.id) {
+    const par = target.effects.parasite;
+    par.stored += dmg * (par.store || 0);
+    par.vuln = Math.min(par.vulnMax || 0.36, (par.vuln || 0) + (par.vulnStep || 0));
+  }
+
   const isCrit = dmg >= amount * 1.35 || dmg >= 30;
   addFx(state, { type: 'popup', x: target.x, y: target.y, color: isCrit ? '#ffd166' : '#ff5050', life: 0.85, text: Math.round(dmg), kind: isCrit ? 'crit' : 'damage' });
   recordDamage(state, attackerId, target, dmg, { isCrit });
@@ -321,6 +359,7 @@ export function dealDamage(
     recordKill(state, attackerId, target);
     recordDeath(state, target);
     if (target.effects && target.effects.weaken) spreadCurse(state, target);
+    if (target.effects && target.effects.parasite) hatchParasite(state, target);
     const bossDeathVfx = target.isBoss && state.mode === 'boss' ? getBoss(target.charId as number)?.data?.deathVfx : null;
     if (!bossDeathVfx) {
       addFx(state, { type: 'death', x: target.x, y: target.y, color: '#ffffff', life: 0.5, radius: PLAYER_RADIUS * 2 });

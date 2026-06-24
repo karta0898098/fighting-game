@@ -1,7 +1,7 @@
 import { PLAYER_RADIUS } from '../constants.js';
 import { getCharacter } from '../characters.js';
 import { angleDiff, dist } from '../entities/math.ts';
-import { dealDamage } from '../entities/damage.ts';
+import { dealDamage, hatchParasite } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
 import { applyShield } from '../entities/shield.ts';
 import { addFx } from '../entities/fx.ts';
@@ -43,6 +43,8 @@ export function applyEffectFrom(state: GameState, target: Player, effect: any, s
     applyShield(state, target, e.amount, e.duration || 5);
     return;
   }
+  // 孵化寄生：再補一箭 → 先引爆既有寄生（依累積量），再植入全新一隻。
+  if (e.kind === 'parasite' && target.effects && target.effects.parasite) hatchParasite(state, target);
   applyEffect(target, e.kind, e, srcId);
 }
 

@@ -47,7 +47,7 @@ export interface EffectInstance {
  */
 export type EffectKind =
   | 'slow' | 'stun' | 'burn' | 'bleed' | 'mark' | 'reflect' | 'protect'
-  | 'chill' | 'frozen' | 'root' | 'weaken' | 'dmg_reduce'
+  | 'chill' | 'frozen' | 'root' | 'weaken' | 'dmg_reduce' | 'parasite'
   | 'rage' | 'haste' | 'lifesteal' | 'evading' | 'invis' | 'overdrive'
   | 'heal' | 'shield' | 'cleanse'
   | (string & {});
@@ -91,6 +91,7 @@ export interface Player {
   leap: any;
   channel: any;
   trail: any;
+  barrage: any;
   still: number;
   combo: number; comboTimer: number;
   iaiTimer: number; iaiReady?: boolean;

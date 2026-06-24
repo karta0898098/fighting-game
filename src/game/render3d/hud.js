@@ -4,7 +4,7 @@
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getCharacter } from '../characters.js';
 import { getEffectHud } from '../entities/effects.ts';
-import { ULT_MAX } from '../constants.js';
+import { ULT_MAX, FURY_MAX } from '../constants.js';
 import { sceneX, sceneZ } from './coords.js';
 import { el, setText, setStyle, setClass, setHtml, pct, hexA, esc } from './hud/dom.js';
 import { getHudWidgets } from './hud/widgets.js';
@@ -50,6 +50,9 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const ultWrapD = el('div', 'hud-bar ult', selfDesktop);
   const ultFillD = el('i', '', ultWrapD);
   const ultTxtD = el('span', '', ultWrapD);
+  const furyWrapD = el('div', 'hud-bar fury', selfDesktop); // 坦克專屬怒氣條（非坦克隱藏）
+  const furyFillD = el('i', '', furyWrapD);
+  const furyTxtD = el('span', '', furyWrapD);
   const buffsD = el('div', 'hud-buffs', selfDesktop);
   const skillsContainerD = el('div', 'hud-skills-container', selfDesktop);
   const skillsD = el('div', 'hud-skills', skillsContainerD);
@@ -81,6 +84,9 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
   const mpWrapM = el('div', 'hud-mobile-bar mp', barsWrapM);
   const mpFillM = el('i', '', mpWrapM);
   const mpTxtM = el('span', '', mpWrapM);
+  const furyWrapM = el('div', 'hud-mobile-bar fury', barsWrapM); // 坦克專屬怒氣條（非坦克隱藏）
+  const furyFillM = el('i', '', furyWrapM);
+  const furyTxtM = el('span', '', furyWrapM);
   const buffsM = el('div', 'hud-mobile-buffs', selfMobile);
 
   // ---- 行動端虛擬搖桿與按鍵 ----
@@ -541,6 +547,13 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setStyle(ultFillD, 'width', pct(ultR));
         ultWrapD.classList.toggle('ready', ultReady);
         setText(ultTxtD, ultReady ? '終極 就緒！' : `終極 ${Math.floor(ultR * 100)}%`);
+        const isBulwarkD = !!(c.talent && c.talent.id === 'bulwark');
+        setStyle(furyWrapD, 'display', isBulwarkD ? '' : 'none');
+        if (isBulwarkD) {
+          setStyle(furyFillD, 'width', pct(Math.min(1, (me.fury || 0) / FURY_MAX)));
+          furyWrapD.classList.toggle('boiling', (me.fury || 0) >= (c.talent.threshold ?? 55));
+          setText(furyTxtD, `怒氣 ${Math.floor(me.fury || 0)}`);
+        }
         setHtml(buffsD, buildBuffHtml(me));
         setChip(chip.basic,  c.basic,  me.cd.basic,   me.mana);
         setChip(chip.skill1, c.skill1, me.cd.skill1,  me.mana);
@@ -561,6 +574,13 @@ export function createHud({ stage, scene, camera, controlScheme = 'wasd-jkl', ho
         setText(hpTxtM, `${Math.ceil(me.hp)}/${me.maxHp}${me.shield > 0 ? ` +${Math.ceil(me.shield)}` : ''}`);
         setStyle(mpFillM, 'width', pct(me.mana / me.maxMana));
         setText(mpTxtM, `${Math.ceil(me.mana)}/${me.maxMana}`);
+        const isBulwarkM = !!(c.talent && c.talent.id === 'bulwark');
+        setStyle(furyWrapM, 'display', isBulwarkM ? '' : 'none');
+        if (isBulwarkM) {
+          setStyle(furyFillM, 'width', pct(Math.min(1, (me.fury || 0) / FURY_MAX)));
+          furyWrapM.classList.toggle('boiling', (me.fury || 0) >= (c.talent.threshold ?? 55));
+          setText(furyTxtM, `怒氣 ${Math.floor(me.fury || 0)}`);
+        }
         setHtml(buffsM, buildBuffHtml(me));
         
         const showControls = me.alive && state.roundPhase !== 'wiped' && state.roundPhase !== 'cleared';

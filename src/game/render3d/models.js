@@ -362,8 +362,10 @@ export function createCharacterModel(charId) {
   rootRing.visible = false;
   group.add(rootRing);
 
+  if (parts.barrageWings) group.add(parts.barrageWings);
+
   group.userData = {
-    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, shieldShell, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents, starOrbitShards: parts.starOrbitShards },
+    parts: { torso, head, armL, armR, legL, legR, emblem, shieldRing, shieldShell, rageRing, burnRing, frozenRingLow, frozenRingHigh, stunRing, stunHalo, rootRing, handR, face, accents, starOrbitShards: parts.starOrbitShards, barrageWings: parts.barrageWings },
     skinMats,
     phase: Math.random() * Math.PI * 2,
     breathe: Math.random() * Math.PI * 2,
@@ -764,6 +766,30 @@ export function animateModel(group, dt, info) {
       shard.rotation.y += dt * 2.8;
       shard.rotation.z += dt * 0.8;
       shard.scale.setScalar(1 + Math.sin(ud.breathe * 2 + i) * 0.035);
+    }
+  }
+
+  // 天羽箭暴 — 磅礴雙翼：依 p.barrage 展開/收合，作為 player group 子物件自動跟隨移動。
+  if (parts.barrageWings) {
+    const on = p && p.barrage;
+    ud.wingT = on ? Math.min(1, (ud.wingT || 0) + dt * 3.0)   // 展開 ~0.33s
+                  : Math.max(0, (ud.wingT || 0) - dt * 4.5);  // 收合更快
+    const wings = parts.barrageWings;
+    wings.visible = ud.wingT > 0.001;
+    if (wings.visible) {
+      const e = ud.wingT * ud.wingT * (3 - 2 * ud.wingT);     // smoothstep 展開緩動
+      const flap = Math.sin(ud.breathe * 5) * 0.14;           // 拍動
+      for (const side of wings.children) {
+        const sz = side.userData.side;
+        const feathers = side.userData.feathers;
+        for (let i = 0; i < feathers.length; i++) {
+          const fan = feathers[i].userData.fan;
+          // 收合(e=0)時幾近直立貼背；展開時外擺成扇 + 拍動
+          feathers[i].rotation.x = sz * (0.05 + fan * 1.05 * e + flap * (0.4 + i * 0.12) * e);
+        }
+      }
+      wings.scale.setScalar(0.7 + 0.6 * e);                   // 展開後放大到 1.3×
+      if (wings.userData.mat) wings.userData.mat.opacity = 0.25 + 0.72 * e;
     }
   }
 

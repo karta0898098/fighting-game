@@ -1,6 +1,6 @@
 import { PLAYER_RADIUS } from '../constants.js';
 import { getCharacter } from '../characters.js';
-import { dealDamage } from '../entities/damage.ts';
+import { dealDamage, hatchParasite } from '../entities/damage.ts';
 import { applyEffect } from '../entities/effects.ts';
 import { applyHeal } from '../entities/heal.ts';
 import { addFx } from '../entities/fx.ts';
@@ -44,6 +44,16 @@ export function tickStatusEffects(state: GameState, p: Player, dt: number) {
         dotLifesteal(state, effect.srcId, effect.dmg);
         addFx(state, { type: 'burn', x: p.x, y: p.y, color: '#e84141', life: 0.3, radius: PLAYER_RADIUS });
       }
+    } else if (kind === 'parasite') {
+      effect.tickTimer -= dt;
+      if (effect.tickTimer <= 0) {
+        effect.tickTimer += effect.tick;
+        dealDamage(state, p, effect.dmg, effect.srcId, { dot: true });
+        dotLifesteal(state, effect.srcId, effect.dmg);
+        addFx(state, { type: 'burn', x: p.x, y: p.y, color: '#1abc9c', life: 0.3, radius: PLAYER_RADIUS });
+      }
+      // 時間到 → 孵化引爆（DoT 已先擊殺者由死亡區引爆，此處以 p.alive 防重複）。
+      if (effect.remaining <= 0 && p.alive) hatchParasite(state, p);
     } else if (kind === 'chill') {
       if (effect.stacks >= effect.max && !effect.froze) {
         effect.froze = true;

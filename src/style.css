@@ -399,6 +399,12 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 .hud-bar > span { position: absolute; inset: 0; z-index: 3; text-align: center; font-size: 11px; line-height: 16px; color: #fff; text-shadow: 0 1px 1px #000; }
 .hud-bar.hp > span { line-height: 18px; }
 .hud-bar.ult > span { line-height: 13px; font-size: 10px; }
+.hud-bar.fury { background: #2a120c; height: 13px; }
+.hud-bar.fury > i { background: linear-gradient(#ff8a4c, #e8542a); transition: width 0.1s linear; }
+.hud-bar.fury > span { line-height: 13px; font-size: 10px; }
+.hud-bar.fury.boiling { box-shadow: 0 0 10px 1px rgba(255, 110, 50, 0.9); border-color: rgba(255, 150, 90, 0.9); }
+.hud-bar.fury.boiling > i { background: linear-gradient(#ffd07a, #ff6a2a); animation: furyboil 0.7s ease-in-out infinite; }
+@keyframes furyboil { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.55); } }
 .hud-bar.charge { background: #071a24; height: 16px; margin-top: 6px; }
 .hud-bar.charge > i { background: linear-gradient(90deg, #7fefff, #00c8ff); transition: width 0.05s linear; }
 .hud-bar.charge.full { box-shadow: 0 0 12px 3px rgba(120, 230, 255, 0.95); border-color: rgba(160, 245, 255, 0.9); }
@@ -903,6 +909,12 @@ code { background: #0e1722; padding: 3px 9px; border-radius: 6px; color: var(--a
 }
 .hud-mobile-bar.mp > i {
   background: linear-gradient(#5bb6ff, #3aa0ff);
+}
+.hud-mobile-bar.fury > i {
+  background: linear-gradient(#ff8a4c, #e8542a);
+}
+.hud-mobile-bar.fury.boiling > i {
+  background: linear-gradient(#ffd07a, #ff6a2a);
 }
 .hud-mobile-bar.charge {
   background: #071a24;

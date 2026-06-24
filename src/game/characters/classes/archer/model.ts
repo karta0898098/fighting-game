@@ -7,7 +7,7 @@ export const modelConfig = { bulk: 1.92, weapon: 'bow', skinKind: 'leather', hea
 export function buildModel(ctx) {
   const {
     base, bulk, reg, mat,
-    torsoW, torsoD, torsoH,
+    torsoW, torsoD, torsoH, shoulderY,
     shoulderX, hipX, frontX,
     defaultBodyMat, defaultHeadMat, defaultArmMat, defaultBootMat,
     darkMat, helmMat, accentHelmMat, darkHelmMat,
@@ -46,7 +46,38 @@ export function buildModel(ctx) {
   const legL = mkLimb(0, -hipX, false, defaultBodyMat, defaultBootMat, base);
   const legR = mkLimb(0, hipX, false, defaultBodyMat, defaultBootMat, base);
 
-  return { torso, head, armL, armR, legL, legR };
+  // 天羽箭暴 — 磅礴發光雙翼：預設收合隱藏，大招連射時展開並隨角色移動（由 models.js animateModel 依 p.barrage 驅動）。
+  // 結構：每側一個 side 群組，內含數片以「根部」為樞紐的羽片(pivot)；展開時各 pivot 繞前後軸外擺成扇形。
+  const featherMat = reg(mat(0xffffff, { emissive: base, ei: 3.4, transparent: true, opacity: 0.95 }));
+  featherMat.blending = THREE.AdditiveBlending;
+  featherMat.side = THREE.DoubleSide;
+  featherMat.depthWrite = false;
+  const barrageWings = new THREE.Group();
+  const NF = 8;
+  for (const sz of [-1, 1]) {
+    const side = new THREE.Group();
+    side.position.set(-torsoD * 0.5 - 2, shoulderY + 5, sz * (torsoW * 0.28));
+    side.userData.side = sz;
+    side.userData.feathers = [];
+    for (let i = 0; i < NF; i++) {
+      const len = 56 + i * 20;             // 由內而外漸長 56→196（磅礴）
+      const w = 7.5 - i * 0.55;
+      const pivot = new THREE.Group();
+      const feather = new THREE.Mesh(new THREE.ConeGeometry(w, len, 4), featherMat);
+      feather.position.y = len * 0.5;      // 以根部為樞紐往外伸
+      feather.rotation.y = Math.PI / 4;    // 菱形朝向
+      pivot.add(feather);
+      pivot.rotation.z = 0.1;              // 略向後傾
+      pivot.userData.fan = 0.16 + i * 0.15; // 展開時的外擺比例（0.16→1.21）
+      side.add(pivot);
+      side.userData.feathers.push(pivot);
+    }
+    barrageWings.add(side);
+  }
+  barrageWings.visible = false;
+  barrageWings.userData.mat = featherMat;
+
+  return { torso, head, armL, armR, legL, legR, barrageWings };
 }
 
 export const buildWeapon = buildArcherWeapon;

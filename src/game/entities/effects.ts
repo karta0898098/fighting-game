@@ -67,6 +67,30 @@ const EFFECT_DEFS: Record<string, EffectDef> = {
       };
     },
   },
+  parasite: {
+    cleanseable: true,
+    hud: { icon: '🦠', name: '寄生', buff: false },
+    // 孵化寄生：植入時為全新一隻（再補一箭的「先引爆舊的」已在 combat.applyEffectFrom 處理），故直接覆蓋。
+    apply: (p, _k, data, srcId) => {
+      const tick = data.tick || 0.5;
+      p.effects.parasite = {
+        remaining: data.duration || 6,
+        tick,
+        tickTimer: tick,
+        dmg: data.dmg || 8,
+        vuln: data.vuln || 0,                                   // 當前易傷加成
+        vulnStep: data.vulnStep || 0,                           // 每次餵食疊加
+        vulnMax: data.vulnMax != null ? data.vulnMax : 0.36,    // 易傷上限
+        stored: 0,                                              // 累積待引爆傷害
+        store: data.store || 0,                                 // 餵食比例（存入傷害的比例）
+        burstMult: data.burstMult != null ? data.burstMult : 1, // 引爆倍率
+        burstCap: data.burstCap != null ? data.burstCap : 250,  // 引爆上限
+        burstRadius: data.burstRadius || 150,
+        spreadDur: data.spreadDur || 3,                         // 擴散出的弱寄生持續時間
+        srcId: srcId,
+      };
+    },
+  },
   mark: {
     cleanseable: true,
     hud: { icon: '🎯', name: '標記', buff: false },

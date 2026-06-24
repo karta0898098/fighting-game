@@ -11,46 +11,12 @@ registerVfx('archer_ultimate', {
     ctx.sceneMgr.addShake(8);
     ctx.sceneMgr.addFlash(0.2, '#7bed9f');
 
-    // 施法起手：精靈之風法陣
-    ring(ctx, c, { color: '#7bed9f', from: 10, to: 80, life: 0.5, y: 4, ease: true });
-    
-    // 召喚背後的「翠綠光之雙翼」
-    const wingGroup = new THREE.Group();
-    wingGroup.position.set(c.x, c.y + 14, c.z);
-    wingGroup.rotation.y = -f.facing;
-
-    const wingMat = new THREE.MeshBasicMaterial({
-      color: 0x2ecc71,
-      transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide
-    });
-
-    const leftWingGeo = new THREE.ConeGeometry(5, 34, 3);
-    const leftWing = new THREE.Mesh(leftWingGeo, wingMat);
-    leftWing.position.set(-8, 4, -6);
-    leftWing.rotation.set(0.4, 0, 0.7);
-    
-    const rightWingGeo = new THREE.ConeGeometry(5, 34, 3);
-    const rightWing = new THREE.Mesh(rightWingGeo, wingMat);
-    rightWing.position.set(8, 4, -6);
-    rightWing.rotation.set(0.4, 0, -0.7);
-
-    wingGroup.add(leftWing, rightWing);
-
-    ctx.addTransient(wingGroup, 0.65, (mesh, t) => {
-      const scale = 0.5 + 0.5 * Math.sin(t * Math.PI);
-      mesh.scale.set(scale, scale, scale);
-      leftWing.rotation.z = 0.7 + Math.sin(t * Math.PI * 4) * 0.25;
-      rightWing.rotation.z = -0.7 - Math.sin(t * Math.PI * 4) * 0.25;
-      wingMat.opacity = (1 - t) * 0.85;
-    });
-
-    wingGroup.userData.geo = { dispose: () => { leftWingGeo.dispose(); rightWingGeo.dispose(); } };
-    wingGroup.userData.mat = wingMat;
-
-    cone(ctx, c, f.facing, { color: ['#7bed9f', '#ffffff'], count: 26, speed: 320, spread: 0.6, up: 30, life: 0.4 });
+    // 施法起手：精靈之風法陣（雙環）＋ 朝正面的羽風爆發。
+    // 注意：磅礴雙翼已改為「跟隨角色」的模型部件（archer/model.ts barrageWings + models.js animateModel），
+    //       施法時自動展開，故此處不再生成脫離角色的暫態翅膀。
+    ring(ctx, c, { color: '#7bed9f', from: 10, to: 110, life: 0.55, y: 4, ease: true });
+    ring(ctx, c, { color: '#ffffff', from: 6, to: 60, life: 0.32, y: 10, alpha: 0.9 });
+    cone(ctx, c, f.facing, { color: ['#7bed9f', '#ffffff'], count: 30, speed: 340, spread: 0.6, up: 40, life: 0.45 });
   },
 
   projectile(ctx, pr) {
@@ -312,48 +278,84 @@ registerVfx('archer_trap', {
   },
 });
 
+// 寄生箭：有機倒鉤 + 脈動孢囊 + 環繞孢子 + 病態綠尾跡（不再只是一根箭桿）。
 registerVfx('archer_parasite', {
   projectile(ctx, pr) {
     const THREE = ctx.THREE;
     const g = new THREE.Group();
-    const col = new THREE.Color('#00ff66');
-    
-    const shaftGeo = new THREE.CylinderGeometry(pr.radius * 0.28, pr.radius * 0.28, pr.radius * 5.5, 6);
-    const shaftMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: col,
-      emissiveIntensity: 2.2,
-      roughness: 0.2
-    });
-    const shaft = new THREE.Mesh(shaftGeo, shaftMat);
-    shaft.rotation.z = Math.PI / 2;
-    g.add(shaft);
-    
-    g.userData.geo = shaftGeo;
-    g.userData.mat = shaftMat;
+    const col = new THREE.Color('#2ecc71');     // 主綠
+    const sick = new THREE.Color('#7CFC00');    // 病態螢光綠
 
+    // 暗色有機桿身
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(pr.radius * 0.22, pr.radius * 0.32, pr.radius * 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x14431f, emissive: col, emissiveIntensity: 1.1, roughness: 0.5 })
+    );
+    shaft.rotation.z = Math.PI / 2; g.add(shaft);
+
+    // 前端倒鉤（3 片朝後的鉤刺，有機感）
+    const barbMat = new THREE.MeshStandardMaterial({ color: 0x0b2f15, emissive: col, emissiveIntensity: 1.6, roughness: 0.4 });
+    for (let i = 0; i < 3; i++) {
+      const barb = new THREE.Mesh(new THREE.ConeGeometry(pr.radius * 0.5, pr.radius * 2.4, 4), barbMat);
+      barb.position.x = pr.radius * 2.0;
+      barb.rotation.z = -Math.PI / 2 - 0.6;          // 鉤尖朝後
+      barb.rotation.x = (i / 3) * Math.PI * 2;
+      g.add(barb);
+    }
+
+    // 寄生孢囊（脈動發光核心）+ 半透外膜
+    const podMat = new THREE.MeshStandardMaterial({ color: 0xeaffea, emissive: sick, emissiveIntensity: 3.0, roughness: 0.2, transparent: true, opacity: 0.95 });
+    const pod = new THREE.Mesh(new THREE.SphereGeometry(pr.radius * 0.95, 12, 10), podMat);
+    g.add(pod);
+    const membrane = new THREE.Mesh(
+      new THREE.SphereGeometry(pr.radius * 1.45, 12, 10),
+      new THREE.MeshBasicMaterial({ color: sick, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    g.add(membrane);
+
+    // 環繞孢子（兩顆繞核心公轉的小球）
+    const spores = [];
+    for (let i = 0; i < 2; i++) {
+      const s = new THREE.Mesh(
+        new THREE.SphereGeometry(pr.radius * 0.34, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: sick, emissiveIntensity: 2.6 })
+      );
+      s.userData.phase = i * Math.PI;
+      g.add(s); spores.push(s);
+    }
+
+    let t = 0;
     return {
       object3D: g,
       update(dt) {
+        t += dt;
+        pod.scale.setScalar(0.85 + 0.25 * Math.sin(t * 12));
+        podMat.emissiveIntensity = 2.6 + 1.2 * Math.sin(t * 12);
+        membrane.scale.setScalar(0.9 + 0.2 * Math.sin(t * 8));
+        for (let i = 0; i < spores.length; i++) {
+          const a = t * 9 + spores[i].userData.phase;
+          spores[i].position.set(Math.cos(a) * pr.radius * 1.6, Math.sin(a) * pr.radius * 1.6, Math.sin(a * 1.3) * pr.radius * 1.6);
+        }
         ctx.particles.spawn({
           x: g.position.x, y: g.position.y, z: g.position.z,
-          vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, vz: (Math.random() - 0.5) * 12,
-          drag: 4, life: 0.32, size: pr.radius * 1.2,
-          color: Math.random() < 0.6 ? '#00ff66' : '#2ecc71', fade: true
+          vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 14, vz: (Math.random() - 0.5) * 14,
+          drag: 4, life: 0.4, size: pr.radius * 1.1,
+          color: Math.random() < 0.5 ? '#7CFC00' : '#2ecc71', fade: true
         });
       }
     };
   },
   onHit(ctx, f, c) {
-    ring(ctx, c, { color: '#00ff66', from: 4, to: (f.radius || 12) * 2.2, life: 0.3, y: 8 });
-    burst(ctx, c, { color: ['#00ff66', '#2ecc71', '#16a085'], count: 14, speed: 140, up: 30, life: 0.45 });
-    for (let i = 0; i < 8; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * 12;
+    ring(ctx, c, { color: '#7CFC00', from: 4, to: (f.radius || 12) * 2.6, life: 0.34, y: 8 });
+    burst(ctx, c, { color: ['#7CFC00', '#2ecc71', '#16a085'], count: 18, speed: 150, up: 30, life: 0.5 });
+    // 噴出向上漂浮的孢子（負重力 = 緩緩上升）
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 14;
       ctx.particles.spawn({
         x: c.x + Math.cos(a) * r, y: 4, z: c.z + Math.sin(a) * r,
         vx: 0, vy: 40 + Math.random() * 50, vz: 0,
-        gravity: -20, drag: 1.2, life: 0.6 + Math.random() * 0.4,
-        size: 3 + Math.random() * 3, color: '#00ff66', fade: true
+        gravity: -20, drag: 1.2, life: 0.6 + Math.random() * 0.5,
+        size: 3 + Math.random() * 3, color: '#7CFC00', fade: true
       });
     }
   }

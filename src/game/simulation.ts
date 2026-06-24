@@ -8,7 +8,7 @@ import { bossTick, checkBossRound } from './bossMode.js';
 import { castInputActions } from './actions/casting.ts';
 import { executeAction } from './actions/executor.ts';
 import { tickTemporalEchoes } from './bosses/echoes.ts';
-import { processChannel, processScripted, processTrail } from './actions/runtime.ts';
+import { processBarrage, processChannel, processScripted, processTrail } from './actions/runtime.ts';
 import { resolveCollisions } from './systems/collisions.ts';
 import { tickStatusEffects } from './systems/effects.ts';
 import { updateFx } from './systems/fx.ts';
@@ -61,6 +61,7 @@ export function step(state: GameState, inputs: Record<string, Input>, dt: number
     tickPassiveRecovery(state, p, talent, dt);
 
     processChannel(state, p, dt); // 汲取鏈 (不限制移動)
+    processBarrage(state, p, dt); // 天羽箭暴連射 (不限制移動)
 
     const scripted = processScripted(state, p, dt); // 衝鋒/躍擊進行中接管移動
     if (!scripted) {
