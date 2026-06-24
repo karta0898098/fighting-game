@@ -142,13 +142,15 @@ export function createInput(controlScheme = 'wasd-jkl') {
         else touchKeys[k] = false;
       }
     },
-    // 設定視角模式（0 一般 / 1 近景三人稱 / 2 第一人稱）：1/2 共用 'chase' keymap（相對視角 WASD + 滑鼠 + 1234）
+    // 設定視角模式（0 一般 / 1 近景三人稱 / 2 第一人稱）。視角模式 keymap = 原操作方式 ∪ chase：
+    // 保留原本技能鍵（如 wasd-jkl 的 J/K/L/;），再疊上 chase（WASD 相對移動 + 1234 + 滑鼠），
+    // chase 後蓋確保 WASD 維持移動 → 原配置與 1/2/3/4 兩套出招鍵並存。
     setViewMode(m) {
       m = m | 0; if (m < 0 || m > 2) m = 0;
       if (m === viewMode) return viewMode;
       const wasNormal = viewMode === 0;
       viewMode = m;
-      if (m !== 0 && wasNormal) { prevScheme = currentScheme; currentScheme = 'chase'; keyMap = KEY_MAPS['chase']; }
+      if (m !== 0 && wasNormal) { prevScheme = currentScheme; currentScheme = 'chase'; keyMap = { ...(KEY_MAPS[prevScheme] || {}), ...KEY_MAPS['chase'] }; }
       else if (m === 0) { currentScheme = KEY_MAPS[prevScheme] ? prevScheme : 'wasd-jkl'; keyMap = KEY_MAPS[currentScheme]; mouseBasic = false; }
       for (const k in keyboardKeys) keyboardKeys[k] = false;
       return viewMode;
